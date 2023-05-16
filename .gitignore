@@ -1,0 +1,9 @@
+#ignore output
+output/
+#ignore input
+input/
+#ignore vcfs
+vcfs/
+#ignore references
+references/
+
