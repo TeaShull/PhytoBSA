@@ -10,3 +10,6 @@ reference_genome_source='ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fast
 #set how many threads you would like the mapping processes to use. Please note that sometimes 2 processes are run simultaniously, so half the number of cores you wish to use. 
 # for example, if you have 24 threads available, setting threads to 10 should be OK provided you aren't doing anything else CPU intensive.
 threads='8'
+
+# set this variable to False if you want all files output by this script to be saved in archive. This takes up quite some space, but good if you want to keep your sorted Bams and so on.
+cleanup='False'

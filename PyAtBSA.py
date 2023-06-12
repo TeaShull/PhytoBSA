@@ -15,13 +15,11 @@ import numpy as np
 import statsmodels.api as sm
 import plotly.express as px
 import plotly.graph_objects as go
-<<<<<<< HEAD
 from scipy.interpolate import interp1d
-=======
 import plotly.io as pio
 import scipy
 from scipy.signal import find_peaks
->>>>>>> ee0054a (add plot production to .py script, add archive management and cleanup to vcfgen.sh script)
+(add plot production to .py script, add archive management and cleanup to vcfgen.sh script)
 import fnmatch
 
 #welcome, print delimeter with delightful ascii DNA "art"
@@ -93,8 +91,6 @@ for key in lines_dict:
 #for key in lines_dict:
 #	count_vcfs
 #	subprocess.call(['./code/VCFgen.sh', key, paired])
-<<<<<<< HEAD
-
 
 # files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
 
@@ -111,58 +107,7 @@ print("""
     >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
 	""")
 
-# lowess = sm.nonparametric.lowess
-
-# for key in lines_dict:
-# 	vcftable = "./output/" + key + ".ems.table"
-# 	plotname = "./output/" + key + ".rough_BSA_map_" + ".jpeg"
-# 	print(vcftable)
-# 	df = pd.read_csv(vcftable, sep="\t", header=0)
-# 	print(df)
-# 	df['ratio'] = ((df.wt_ref)/(df.wt_ref+df.wt_alt))-((df.mu_ref)/(df.mu_ref+df.mu_alt))
-# #make figure, add scatter plot values and facetes
-# 	fig = px.scatter(df, x=df['pos'], y=df['ratio'], facet_col="chr",
-# 		opacity=0.8, color_discrete_sequence=['blue'])
-# 	fig.update_layout(dict(plot_bgcolor = 'white'))
-# 	fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
-# 	fig.update_xaxes(showline=True, linewidth=1, linecolor='black')
-# 	fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgrey')
-# 	fig.update_yaxes(showline=True, linewidth=1, linecolor='black')
-# 	fig.update_layout(title=dict(text="Bulk segrigant linkage map, unsmoothed",
-# 		font=dict(color='black')))
-# 	fig.update_traces(marker=dict(size=3))
-
-
-# #add LOWESS line
-# 	chr_facets=df["chr"].unique()
-# 	for i in chr_facets:
-# 		X=df[df['chr']==i]['pos'].values
-# 		print(X) 
-# 		Y=df[df['chr']==i]['ratio'].values
-# 		print(Y)
-# 		y_hat = lowess(Y,X, frac=1/5)
-# 		fig.add_traces(go.Scatter(x=y_hat[:,0], y=y_hat[:1], name = 'Lowess', line=dict(color='red'), facet_col=i))
-# 		fig.write_image("plotname")
-# #add gstatistic
-=======
-
-
-# files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
-
-
-#######data analysis########
-print("""
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	         -. .-.   .-. .-.   .-. .-.   .  
-	         ||\|||\ /|||\|||\ /|||\|||\ /|
-	         |/ \|||\|||/ \|||\|||/ \|||\||
-	         ~   `-~ `-`   `-~ `-`   `-~ `-
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	 Producing plots and identifying putative causal mutations
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	""")
-
-# lowess = sm.nonparametric.lowess
+lowess = sm.nonparametric.lowess
 
 for key in lines_dict:
 	vcftable = "./output/archive/" + key/ + key + ".ems.table"
@@ -317,7 +262,5 @@ for key in lines_dict:
 	pio.write_image(fig, plotname, scale=6, width=1080, height=1080)
 	df_peaks.to_csv(finaltablename, sep='\t')
 	
-# #add gstatistic
+ #add gstatistic
 
-
->>>>>>> ee0054a (add plot production to .py script, add archive management and cleanup to vcfgen.sh script)

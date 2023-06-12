@@ -35,13 +35,12 @@ fa=./references/$my_species.chrs.fa
 # bwa index -p ./references/$my_species.chrs.fa -a is $fa
 
 #create dictory for gatk haplotype caller
-<<<<<<< HEAD
 picard CreateSequenceDictionary -R .fa -O ./references/$my_species.chrs.dict
-=======
+
 if [ ! -d "./references/$my_species.chrs.dict" ]; then
 	picard CreateSequenceDictionary -R .fa -O ./references/$my_species.chrs.dict
 fi
->>>>>>> ee0054a (add plot production to .py script, add archive management and cleanup to vcfgen.sh script)
+
 
 echo	"    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo	"    Preparing VCF for $1"
@@ -100,7 +99,7 @@ picard BuildBamIndex INPUT=./output/$1_mu.sort.md.rg.bam &
 picard BuildBamIndex INPUT=./output/$1_wt.sort.md.rg.bam
 wait
 
-<<<<<<< HEAD
+
 #GATK HC Variant calling
 #gatk HaplotypeCaller -R $fa -I ./output/$1_mu.sort.md.rg.bam -I ./output/$1_wt.sort.md.rg.bam -O ./output/$1.hc.vcf -output-mode EMIT_ALL_CONFIDENT_SITES --native-pair-hmm-threads 20 #the last argument is necessary for old sequencing results where the quality scores do not match the HC restriction: https://www.biostars.org/p/94637/; I also tried --fix_misencoded_quality_scores -fixMisencodedQuals from the same link but I received an error message. "Bad input: while fixing mis-encoded base qualities we encountered a read that was correctly encoded; we cannot handle such a mixture of reads so unfortunately the BAM must be fixed with some other tool"
 
@@ -112,7 +111,7 @@ wait
 
 # #snpEff
 #snpEff $my_species -s ./output/snpEff_summary.html ./output/$1.hc.vcf > ./output/$1.se.vcf
-=======
+
 GATK HC Variant calling
 gatk HaplotypeCaller -R $fa -I ./output/$1_mu.sort.md.rg.bam -I ./output/$1_wt.sort.md.rg.bam -O ./output/$1.hc.vcf -output-mode EMIT_ALL_CONFIDENT_SITES --native-pair-hmm-threads 20 #the last argument is necessary for old sequencing results where the quality scores do not match the HC restriction: https://www.biostars.org/p/94637/; I also tried --fix_misencoded_quality_scores -fixMisencodedQuals from the same link but I received an error message. "Bad input: while fixing mis-encoded base qualities we encountered a read that was correctly encoded; we cannot handle such a mixture of reads so unfortunately the BAM must be fixed with some other tool"
 
@@ -124,7 +123,6 @@ gatk -R $fa -T SelectVariants -V ./output/$1.hc.vcf -O ./output/$1.selvars.vcf -
 
 #snpEff
 snpEff $my_species -s ./output/archive/${1}/snpEff/${1}_snpEff_summary.html ./output/$1.hc.vcf > ./output/$1.se.vcf
->>>>>>> ee0054a (add plot production to .py script, add archive management and cleanup to vcfgen.sh script)
 
 #extract snpEFF data and variant information into a table, remove repetative NaN's and retain only those polymorphisms likely to arise from EMS.
 SnpSift extractFields -s ":" -e "NaN" ./output/$1.se.vcf CHROM POS  REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" "ANN[*].IMPACT" "GEN[*].GT" "GEN[$1_mu].AD" "GEN[$1_wt].AD" > ./output/$1.table
@@ -132,7 +130,6 @@ SnpSift extractFields -s ":" -e "NaN" ./output/$1.se.vcf CHROM POS  REF ALT "ANN
 grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1.table > ./output/$1.ems.table.tmp
 sed -i 's/NaN://g' ./output/$1.ems.table.tmp
 
-<<<<<<< HEAD
 #if [ "$mutation" = 'recessive' ]; then 
 	grep -F -e '1/1:0/1' -e '0/1:0/0' ./output/$1.ems.table.tmp > ./output/$1.ems.table
 #else 
@@ -140,14 +137,13 @@ sed -i 's/NaN://g' ./output/$1.ems.table.tmp
 #fi
 
 rm ./output/*.tmp
-=======
+
 if [ "$mutation" = 'recessive' ]; then 
 	grep -F -e '1/1:0/1' -e '0/1:0/0' ./output/$1.ems.table.tmp > ./output/$1.ems.table
 else 
 grep -e $'0/1:0/0' -e '1/1:0/0' ./output/$1.ems.table.tmp > ./output/$1.ems.table
 fi
 
->>>>>>> ee0054a (add plot production to .py script, add archive management and cleanup to vcfgen.sh script)
 awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", $10) ; gsub(",", "\t", $11) ; print }' ./output/$1.ems.table
 
 #remove complex genotypes
@@ -157,7 +153,6 @@ awk -i inplace -F'\t' 'NF==13' ./output/$1.ems.table
 awk -i inplace '$1 == ($1+0)' ./output/$1.ems.table
 
 #add headers
-<<<<<<< HEAD
 sed -i '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'wt_alt'\t'wt_ref'\t'mu_alt'\t'mu_ref'\n/' ./output/$1.ems.table
 =======
 sed -i '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'wt_alt'\t'wt_ref'\t'mu_alt'\t'mu_ref'\n/' ./output/$1.ems.table
@@ -173,4 +168,3 @@ if [ cleanup=="True" ]; then
 fi
 
 mv ./output/* ./output/archive/${1}
->>>>>>> ee0054a (add plot production to .py script, add archive management and cleanup to vcfgen.sh script)

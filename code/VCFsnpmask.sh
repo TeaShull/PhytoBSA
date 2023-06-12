@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+#soft link all available VCFs in the archive. 
+ln -s ./output/archive/*/*.vcf ./output/archive/VCFs/
+
 #list your vcf files to be intersected
 vcfs="$@"
 
@@ -11,5 +14,5 @@ for files in $vcfs
   vcfs_filelist+="./VCFs/$files.hc.vcf.gz "
 done
 
-bcftools isec -n=+2 -c all -o ws-0_all_common_SNPs.vcf $vcfs_filelist
+bcftools isec -n=+2 -c all -o ./output/VCFs/common_SNPs.vcf $vcfs_filelist
 
