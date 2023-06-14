@@ -19,20 +19,18 @@ from scipy.interpolate import interp1d
 import plotly.io as pio
 import scipy
 from scipy.signal import find_peaks
-(add plot production to .py script, add archive management and cleanup to vcfgen.sh script)
 import fnmatch
 
 #welcome, print delimeter with delightful ascii DNA "art"
 print("""
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	                    Welcome
-	         -. .-.   .-. .-.   .-. .-.   .  
-	         ||\|||\ /|||\|||\ /|||\|||\ /|
-	         |/ \|||\|||/ \|||\|||/ \|||\||
-	         ~   `-~ `-`   `-~ `-`   `-~ `-
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	          Checking files for formating
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+	-. .-.   .-. .-.   .-. .-.   .
+	||\|||\ /|||\|||\ /|||\|||\ /|
+	|/ \|||\|||/ \|||\|||/ \|||\||
+	~   `-~ `-`   `-~ `-`   `-~ `-
+	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+	Checking files for formating
+	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
 	""")
 
 #Check if files are formatted properly, and if paired end or not
@@ -60,7 +58,7 @@ for file in os.listdir('./input/'):
 		quit()
 
 if single_test >= 2:
-    paired = 'single-read'
+	paired = 'single-read'
 
 if pair_test >= 3:
 	paired = 'paired-end'
@@ -97,22 +95,22 @@ for key in lines_dict:
 
 #######data analysis########
 print("""
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	         -. .-.   .-. .-.   .-. .-.   .  
-	         ||\|||\ /|||\|||\ /|||\|||\ /|
-	         |/ \|||\|||/ \|||\|||/ \|||\||
-	         ~   `-~ `-`   `-~ `-`   `-~ `-
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+			 -. .-.   .-. .-.   .-. .-.   .  
+			 ||\|||\ /|||\|||\ /|||\|||\ /|
+			 |/ \|||\|||/ \|||\|||/ \|||\||
+			 ~   `-~ `-`   `-~ `-`   `-~ `-
+	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
 	 Producing plots and identifying putative causal mutations
-    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
 	""")
 
 lowess = sm.nonparametric.lowess
 
 for key in lines_dict:
-	vcftable = "./output/archive/" + key/ + key + ".ems.table"
-	plotname = "./output/archive/" + key/ + key + ".BSA_linkage_map" + ".png"
-	finaltablename = "./output/archive/" + key/ + key + ".complete_table" + ".tsv"
+	vcftable = "./output/archive/" + key + "/" + key + ".ems.table"
+	plotname = "./output/archive/" + key + "/" + key + ".BSA_linkage_map" + ".png"
+	finaltablename = "./output/archive/" + key + "/" + key + ".complete_table" + ".tsv"
 	df = pd.read_csv(vcftable, sep="\t", header=0)
 
 	#calculate ratio, add to dataframe and calculate mean ratio for peak threshold later. 
@@ -125,44 +123,44 @@ for key in lines_dict:
 	lowess = sm.nonparametric.lowess
 
 	for i in chr_facets:
-    
-    	df_chr = df[df['chr']==i].copy()
-    
-    	X=df_chr['pos'].values
-    
-    	Y=df_chr['ratio'].values
-    
-    	y_hat = lowess(Y,X, frac=0.29)[:,1]
-    
-    	df_chr['yhat'] = y_hat
-    
-    	df_list.append(df_chr)
-    
-    	signal = df_chr['yhat'].to_numpy().flatten()
-    
-    	peaks = scipy.signal.find_peaks(signal, height=ratio_mean, 
-                            threshold=None, 
-                            distance=None, 
-                            prominence=None, 
-                            width=None, 
-                            wlen=None, 
-                            rel_height=0.5, 
-                            plateau_size=None)
-    
-    	h = peaks[1]['peak_heights']
-    
-    	if len(h) > 0:
-        	h.sort()
-        	max = h[0]
-        	min = h[-1]
-    	else:
-        	max = 0
-        	min = 0
-    
-    	df_chr['peak'] = [1 if (np.isclose(max, x) or (max < x)) and (np.isclose(min, x) or (min > x))
-                      	else 0 for x in df_chr['yhat']]
-    
-    df = pd.concat(df_list)
+	
+		df_chr = df[df['chr']==i].copy()
+	
+		X=df_chr['pos'].values
+	
+		Y=df_chr['ratio'].values
+	
+		y_hat = lowess(Y,X, frac=0.29)[:,1]
+	
+		df_chr['yhat'] = y_hat
+	
+		df_list.append(df_chr)
+	
+		signal = df_chr['yhat'].to_numpy().flatten()
+	
+		peaks = scipy.signal.find_peaks(signal, height=ratio_mean, 
+							threshold=None, 
+							distance=None, 
+							prominence=None, 
+							width=None, 
+							wlen=None, 
+							rel_height=0.5, 
+							plateau_size=None)
+	
+		h = peaks[1]['peak_heights']
+	
+		if len(h) > 0:
+			h.sort()
+			max = h[0]
+			min = h[-1]
+		else:
+			max = 0
+			min = 0
+	
+		df_chr['peak'] = [1 if (np.isclose(max, x) or (max < x)) and (np.isclose(min, x) or (min > x))
+						else 0 for x in df_chr['yhat']]
+	
+	df = pd.concat(df_list)
 
 	df_peaks = df.loc[df['peak'] == 1]
 
@@ -171,19 +169,19 @@ for key in lines_dict:
 	chr_facets_p=df_peaks["chr"].unique()
 
 	fig = px.scatter(df, x=df['pos'], y=df['ratio'],
-    	facet_col="chr",
-    	opacity=0.8,
-   		color_discrete_sequence=['goldenrod'],
-    	trendline="lowess",
-    	trendline_options=dict(frac=0.29),
-    	trendline_color_override="blue")
-            
+		facet_col="chr",
+		opacity=0.8,
+		color_discrete_sequence=['goldenrod'],
+		trendline="lowess",
+		trendline_options=dict(frac=0.29),
+		trendline_color_override="blue")
+			
 	fig.add_trace(go.Scatter(x=[1],
-    	y=[1],
-    	mode='lines',
-    	name='Lowess Fitted Ratio',
-    	line=dict(color="blue")))
-            
+		y=[1],
+		mode='lines',
+		name='Lowess Fitted Ratio',
+		line=dict(color="blue")))
+			
 	fig.update_layout(dict(plot_bgcolor = 'white'))
 	fig.update_xaxes(matches=None)
 	fig.for_each_xaxis(lambda xaxis: xaxis.update(showticklabels=True))
@@ -191,50 +189,50 @@ for key in lines_dict:
 	fig.for_each_yaxis(lambda y: y.update(title = ''))
 
 	fig.add_annotation(
-    	showarrow=False,
-    	xanchor='center',
-    	xref='paper', 
-    	x=0.5, 
-    	yref='paper',
-    	y=-0.12,
-    	text='Position'
+		showarrow=False,
+		xanchor='center',
+		xref='paper', 
+		x=0.5, 
+		yref='paper',
+		y=-0.12,
+		text='Position'
 	)
 
 	fig.add_annotation(
-    	showarrow=False,
-    	xanchor='center',
-    	xref='paper', 
-    	x=-0.065, 
-    	yanchor='middle',
-    	yref='paper',
-    	y=0.6,
-    	textangle=-90,
-    	text='Ratio'
+		showarrow=False,
+		xanchor='center',
+		xref='paper', 
+		x=-0.065, 
+		yanchor='middle',
+		yref='paper',
+		y=0.6,
+		textangle=-90,
+		text='Ratio'
 	)
 
 
 	fig.update_xaxes(showgrid=True, 
-	    gridwidth=0.5, 
-	    gridcolor='lightgrey')
+		gridwidth=0.5, 
+		gridcolor='lightgrey')
 
 	fig.update_xaxes(showline=True, 
-	    linewidth=1, 
-	    linecolor='black')
+		linewidth=1, 
+		linecolor='black')
 
 	fig.update_xaxes(rangemode="tozero")
 
 	fig.update_yaxes(showgrid=True, 
-	    gridwidth=0.5, 
-	    gridcolor='lightgrey')
+		gridwidth=0.5, 
+		gridcolor='lightgrey')
 
 	fig.update_yaxes(showline=True, 
-	    linewidth=1, 
-	    linecolor='black')
+		linewidth=1, 
+		linecolor='black')
 
 	fig.update_yaxes(range=[0, 0.8])
 
 	fig.update_layout(title=dict(text="Linkage map",
-	    font=dict(color='black')))
+		font=dict(color='black')))
 
 	fig.update_traces(marker=dict(size=1))
 
@@ -246,18 +244,18 @@ for key in lines_dict:
 	max_yhat_pos=df_peaks.loc[df_peaks['yhat'] == df_peaks['yhat'].max()]['pos'].values[0]
 
 	for i in chr_facets_p:
-	    fig.add_vrect(x0=min_pos, x1=max_pos, col=i,
-	        fillcolor="red", opacity=0.2, line_width=0)
-	    fig.add_vline(x=max_yhat_pos, 
-	                  line_dash="dot", 
-	                  col=i, 
-	                  line_width=1)
-	    
+		fig.add_vrect(x0=min_pos, x1=max_pos, col=i,
+			fillcolor="red", opacity=0.2, line_width=0)
+		fig.add_vline(x=max_yhat_pos, 
+					  line_dash="dot", 
+					  col=i, 
+					  line_width=1)
+		
 	fig.add_trace(go.Scatter(x=[0,0], 
-	    y=[0,0], 
-	    mode='lines', 
-	    line=dict(color='black', width=1, dash='dot'),
-	    name='Identified Peak',))
+		y=[0,0], 
+		mode='lines', 
+		line=dict(color='black', width=1, dash='dot'),
+		name='Identified Peak',))
 
 	pio.write_image(fig, plotname, scale=6, width=1080, height=1080)
 	df_peaks.to_csv(finaltablename, sep='\t')

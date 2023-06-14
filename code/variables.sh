@@ -4,6 +4,9 @@
 #species name you want used in the script
 my_species='Arabidopsis_thaliana'
 
+#is the mutation 'recessive' or 'dominant'?
+mutation='recessive'
+
 #reference genome to be sourced. You can download seperately and this will be skipped if you stick to the $my_species.fa format for the reference genome. 
 reference_genome_source='ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz'
 
@@ -12,4 +15,8 @@ reference_genome_source='ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fast
 threads='8'
 
 # set this variable to False if you want all files output by this script to be saved in archive. This takes up quite some space, but good if you want to keep your sorted Bams and so on.
-cleanup='False'
+cleanup=false
+
+
+
+knownsnps="./references/Arabidopsis_thaliana.vcf"
