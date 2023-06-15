@@ -5,7 +5,7 @@ source ./code/variables.sh
 echo	"Preparing references and directory structure"
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-#make directory structure if it doesn't exist. 
+#make directory structure if it doesn't exist 
 if [ ! -d "./output/$1" ]; then
 	mkdir ./output/$1
 fi
