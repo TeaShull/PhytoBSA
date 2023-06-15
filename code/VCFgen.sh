@@ -5,7 +5,7 @@ source ./code/variables.sh
 echo	"Preparing references and directory structure"
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-#make directory structure if it doesn't exist 
+#make directory structure if it doesn't exist. 
 if [ ! -d "./output/$1" ]; then
 	mkdir ./output/$1
 fi
@@ -45,7 +45,7 @@ fi
 echo	"References prepared, preparing VCF for $1"
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo  "$1 reads seem to be $2"
-
+echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 #set input files as paired-end or single-read
 if [ "$2" == "paired-end" ]; then
   fa_in_wt="./input/$1_1.wt.fq.gz ./input/$1_2.wt.fq.gz"
