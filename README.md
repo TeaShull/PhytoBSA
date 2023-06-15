@@ -1,16 +1,10 @@
 # PyAtBSA
 This is my attempt to write a python script to analyze and visualize bulk segrigant analysis (BSA) data, taking sequenced segrigant bulks as an input, and outputing 
 a list of putative casual alleles behind the phenotypic segrigation of the two bulks. Putative causal alleles are identified using g-statistics and a
-comparison of the ratio of reference to non-reference alleles in each bulk.
+comparison of the ratio of reference to non-reference alleles in each bulk. Currently, this script is optimized for running Arabidopsis BSA experiments, but can handle 
+other organisms with some tinkering.   
 
 For a good, simple explanation of the underlying experimental design of BSA analysis -> https://doi.org/10.1104/pp.17.00415 
-
-
-This script has an associated conda environment which must be installed and activated in order for the script to run. 
-
-generated using illumina sequencing. Currently, this script is optimized for running Arabidopsis BSA experiments, but will in the future will be hopefully be 
-constructed to more easily analyze other organisms. 
-
 
 To use, install and activate the conda environment from the pyatbsa_conda_env_file.yaml file included in the /code directory. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda is comparitivly inefficient (conda sometimes freezes trying to resolve this environment). 
 
