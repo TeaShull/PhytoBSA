@@ -1,12 +1,24 @@
 # PyAtBSA
-This is my attempt to write a python script which can be run on linux or mac machines using conda to analyze and visualize bulk segrigant analysis (BSA) data generated using illumina sequencing. 
+This is my attempt to write a python script which can be run on linux or mac machines using conda to analyze and visualize bulk segrigant analysis (BSA) data 
+generated using illumina sequencing. Currently, this script is optimized for running Arabidopsis BSA experiments, but will in the future will be hopefully be 
+constructed to more easily analyze other organisms. 
 
-Conceptually, there is nothing new here. My hope is to consolidate multiple techniques for identifiying QTLs or SNPs responsible for a Arabidopsis Thaliana phenotypes using BSA. 
+To use, install and activate the conda environment from the .yaml file included in the /code directory. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda is comparitivly inefficient (conda sometimes freezes trying to resolve this environment). 
 
-Experimental design is fairly simple. You take an easy to identify phenotype generated through EMS mutageneses, and backcross that mutant into a parental line (Col-0, WS-0, LER, exc) and generate an F2 segrigating population. 
+Put the fq.gz files you want analyzed into the /input folder. The files must be formatted as follows:
+paired-end reads - <line>_1.wt.fq.gz <line>_2.wt.fq.gz <line>_1.mu.fq.gz <line>_2.mu.fq.gz
+unpaired reads - <line>.wt.fq.gz <line>.mu.fq.gz for 
 
-Pick roughly equal amounts of tissue (either though whole leaves or leaf disks) from multiple individuals in each population (12 minimum), extract the pooled genomic DNA and sequence. There are a number of papers on this subject:
+Conceptually, there is nothing new here. My hope is to consolidate multiple techniques for identifiying causal EMS-induced SNPs behind Arabidopsis Thaliana phenotypes 
+using BSA. My implementation of this pipeline uses:
 
+  the delta-allele calculation described in the publication: https://doi.org/10.1104/pp.17.00415 (< this paper includes a very nice explanation of BSA experimental design)
+  
+  The G-statistic calculation described in the publication: https://doi.org/10.1186/s12859-020-3435-8
+  
+  A SNP mask generation script in order to help users mask background SNPs (Can be found in VCFsnpmask.sh). 
+  This script will be eventuall incorperated into the main  program, such that if a user supplies multiple lines in the same background, 
+  the script will automatically generate a SNP mask out of the common snps between the generated VCFs. For now, users must manually produce their own SNP masks. 
 
 
 
