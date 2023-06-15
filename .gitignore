@@ -6,4 +6,10 @@ input/
 vcfs/
 #ignore references
 references/
+#ignore tsvs
+*.tsv
+#ignore csvs
+*.csv
+#ingnore images
+*.png
 
