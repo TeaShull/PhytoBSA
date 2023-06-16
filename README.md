@@ -10,9 +10,9 @@ To use, install and activate the conda environment from the pyatbsa_conda_env_fi
 
 Put the fq.gz files you want analyzed into the /input folder. The files must be formatted as follows:
 
-  paired-end reads - "<line>_1.wt.fq.gz" "<line>_2.wt.fq.gz" "<line>_1.mu.fq.gz" "<line>_2.mu.fq.gz"
+  paired-end reads - "line_1.wt.fq.gz" "line_2.wt.fq.gz" "line_1.mu.fq.gz" "line_2.mu.fq.gz"
 
-  unpaired reads - "<line>.wt.fq.gz" "<line>.mu.fq.gz" 
+  unpaired reads - "line.wt.fq.gz" "line.mu.fq.gz" 
 
   
 Conceptually, there is nothing new here. My hope is to consolidate multiple techniques for identifiying causal EMS-induced SNPs behind Arabidopsis Thaliana phenotypes 
