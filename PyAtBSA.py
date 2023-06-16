@@ -38,6 +38,7 @@ Welcome to PyAtBSA. Checking files for formating
 single_test = 0
 pair_test = 0
 
+#probably a more straightforward and safer way of doing this using fq headers...
 for file in os.listdir('./input/'):
 	if (fnmatch.fnmatch(file, '*_1*')) and (fnmatch.fnmatch(file, '*wt.fq.gz*')) or (fnmatch.fnmatch(file, '*mu.fq.gz*')): 
 		pair_test += 1
@@ -155,6 +156,7 @@ for key in lines_dict:
 	df.dropna(axis=0, how='any', subset="ratio", inplace=True)
 
 	#######lowess smoothing by chromosome######
+	#at some point, try not going chromosome by chromosome. May help with Lowess edge bias? 
 	chr_facets=df["chr"].unique()
 	df_list = []
 
@@ -580,20 +582,15 @@ for key in lines_dict:
 	    line=dict(color='black', width=1, dash='dot'),
 	    name='Identified Peak',))
 
-
-	pio.write_image(fig, "./plotname.png", scale=6, width=1080, height=540)
-	df_peaks.to_csv('peaks_file_name.tsv', sep='\t')
-
-
 	pio.write_image(fig, gstat_plotname, scale=6, width=1080, height=540)
 
 	print(f'''
-	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   
-	||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /
-	|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|
-	~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `
-	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	Results for {key} generated. 
-	>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
-	''')
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   
+||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /
+|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|
+~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+Results for {key} generated. 
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
+''')
