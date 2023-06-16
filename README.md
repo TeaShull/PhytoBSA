@@ -18,12 +18,12 @@ Put the fq.gz files you want analyzed into the /input folder. The files must be 
 Conceptually, there is nothing new here. My hope is to consolidate multiple techniques for identifiying causal EMS-induced SNPs behind Arabidopsis Thaliana phenotypes 
 using BSA. My implementation of this pipeline uses:
 
-  the delta-allele calculation described in the publication: https://doi.org/10.1104/pp.17.00415 (< this paper includes a very nice explanation of BSA experimental design)
+  the delta-allele calculation described in the publication: https://doi.org/10.1104/pp.17.00415 (also linked earlier for a quick explanation of BSA experimental design)
   
   The G-statistic calculation described in the publication: https://doi.org/10.1186/s12859-020-3435-8
   
   A SNP mask generation script in order to help users mask background SNPs (Can be found in VCFsnpmask.sh). 
-  This script will be eventuall incorperated into the main  program, such that if a user supplies multiple lines in the same background, 
+  This script will eventually be incorperated into the main  program, such that if a user supplies multiple lines in the same background, 
   the script will automatically generate a SNP mask out of the common snps between the generated VCFs. For now, users must manually produce their own SNP masks. 
 
 
