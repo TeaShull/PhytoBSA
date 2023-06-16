@@ -102,7 +102,7 @@ echo	"Calling haplotypes. This may (will) take awhile..."
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # #GATK HC Variant calling
-gatk HaplotypeCaller -R $fa -I ./output/$1/$1_mu.sort.md.rg.bam -I ./output/$1/$1_wt.sort.md.rg.bam -O ./output/$1/$1.hc.vcf -output-$1/mode EMIT_ALL_CONFIDENT_SITES --native-pair-hmm-threads 20
+gatk HaplotypeCaller -R $fa -I ./output/$1/$1_mu.sort.md.rg.bam -I ./output/$1/$1_wt.sort.md.rg.bam -O ./output/$1/$1.hc.vcf -output-mode EMIT_ALL_CONFIDENT_SITES --native-pair-hmm-threads 20
 
 #snpEff, labeling snps with annotations and potential impact on gene function
 
