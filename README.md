@@ -8,11 +8,14 @@ For a good, simple explanation of the underlying experimental design of BSA anal
 
 To use, install and activate the conda environment from the pyatbsa_conda_env_file.yaml file included in the /code directory. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda is comparitivly inefficient (conda sometimes freezes trying to resolve this environment). 
 
-Put the fq.gz files you want analyzed into the /input folder. The files must be formatted as follows:
+Put the fq.gz files you want analyzed into the /input folder. You can put multiple experiments in the folder and they will be analyzed. 
+The files must be formatted as follows:
 
   paired-end reads - "line_1.wt.fq.gz" "line_2.wt.fq.gz" "line_1.mu.fq.gz" "line_2.mu.fq.gz"
 
   unpaired reads - "line.wt.fq.gz" "line.mu.fq.gz" 
+
+  run PyAtBSA.py 
 
   
 Conceptually, there is nothing new here. My hope is to consolidate multiple techniques for identifiying causal EMS-induced SNPs behind Arabidopsis Thaliana phenotypes 
