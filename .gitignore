@@ -12,4 +12,5 @@ references/
 *.csv
 #ingnore images
 *.png
-
+#ignore jupyter notebook changes
+*.ipynb
