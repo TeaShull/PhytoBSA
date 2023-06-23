@@ -57,7 +57,7 @@ if [ "$2" == "single-read" ]; then
   fa_in_wt="./input/$1.mu.fq.gz"
 fi
 
-mapping
+#mapping
 bwa mem -t $threads -M $fa $fa_in_wt > ./output/$1/$1_wt.sam &
 bwa mem -t $threads -M $fa $fa_in_mu > ./output/$1/$1_mu.sam
 
