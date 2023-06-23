@@ -120,7 +120,7 @@ grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1/$1.table > ./output
 sed -i 's/NaN://g' ./output/$1/$1.ems.table.tmp
 
 if [ "$mutation" = 'recessive' ]; then 
-	grep -F -e '1/1:0/1' -e '0/1:0/0' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
+	grep -F -e '1/1:0/1' -e '1/1:0/0' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
 else 
 	grep -F -e $'0/1:0/0' -e '1/1:0/0' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
 fi
