@@ -253,7 +253,7 @@ for key in lines_dict:
 
 	chr_facets_p=df_peaks["chr"].unique()
 
-	######Generate lowess-ratio graph###### (at some point, perhaps considering using matplotlib. Plotly seems convoluted)
+	######Generate lowess-ratio graph###### (at some point, perhaps considering using matplotlib. Plotly seems somewhat convoluted)
 	chr_facets_p=df_peaks["chr"].unique()
 
 	#establish fig
