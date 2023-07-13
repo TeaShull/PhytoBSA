@@ -86,12 +86,12 @@ lines_dict = list(dict.fromkeys(lines))
 for key in lines_dict:
 	subprocess.call(['./code/VCFgen.sh', key, paired])
 
-#Create snp mask (not ready yet)
-#for key in lines_dict:
-#	count_vcfs
-# 	subprocess.call(['./code/VCFgen.sh', key, paired])
+Create snp mask (not ready yet)
+for key in lines_dict:
+	count_vcfs
+	subprocess.call(['./code/VCFgen.sh', key, paired])
 
-# files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
+files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
 
 
 #######data analysis########
@@ -105,6 +105,7 @@ print("""
 Producing plots and identifying putative causal mutations
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
 """)
+
 ######establish functions, exc######
 def gStatistic_Array(o1, o3, o2, o4):
     # Calculate G-statistc using numpy array input
