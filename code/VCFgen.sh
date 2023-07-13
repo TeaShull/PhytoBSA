@@ -18,44 +18,50 @@ if [ ! -d "./output/$1/snpEff" ]; then
 	mkdir ./output/$1/snpEff
 fi
 
-#make reference genome if it doesn't exist 
-if ! [ -f ./references/$my_species.fa ]; then
-  curl -o ./references/$my_species.fa.gz $reference_genome_source
-  gzip -d ./references/$my_species.fa.gz
+#get genomic features file if it doesn't exist
+if ! [ -f ./references/$my_species.gff ]; then
+  curl -o ./references/$my_species.gff.gz $gff_file_source
+  gzip -d ./references/$my_species.gff.gz
 fi
 
-#make .chrs file if it doesn't exist, set reference variable
-if ! [ -f ./references/$my_species.chrs.fa ]; then
-	awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' ./references/$my_species.fa > ./references/$my_species.chrs.fa
-fi
+# #make reference genome if it doesn't exist 
+# if ! [ -f ./references/$my_species.fa ]; then
+#   curl -o ./references/$my_species.fa.gz $reference_genome_source
+#   gzip -d ./references/$my_species.fa.gz
+# fi
 
-fa=./references/$my_species.chrs.fa
+# #make .chrs file if it doesn't exist, set reference variable
+# if ! [ -f ./references/$my_species.chrs.fa ]; then
+# 	awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' ./references/$my_species.fa > ./references/$my_species.chrs.fa
+# fi
 
-# #creating .fai and index files if they don't exist
-if ! [ -f ./references/$my_species.chrs.fa.fai ]; then
-	samtools faidx $fa
-	bwa index -p ./references/$my_species.chrs.fa -a is $fa
-fi
+# fa=./references/$my_species.chrs.fa
 
-#create dictory for gatk haplotype caller if it doesn't exist
-if [ ! -f "./references/$my_species.chrs.dict" ]; then
-	picard CreateSequenceDictionary -R .fa -O ./references/$my_species.chrs.dict
-fi
+# # #creating .fai and index files if they don't exist
+# if ! [ -f ./references/$my_species.chrs.fa.fai ]; then
+# 	samtools faidx $fa
+# 	bwa index -p ./references/$my_species.chrs.fa -a is $fa
+# fi
 
-echo	"References prepared, preparing VCF for $1"
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo  "$1 reads seem to be $2"
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-#set input files as paired-end or single-read
-if [ "$2" == "paired-end" ]; then
-  fa_in_wt="./input/$1_1.wt.fq.gz ./input/$1_2.wt.fq.gz"
-  fa_in_mu="./input/$1_1.mu.fq.gz ./input/$1_2.mu.fq.gz"
-fi
+# #create dictory for gatk haplotype caller if it doesn't exist
+# if [ ! -f "./references/$my_species.chrs.dict" ]; then
+# 	picard CreateSequenceDictionary -R .fa -O ./references/$my_species.chrs.dict
+# fi
 
-if [ "$2" == "single-read" ]; then
-  fa_in_wt="./input/$1.wt.fq.gz"
-  fa_in_wt="./input/$1.mu.fq.gz"
-fi
+# echo	"References prepared, preparing VCF for $1"
+# echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+# echo  "$1 reads seem to be $2"
+# echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+# #set input files as paired-end or single-read
+# if [ "$2" == "paired-end" ]; then
+#   fa_in_wt="./input/$1_1.wt.fq.gz ./input/$1_2.wt.fq.gz"
+#   fa_in_mu="./input/$1_1.mu.fq.gz ./input/$1_2.mu.fq.gz"
+# fi
+
+# if [ "$2" == "single-read" ]; then
+#   fa_in_wt="./input/$1.wt.fq.gz"
+#   fa_in_wt="./input/$1.mu.fq.gz"
+# fi
 
 #mapping
 bwa mem -t $threads -M $fa $fa_in_wt > ./output/$1/$1_wt.sam &
@@ -112,12 +118,12 @@ echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo	"Haplotypes called and snps labeled. Cleaning data...."
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-#extract snpEFF data and variant information into a table, remove repetative NaN's and retain only those polymorphisms likely to arise from EMS.
-SnpSift extractFields -s ":" -e "NaN" ./output/$1/$1.se.vcf CHROM POS  REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" "ANN[*].IMPACT" "GEN[*].GT" "GEN[$1_mu].AD" "GEN[$1_wt].AD" > ./output/$1/$1.table
+# #extract snpEFF data and variant information into a table, remove repetative NaN's and retain only those polymorphisms likely to arise from EMS.
+# SnpSift extractFields -s ":" -e "NaN" ./output/$1/$1.se.vcf CHROM POS  REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" "ANN[*].IMPACT" "GEN[*].GT" "GEN[$1_mu].AD" "GEN[$1_wt].AD" > ./output/$1/$1.table
 
-grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1/$1.table > ./output/$1/$1.ems.table.tmp
+# grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1/$1.table > ./output/$1/$1.ems.table.tmp
 
-sed -i 's/NaN://g' ./output/$1/$1.ems.table.tmp
+# sed -i 's/NaN://g' ./output/$1/$1.ems.table.tmp
 
 #only tested on recessive mutations so far - need to get some verified dominant datasets from SRA to test....
 if [ "$mutation" = 'recessive' ]; then 
@@ -126,27 +132,27 @@ else
 	grep -F -e $'0/1:0/0' -e '1/1:0/0' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
 fi
 
-awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", $10) ; gsub(",", "\t", $11) ; print }' ./output/$1/$1.ems.table
+# awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", $10) ; gsub(",", "\t", $11) ; print }' ./output/$1/$1.ems.table
 
-#remove complex genotypes
-awk -i inplace -F'\t' 'NF==13' ./output/$1/$1.ems.table
+# #remove complex genotypes
+# awk -i inplace -F'\t' 'NF==13' ./output/$1/$1.ems.table
 
-#remove non-numeric chromasomes. This will get rid of chloroplastic and mitochondrial polymorphisms. 
-awk -i inplace '$1 == ($1+0)' ./output/$1/$1.ems.table
+# #remove non-numeric chromasomes. This will get rid of chloroplastic and mitochondrial polymorphisms. 
+# awk -i inplace '$1 == ($1+0)' ./output/$1/$1.ems.table
 
-#remove known snps
-awk 'FNR==NR{a[$1$2];next};!($1$2 in a) || $1~/#CHROM/' $knownsnps ./output/$1/$1.ems.table > ./output/$1/$1.noknownsnps.table
+# #remove known snps
+# awk 'FNR==NR{a[$1$2];next};!($1$2 in a) || $1~/#CHROM/' $knownsnps ./output/$1/$1.ems.table > ./output/$1/$1.noknownsnps.table
 
-#add headers
-sed -i '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' ./output/$1/$1.noknownsnps.table
+# #add headers
+# sed -i '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' ./output/$1/$1.noknownsnps.table
 
 #clean up and organize. Change cleanup variable to "False", or comment out to disable.  
 if [ $cleanup ]; then
 	rm ./output/$1/*.tmp
-	rm ./output/$1/*.bam
+	#rm ./output/$1/*.bam
 	rm ./output/$1/*.sam
 	rm ./output/$1/*.idx
-	rm ./output/$1/*.bai
+	#rm ./output/$1/*.bai
 	rm ./output/$1/*.matrics.txt
 	rm ./output/$1/${1}.table
 	rm ./output/$1/${1}.ems.table

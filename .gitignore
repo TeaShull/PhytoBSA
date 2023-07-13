@@ -2,10 +2,17 @@
 output/
 #ignore input
 input/
+#ignore gffutils tair relational database
+*tair*
+#ignore fastq and zipped files
+*.fq
+*.gz
 #ignore vcfs
 vcfs/
 #ignore references
 references/
+#ignore other_data
+other_data/
 #ignore tsvs
 *.tsv
 #ignore csvs

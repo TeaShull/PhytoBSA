@@ -7,8 +7,9 @@ my_species='Arabidopsis_thaliana'
 #is the mutation 'recessive' or 'dominant'?
 mutation='recessive'
 
-#reference genome to be sourced. You can download seperately and this will be skipped if you stick to the $my_species.fa format for the reference genome. 
+#reference genomea and genome features file (gff) to be sourced. You can download seperately and this will be skipped if you stick to the $my_species.fa and $my_species.gff format for the reference genome. 
 reference_genome_source='ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz'
+gff_file_source='ftp://ftp.ensemblgenomes.org/pub/plants/release-56/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.56.gff3.gz'
 
 #set how many threads you would like the mapping processes to use. Please note that sometimes 2 processes are run simultaniously, so half the number of cores you wish to use. 
 # for example, if you have 24 threads available, setting threads to 10 should be OK provided you aren't doing anything else CPU intensive.
