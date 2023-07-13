@@ -33,7 +33,6 @@ Welcome to PyAtBSA. Checking files for formating
 """)
 
 #Check if files are formatted properly, and if paired end or not
-single_test = 0
 pair_test = 0
 
 #probably a more straightforward and safer way of doing this using fq headers...
@@ -69,8 +68,6 @@ if single_test >= 4 or pair_test >= 8:
 
 # #Read file names
 files_fq = [os.path.basename(x) for x in glob.glob('./input/*')]
-
-print(paired)
 
 #create a list from the line names
 lines = []
