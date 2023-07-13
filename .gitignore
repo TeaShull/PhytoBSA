@@ -20,4 +20,4 @@ other_data/
 #ingnore images
 *.png
 #ignore jupyter notebook changes
-*.ipynb
+*.ipynb*
