@@ -39,11 +39,11 @@ pair_test = 0
 #probably a more straightforward and safer way of doing this using fq headers...
 for file in os.listdir('./input/'):
 	if (fnmatch.fnmatch(file, '*_1*')) and (fnmatch.fnmatch(file, '*wt.fq.gz*')) or (fnmatch.fnmatch(file, '*mu.fq.gz*')): 
-		pair_test1 += 1
+		pair_test += 1
 	elif (fnmatch.fnmatch(file, '*_2*')) and (fnmatch.fnmatch(file, '*wt.fq.gz*')) or (fnmatch.fnmatch(file, '*mu.fq.gz*')):
-		pair_test2 += 1
+		pair_test += 1
 	elif (fnmatch.fnmatch(file, '*wt.fq.gz*')) or (fnmatch.fnmatch(file, '*mu.fq.gz*')) and not (fnmatch.fnmatch(file, '*_2*')) or (fnmatch.fnmatch(file, '*_1*')):
-		single_test += 3
+		pair_test += 3
 	else:
 		print("""
 		check that your inputs are named properly, or perhaps if there are spurious(or no) files in 
@@ -60,7 +60,7 @@ for file in os.listdir('./input/'):
 if pair_test%2 == 0:
 	paired = 'paired-end'
 
-if single_test%3 == 0:
+if pair_test%3 == 0:
 	paired = 'single-read'
 
 #check for multiple lines to genotype. Relevant for SNP masking later
@@ -69,6 +69,8 @@ if single_test >= 4 or pair_test >= 8:
 
 # #Read file names
 files_fq = [os.path.basename(x) for x in glob.glob('./input/*')]
+
+print(paired)
 
 #create a list from the line names
 lines = []
@@ -86,12 +88,12 @@ lines_dict = list(dict.fromkeys(lines))
 for key in lines_dict:
 	subprocess.call(['./code/VCFgen.sh', key, paired])
 
-Create snp mask (not ready yet)
-for key in lines_dict:
-	count_vcfs
-	subprocess.call(['./code/VCFgen.sh', key, paired])
+#Create snp mask (not ready yet)
+# for key in lines_dict:
+# 	count_vcfs
+# 	subprocess.call(['./code/VCFgen.sh', key, paired])
 
-files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
+# files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
 
 
 #######data analysis########
