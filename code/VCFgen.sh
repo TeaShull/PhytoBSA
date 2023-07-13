@@ -52,6 +52,7 @@ echo	"References prepared, preparing VCF for $1"
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo  "$1 reads seem to be $2"
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+
 #set input files as paired-end or single-read
 if [ "$2" == "paired-end" ]; then
   fa_in_wt="./input/$1_1.wt.fq.gz ./input/$1_2.wt.fq.gz"
@@ -104,13 +105,13 @@ picard BuildBamIndex INPUT=./output/$1/$1_wt.sort.md.rg.bam O=./output/$1/${1}_w
 wait
 
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo	"Calling haplotypes. This may (will) take awhile..."
+echo	"Calling haplotypes. This may take awhile..."
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-# #GATK HC Variant calling
+# #GATK HC Variant calling (I believe there is a way to parrelalize this by chr, and merge at the end. Improve later)
 gatk HaplotypeCaller -R $fa -I ./output/$1/$1_mu.sort.md.rg.bam -I ./output/$1/$1_wt.sort.md.rg.bam -O ./output/$1/$1.hc.vcf -output-mode EMIT_ALL_CONFIDENT_SITES --native-pair-hmm-threads 20
 
-#snpEff, labeling snps with annotations and potential impact on gene function
+snpEff, labeling snps with annotations and potential impact on gene function
 
 snpEff $my_species -s ./output/$1/snpEff/${1}_snpEff_summary.html ./output/$1/$1.hc.vcf > ./output/$1/$1.se.vcf
 
