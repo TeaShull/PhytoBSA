@@ -126,7 +126,7 @@ grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1/$1.table > ./output
 
 sed -i 's/NaN://g' ./output/$1/$1.ems.table.tmp
 
-#only tested on recessive mutations so far - need to get some verified dominant datasets from SRA to test....
+#only tested on recessive mutations so far - need to get some verified dominant datasets from SRA to test.... This needs some attention, but works for now
 if [ "$mutation" = 'recessive' ]; then 
 	grep -F -e '1/1:0/1' -e '0/1:0/0' -e '1/1:0/0' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
 else 
