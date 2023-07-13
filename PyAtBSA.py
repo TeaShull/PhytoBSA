@@ -85,12 +85,19 @@ lines_dict = list(dict.fromkeys(lines))
 for key in lines_dict:
 	subprocess.call(['./code/VCFgen.sh', key, paired])
 
+<<<<<<< HEAD
 #Create snp mask (not ready yet)
 # for key in lines_dict:
 # 	count_vcfs
 # 	subprocess.call(['./code/VCFgen.sh', key, paired])
+=======
+Create snp mask (not ready yet)
+for key in lines_dict:
+	count_vcfs
+	subprocess.call(['./code/VCFgen.sh', key, paired])
+>>>>>>> 18608ea (test)
 
-# files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
+files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
 
 
 #######data analysis########
