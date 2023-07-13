@@ -149,10 +149,10 @@ sed -i '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snp
 #clean up and organize. Change cleanup variable to "False", or comment out to disable.  
 if [ $cleanup ]; then
 	rm ./output/$1/*.tmp
-	#rm ./output/$1/*.bam
+	rm ./output/$1/*.bam
 	rm ./output/$1/*.sam
 	rm ./output/$1/*.idx
-	#rm ./output/$1/*.bai
+	rm ./output/$1/*.bai
 	rm ./output/$1/*.matrics.txt
 	rm ./output/$1/${1}.table
 	rm ./output/$1/${1}.ems.table
