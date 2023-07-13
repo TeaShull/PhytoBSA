@@ -18,11 +18,11 @@ if [ ! -d "./output/$1/snpEff" ]; then
 	mkdir ./output/$1/snpEff
 fi
 
-#get genomic features file if it doesn't exist
-if ! [ -f ./references/$my_species.gff ]; then
-  curl -o ./references/$my_species.gff.gz $gff_file_source
-  gzip -d ./references/$my_species.gff.gz
-fi
+# #get genomic features file if it doesn't exist (for later...)
+# if ! [ -f ./references/$my_species.gff ]; then
+#   curl -o ./references/$my_species.gff.gz $gff_file_source
+#   gzip -d ./references/$my_species.gff.gz
+# fi
 
 #make reference genome if it doesn't exist 
 if ! [ -f ./references/$my_species.fa ]; then
