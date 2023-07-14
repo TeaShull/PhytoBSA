@@ -63,8 +63,8 @@ if pair_test%3 == 0:
 	paired = 'single-read'
 
 #check for multiple lines to genotype. Relevant for SNP masking later
-if single_test >= 4 or pair_test >= 8:
-	multiple_lines = True
+# if single_test >= 4 or pair_test >= 8:
+# 	multiple_lines = True
 
 # #Read file names
 files_fq = [os.path.basename(x) for x in glob.glob('./input/*')]
