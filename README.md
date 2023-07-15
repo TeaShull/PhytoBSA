@@ -29,7 +29,12 @@ using BSA. My implementation of this pipeline uses:
   This script will eventually be incorperated into the main  program, such that if a user supplies multiple lines in the same background, 
   the script will automatically generate a SNP mask out of the common snps between the generated VCFs. For now, users must manually produce their own SNP masks. 
 
+output: 
+Will output a linkage map with lowess smoothed ratios and SNPS in the top 98th percentile g-statistic highlighted in red
+![4743 BSA_linkage_map](https://github.com/TeaShull/PyAtBSA/assets/125574642/e5979fc8-7310-4a00-acec-5bde5c8aaf5c)
 
+Also, the script will output a graph of the calculated g-statistics, also lowess smoothed. 
 
+![4743 BSA_g-stat](https://github.com/TeaShull/PyAtBSA/assets/125574642/2f1a7ff2-0eda-4258-bbbc-d6a2895997c4)
 
-
+finally, a table of the likely candidates will be created, which should contain your mutation of interest. 
