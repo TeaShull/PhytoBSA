@@ -20,6 +20,4 @@ threads='8'
 # set this variable to False if you want all files output by this script to be saved in archive. This takes up quite some space, but good if you want to keep your sorted Bams and so on for other workflows.
 cleanup=True
 
-
-
 knownsnps="./references/Arabidopsis_thaliana.vcf"

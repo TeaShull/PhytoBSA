@@ -108,7 +108,7 @@ echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo	"Calling haplotypes. This may take awhile..."
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-# #GATK HC Variant calling (I believe there is a way to parrelalize this by chr, and merge at the end. Improve later)
+#GATK HC Variant calling (I believe there is a way to parrelalize this by chr, and merge at the end. Improve later)
 gatk HaplotypeCaller -R $fa -I ./output/$1/$1_mu.sort.md.rg.bam -I ./output/$1/$1_wt.sort.md.rg.bam -O ./output/$1/$1.hc.vcf -output-mode EMIT_ALL_CONFIDENT_SITES --native-pair-hmm-threads 20
 
 snpEff, labeling snps with annotations and potential impact on gene function
@@ -126,11 +126,11 @@ grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1/$1.table > ./output
 
 sed -i 's/NaN://g' ./output/$1/$1.ems.table.tmp
 
-#only tested on recessive mutations so far - need to get some verified dominant datasets from SRA to test.... This needs some attention, but works for now
+#[mu:wt] genotypes. Grab appropriate genotypes for analysis. 0/1:0/1 included in both analyses due to occasianal leaky genotyping by GATK HC. 
 if [ "$mutation" = 'recessive' ]; then 
-	grep -F -e '1/1:0/1' -e '0/1:0/0' -e '1/1:0/0' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
+	grep -F -e '1/1:0/1' -e '0/1:0/0' -e '0/1:0/1' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
 else 
-	grep -F -e $'0/1:0/0' -e '1/1:0/0' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
+	grep -F -e '0/1:0/0' -e '1/1:0/0' -e '0/1:0/1' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
 fi
 
 awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", $10) ; gsub(",", "\t", $11) ; print }' ./output/$1/$1.ems.table
@@ -148,7 +148,7 @@ awk 'FNR==NR{a[$1$2];next};!($1$2 in a) || $1~/#CHROM/' $knownsnps ./output/$1/$
 sed -i '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' ./output/$1/$1.noknownsnps.table
 
 #clean up and organize. Change cleanup variable to "False", or comment out to disable.  
-if [ $cleanup ]; then
+if [ "$cleanup" = True ]; then
 	rm ./output/$1/*.tmp
 	rm ./output/$1/*.bam
 	rm ./output/$1/*.sam
