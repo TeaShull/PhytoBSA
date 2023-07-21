@@ -41,7 +41,7 @@ The files must be formatted as follows:
  `./PyAtBSA.py` 
 
  ### Variables
- Edit ./code/variables.sh to alter run conditions. The script analysis recessive polymorphisms by default. If your mutation of interest is dominant, change the mutation variable accordingly. 
+ Edit ./code/variables.sh to alter run conditions. The script assumes recessive polymorphisms by default. If your mutation of interest is dominant, change the mutation variable accordingly. 
 
  Alter the threads variable to half the number of threads available on your machine. 
 
