@@ -18,7 +18,7 @@ using BSA. This pipeline uses:
   the script will automatically generate a SNP mask out of the common snps between the generated VCFs. For now, users must manually produce their own SNP masks. 
 
 ## installation
-Install and activate the conda environment from the pyatbsa_conda_env_file.yaml file included in the /code directory. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda is comparitivly inefficient (conda sometimes freezes trying to resolve this environment). 
+Install and activate the conda environment from the pyatbsa_conda_env_file.yaml file included in the /code directory. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda's environment solver is comparitivly very inefficient (conda sometimes freezes trying to resolve this environment). 
 
 `mamba env update --name pyatbsa --file pyatbsa_env.yml`
 
