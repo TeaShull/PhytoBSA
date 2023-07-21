@@ -21,10 +21,12 @@ using BSA. This pipeline uses:
 Install and activate the conda environment from the pyatbsa_conda_env_file.yaml file included in the /code directory. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda is comparitivly inefficient (conda sometimes freezes trying to resolve this environment). 
 
 `mamba env update --name pyatbsa --file pyatbsa_env.yml`
+`mamba activate pyatbsa`
 
 or, if you are attempting to use conda (not recommended, but probably possible)
 
 `conda env update --name pyatbsa --file pyatbsa_env.yml`
+`conda activate pyatbsa`
 
 ## Usage
 Put the fq.gz files you want analyzed into the /input folder. You can put multiple experiments in the folder and they will be analyzed. 
