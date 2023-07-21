@@ -355,7 +355,7 @@ for key in lines_dict:
 
 	fig.update_layout(
 	    title=dict(
-	        text="Linkage map",font=dict(color='black')
+	        text="Delta-snp, lowess smoothed",font=dict(color='black')
 	    )
 	)
 
