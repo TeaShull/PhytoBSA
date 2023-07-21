@@ -40,6 +40,13 @@ The files must be formatted as follows:
 
  `./PyAtBSA.py` 
 
+ ### Variables
+ Edit ./code/variables.sh to alter run conditions. The script analysis recessive polymorphisms by default. If your mutation of interest is dominant, change the mutation variable accordingly. 
+
+ Alter the threads variable to half the number of threads available on your machine. 
+
+ If you are analyzing an organism different than Arabidopsis, this is the place to put your reference genome and background SNPs link. In order for SNPeff to run properly, your organism needs to be named as it is in the SNPeff database. This is currently clunky to configure. Easier support for other organisms is on the roadmap. 
+
 ## Output
 
 Will output a linkage map with lowess smoothed ratios and SNPS in the top 98th percentile g-statistic highlighted in red.
