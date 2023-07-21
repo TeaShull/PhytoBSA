@@ -6,7 +6,7 @@ other organisms with some tinkering.
 
 For a simple explanation of the experimental design of BSA -> https://doi.org/10.1104/pp.17.00415 
 
-My aim is to consolidate multiple techniques for identifiying causal EMS-induced SNPs behind Arabidopsis Thaliana phenotypes 
+My aim is to consolidate multiple techniques for identifiying causal EMS-induced SNPs behind *Arabidopsis thaliana* phenotypes 
 using BSA. This pipeline uses:
 
   Delta-allele calculation. The ratio of reference read depth to total read depth in each bulk are subtracted from one another, creating a ratio that indicates phenotypic linkage.
