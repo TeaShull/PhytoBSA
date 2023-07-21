@@ -9,7 +9,7 @@ For a simple explanation of the experimental design of BSA -> https://doi.org/10
 My aim is to consolidate multiple techniques for identifiying causal EMS-induced SNPs behind Arabidopsis Thaliana phenotypes 
 using BSA. This pipeline uses:
 
-  Delta-allele calculation. The ratio of reference read depth to total read depth in each bulk are subtracted from one another, creating a ratiometrically derived linkage map.
+  Delta-allele calculation. The ratio of reference read depth to total read depth in each bulk are subtracted from one another, creating a ratio that indicates phenotypic linkage.
   
   The G-statistic calculation described in the publication: https://doi.org/10.1186/s12859-020-3435-8
   
