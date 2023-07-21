@@ -69,8 +69,6 @@ if pair_test%3 == 0:
 # #Read file names
 files_fq = [os.path.basename(x) for x in glob.glob('./input/*')]
 
-print(paired)
-
 #create a list from the line names
 lines = []
 if paired == 'paired-end':
@@ -130,7 +128,7 @@ lowess = sm.nonparametric.lowess
 
 for key in lines_dict:
 	vcftable = os.path.join("./output/" + key + "/" + key + ".noknownsnps.table")
-	lowess_plotname = os.path.join("./output/" + key + "/" + key + ".BSA_linkage_map" + ".png")
+	lowess_plotname = os.path.join("./output/" + key + "/" + key + ".BSA_delta_snp" + ".png")
 	gstat_plotname = os.path.join("./output/" + key + "/" + key + ".BSA_g-stat" + ".png")
 	finalcompletetablename = os.path.join("./output/" + key + "/" + key + ".complete_table" + ".tsv")
 	finallikelycandidatestablename = os.path.join("./output/" + key + "/" + key + ".likely_candidates" + ".tsv")
