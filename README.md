@@ -42,7 +42,11 @@ The files must be formatted as follows:
 
 ## Output
 
-Will output a linkage map with lowess smoothed ratios and SNPS in the top 98th percentile g-statistic highlighted in red
+Will output a linkage map with lowess smoothed ratios and SNPS in the top 98th percentile g-statistic highlighted in red.
+
+Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identifies early stop codon in *SHR*
+SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
+
 ![4743 BSA_linkage_map](https://github.com/TeaShull/PyAtBSA/assets/125574642/e5979fc8-7310-4a00-acec-5bde5c8aaf5c)
 
 Also, the script will output a graph of the calculated g-statistics, also lowess smoothed. 
