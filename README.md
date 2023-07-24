@@ -55,7 +55,7 @@ Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identi
 
 SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
 
-![4743 BSA_linkage_map](https://github.com/TeaShull/PyAtBSA/assets/125574642/e5979fc8-7310-4a00-acec-5bde5c8aaf5c)
+![4743 BSA_delta_snp](https://github.com/TeaShull/PyAtBSA/assets/125574642/2cf727af-fbcb-40f4-ad56-c8358d907201)
 
 Also, the script will output a graph of the calculated g-statistics, also lowess smoothed. 
 
