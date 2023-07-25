@@ -167,7 +167,7 @@ gatk HaplotypeCaller \
 	-I ./output/$1/$1_wt.sort.md.rg.bam \
 	-O ./output/$1/$1.hc.vcf \
 	-output-mode EMIT_ALL_CONFIDENT_SITES \
-	--native-pair-hmm-threads 20
+	--native-pair-hmm-threads $threads
 
 #snpEff, labeling snps with annotations and potential impact on gene function
 
