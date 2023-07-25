@@ -49,12 +49,14 @@ The files must be formatted as follows:
 
 ## Output
 
-Will output a linkage map with lowess smoothed ratios and SNPS in the top 98th percentile g-statistic highlighted in red.
+Will output a plot with calculated ratios, lowess smoothed ratios and SNPS in the top 98th percentile g-statistic highlighted in red. Causal SNPs nearly always appear clearly at the top of a peak, labeled as in the 98th g-stat percentile
 
 Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identifies early stop codon in *SHR*
+
 SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
 
-![4743 BSA_linkage_map](https://github.com/TeaShull/PyAtBSA/assets/125574642/e5979fc8-7310-4a00-acec-5bde5c8aaf5c)
+![4743 BSA_linkage_map](https://github.com/TeaShull/PyAtBSA/assets/125574642/9dd07e55-b747-408b-9592-7f85b885a810)
+
 
 Also, the script will output a graph of the calculated g-statistics, also lowess smoothed. 
 
