@@ -39,13 +39,18 @@ fa=./references/$my_species.chrs.fa
 
 # #creating .fai and index files if they don't exist
 if ! [ -f ./references/$my_species.chrs.fa.fai ]; then
-	samtools faidx $fa
-	bwa index -p ./references/$my_species.chrs.fa -a is $fa
+	samtools faidx \
+		$fa
+	bwa index \
+		-p ./references/$my_species.chrs.fa \
+		-a is $fa
 fi
 
 #create dictory for gatk haplotype caller if it doesn't exist
 if [ ! -f "./references/$my_species.chrs.dict" ]; then
-	picard CreateSequenceDictionary -R .fa -O ./references/$my_species.chrs.dict
+	picard CreateSequenceDictionary \
+		-R .fa \
+		-O ./references/$my_species.chrs.dict
 fi
 
 echo	"References prepared, preparing VCF for $1"
@@ -64,44 +69,91 @@ if [ "$2" == "single-read" ]; then
   fa_in_wt="./input/$1.mu.fq.gz"
 fi
 
-mapping
-bwa mem -t $threads -M $fa $fa_in_wt > ./output/$1/$1_wt.sam &
-bwa mem -t $threads -M $fa $fa_in_mu > ./output/$1/$1_mu.sam
+#mapping
+bwa mem \
+	-t $threads \
+	-M $fa \
+	$fa_in_wt > ./output/$1/$1_wt.sam &
+bwa mem \
+	-t $threads \
+	-M $fa \
+	$fa_in_mu > ./output/$1/$1_mu.sam
 
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo	"Converting sam to bam"
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-samtools view -bSh -@ $threads ./output/$1/$1_mu.sam > ./output/$1/$1_mu.bam &
-samtools view -bSh -@ $threads ./output/$1/$1_wt.sam > ./output/$1/$1_wt.bam
+samtools view \
+  -bSh \
+	-@ $threads \
+	./output/$1/$1_mu.sam > ./output/$1/$1_mu.bam &
+samtools view \
+	-bSh \
+	-@ $threads \
+	./output/$1/$1_wt.sam > ./output/$1/$1_wt.bam
 wait
 
 #fix paired end
 if [ "$2" == "paired-end" ]; then
-	samtools fixmate ./output/$1/$1_mu.bam ./output/$1/$1_mu.fix.bam &
-	samtools fixmate ./output/$1/$1_wt.bam ./output/$1/$1_wt.fix.bam
+	samtools fixmate \
+		./output/$1/$1_mu.bam ./output/$1/$1_mu.fix.bam &
+	samtools fixmate \
+		./output/$1/$1_wt.bam ./output/$1/$1_wt.fix.bam
 fi
 
 echo	"Sorting by coordinate"
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 #Coordinate sorting
-picard SortSam I=./output/$1/$1_mu.fix.bam O=./output/$1/$1_mu.sort.bam SORT_ORDER=coordinate &
-picard SortSam I=./output/$1/$1_wt.fix.bam O=./output/$1/$1_wt.sort.bam  SORT_ORDER=coordinate
+picard SortSam \
+	I=./output/$1/$1_mu.fix.bam \
+	O=./output/$1/$1_mu.sort.bam \
+	SORT_ORDER=coordinate &
+picard SortSam \
+	I=./output/$1/$1_wt.fix.bam \
+	O=./output/$1/$1_wt.sort.bam \
+	SORT_ORDER=coordinate
 wait
 
-#consider using sambamba for this step. I hear it is much faster, and this seems to take longer than it should
-picard MarkDuplicates I=./output/$1/$1_mu.sort.bam O=./output/$1/$1_mu.sort.md.bam METRICS_FILE=./output/$1/$1_mu.matrics.txt ASSUME_SORTED=true &
-picard MarkDuplicates I=./output/$1/$1_wt.sort.bam O=./output/$1/$1_wt.sort.md.bam METRICS_FILE=./output/$1/$1_wt.matrics.txt ASSUME_SORTED=true
+#Mark duplicates. Consider using sambamba for this step. I hear it is much faster, and this seems to take longer than it should
+picard MarkDuplicates \
+	I=./output/$1/$1_mu.sort.bam \
+	O=./output/$1/$1_mu.sort.md.bam \
+	METRICS_FILE=./output/$1/$1_mu.matrics.txt \
+	ASSUME_SORTED=true &
+picard MarkDuplicates \
+	I=./output/$1/$1_wt.sort.bam \
+	O=./output/$1/$1_wt.sort.md.bam \
+	METRICS_FILE=./output/$1/$1_wt.matrics.txt \
+	ASSUME_SORTED=true
 wait
 
 #add header for gatk
-picard AddOrReplaceReadGroups I=./output/$1/$1_mu.sort.md.bam O=./output/$1/$1_mu.sort.md.rg.bam RGLB=$1_mu RGPL=illumina RGSM=$1_mu RGPU=run1 SORT_ORDER=coordinate &
-picard AddOrReplaceReadGroups I=./output/$1/$1_wt.sort.md.bam O=./output/$1/$1_wt.sort.md.rg.bam RGLB=$1_wt RGPL=illumina RGSM=$1_wt RGPU=run1 SORT_ORDER=coordinate
+picard AddOrReplaceReadGroups \
+	I=./output/$1/$1_mu.sort.md.bam \
+	O=./output/$1/$1_mu.sort.md.rg.bam \
+	RGLB=$1_mu \
+	RGPL=illumina \
+	RGSM=$1_mu \
+	RGPU=run1 \
+	SORT_ORDER=coordinate &
+picard AddOrReplaceReadGroups \
+	I=./output/$1/$1_wt.sort.md.bam \
+	O=./output/$1/$1_wt.sort.md.rg.bam \
+	RGLB=$1_wt \
+	RGPL=illumina \
+	RGSM=$1_wt \
+	RGPU=run1 \
+	SORT_ORDER=coordinate
 wait
 
-picard BuildBamIndex INPUT=./output/$1/$1_mu.sort.md.rg.bam O=./output/$1/${1}_mu.sort.md.rg.bai &
-picard BuildBamIndex INPUT=./output/$1/$1_wt.sort.md.rg.bam O=./output/$1/${1}_wt.sort.md.rg.bai
+#build BAM index
+picard BuildBamIndex \
+INPUT=./output/$1/$1_mu.sort.md.rg.bam \
+O=./output/$1/${1}_mu.sort.md.rg.bai &
+picard BuildBamIndex \
+INPUT=./output/$1/$1_wt.sort.md.rg.bam \
+O=./output/$1/${1}_wt.sort.md.rg.bai
 wait
 
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
@@ -109,18 +161,30 @@ echo	"Calling haplotypes. This may take awhile..."
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 #GATK HC Variant calling (I believe there is a way to parrelalize this by chr, and merge at the end. Improve later)
-gatk HaplotypeCaller -R $fa -I ./output/$1/$1_mu.sort.md.rg.bam -I ./output/$1/$1_wt.sort.md.rg.bam -O ./output/$1/$1.hc.vcf -output-mode EMIT_ALL_CONFIDENT_SITES --native-pair-hmm-threads 20
+gatk HaplotypeCaller \
+	-R $fa \
+	-I ./output/$1/$1_mu.sort.md.rg.bam \
+	-I ./output/$1/$1_wt.sort.md.rg.bam \
+	-O ./output/$1/$1.hc.vcf \
+	-output-mode EMIT_ALL_CONFIDENT_SITES \
+	--native-pair-hmm-threads 20
 
-snpEff, labeling snps with annotations and potential impact on gene function
+#snpEff, labeling snps with annotations and potential impact on gene function
 
-snpEff $my_species -s ./output/$1/snpEff/${1}_snpEff_summary.html ./output/$1/$1.hc.vcf > ./output/$1/$1.se.vcf
+snpEff $my_species \
+	-s ./output/$1/snpEff/${1}_snpEff_summary.html \
+	./output/$1/$1.hc.vcf > ./output/$1/$1.se.vcf
 
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo	"Haplotypes called and snps labeled. Cleaning data...."
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 #extract snpEFF data and variant information into a table, remove repetative NaN's and retain only those polymorphisms likely to arise from EMS.
-SnpSift extractFields -s ":" -e "NaN" ./output/$1/$1.se.vcf CHROM POS  REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" "ANN[*].IMPACT" "GEN[*].GT" "GEN[$1_mu].AD" "GEN[$1_wt].AD" > ./output/$1/$1.table
+SnpSift extractFields \
+	-s ":" \
+	-e "NaN" \
+	./output/$1/$1.se.vcf \
+	CHROM POS  REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" "ANN[*].IMPACT" "GEN[*].GT" "GEN[$1_mu].AD" "GEN[$1_wt].AD" > ./output/$1/$1.table
 
 grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1/$1.table > ./output/$1/$1.ems.table.tmp
 
