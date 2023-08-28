@@ -14,6 +14,7 @@ import io
 
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
 
 from plotnine import (
     ggplot,
@@ -94,9 +95,9 @@ elif paired == 'single-read':
 #remove duplicate entrys from paired reads and mu/wt designations using a dictionary
 lines_dict = list(dict.fromkeys(lines))
 
-#Iterate through detected files and produce VCFs
-for key in lines_dict:
-	subprocess.call(['./code/VCFgen.sh', key, paired])
+# #Iterate through detected files and produce VCFs
+# for key in lines_dict:
+# 	subprocess.call(['./code/VCFgen.sh', key, paired])
 
 #Create snp mask (not ready yet)
 # for key in lines_dict:
@@ -175,8 +176,6 @@ for key in lines_dict:
 	    # Establish copies of data by chromosome, and smooth edges by inverting duplicated data
 	    df_chr = df[df['chr']==i].copy()
 
-	    print(df_chr)
-
 	    ## establish inverted dataframes
 
 	    positions = df_chr['pos'].to_numpy()
@@ -237,7 +236,6 @@ for key in lines_dict:
 	    df_chr = df_chr[14:-14]
 	    df_chr.drop(axis=1, inplace=True, columns='psuedo_pos')
 	    df_list.append(df_chr)
-	    print(df_chr)
 
 	df = pd.concat(df_list)
 
@@ -253,18 +251,18 @@ for key in lines_dict:
 	smRS_G_yhatAll = []
 	smRatio_yhatAll = []
 
+
 	## Break the phenotype / read count / position association. iter and smooth 1000 times, collect metrics
 	for i in range(1000):
 	    dfShPos = pos.sample(frac=1)
 	    dfShwt = dfShwt.sample(frac=1)
 	    dfShmu = dfShmu.sample(frac=1)
-
+	    print(f" iteration {i}")
 	    smPos = dfShPos['pos'].to_numpy()
 	    sm_wt_ref = dfShwt['wt_ref'].to_numpy()
 	    sm_wt_alt = dfShwt['wt_alt'].to_numpy()
 	    sm_mu_ref = dfShmu['mu_ref'].to_numpy()
 	    sm_mu_alt = dfShmu['mu_alt'].to_numpy()
-	    
 	    #Calculate G-stats per iteration,collect results
 	    smGstat = gStatistic_Array(sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt)
 	    smGstatAll.extend(smGstat)
@@ -284,7 +282,6 @@ for key in lines_dict:
 	G_S_95p = np.percentile(smGstatAll, 95)
 	RS_G_95p = np.percentile(RS_GAll, 95)
 	RS_G_Y_99p = np.percentile(smRS_G_yhatAll, 99.99)
-	ratio_Y_99p = np.percentile(smRatio_yhatAll, 99.99)
 
 	df['G_S_001p'] = [1 if (np.isclose(x, G_S_95p) or (x > G_S_95p))
 	                else 0 for x in df['G_S']]
@@ -313,6 +310,7 @@ for key in lines_dict:
 	df_likely_cands.to_csv(finallikelycandidatestablename, sep='\t', index=False)
 
 	# Generate Plots
+	df['pos_mb'] = df['pos']*0.000001
 	## Establish plot names
 	GS_plotname = os.path.join("./output/" + key + "/" + key + ".GS" + ".png")
 	GS_yhat_plotname = os.path.join("./output/" + key + "/" + key + ".GS_yhat" + ".png")
@@ -326,8 +324,13 @@ for key in lines_dict:
 	## G-stat plot
 	chart = ggplot(df, aes('pos_mb', y='G_S'))
 	title = ggtitle("G-stastic")
+	points = geom_point(color='goldenrod', size=0.8)
+	lines = geom_line(color='blue')
+	themes = theme_linedraw()
+	facets = facet_grid('. ~ chr', space='free_x', scales='free_x')
 	axis_x =  xlab("Position (Mb)")
 	axis_y = ylab("G-statistic")
+	spacing = theme(panel_spacing=0.025)
 	plot = (chart 
 	    + points 
 	    + themes 
@@ -335,7 +338,7 @@ for key in lines_dict:
 	    + title 
 	    + axis_x
 	    + axis_y
-	    + theme(panel_spacing=0.025)
+	    + spacing
 	)
 	plot.save(filename = GS_plotname, height=6, width=8, units = 'in', dpi=1000)
 
@@ -352,7 +355,7 @@ for key in lines_dict:
 	    + title 
 	    + axis_x
 	    + axis_y
-	    + theme(panel_spacing=0.025)
+	    + spacing
 	)
 	plot.save(filename = GS_yhat_plotname, height=6, width=8, units = 'in', dpi=1000)
 	
@@ -374,17 +377,12 @@ for key in lines_dict:
 	plot.save(filename = RS_GS_plotname, height=6, width=8, units = 'in', dpi=1000)
 
 	## Fitted Ratio-Scaled G-stat plot
-	df['pos_mb'] = df['pos']*0.000001
 	chart = ggplot(df, aes('pos_mb', y='RS_G_yhat'))
-	points = geom_point(color='goldenrod', size=0.8)
-	lines = geom_line(color='blue')
-	themes = theme_linedraw()
-	facets = facet_grid('. ~ chr', space='free_x', scales='free_x')
 	title = ggtitle("Lowess smoothed ratio-scaled G statistic")
 	axis_x =  xlab("Position (Mb)")
 	axis_y = ylab("Fitted Ratio-scaled G-statistic")
-	spacing = theme(panel_spacing=0.025)
 	cutoff = geom_hline(yintercept = RS_G_Y_99p,color='red',linetype="dashed", size=0.3) # add one horizonal line
+	
 	plot = (chart 
 	    + points 
 	    + lines 
@@ -393,8 +391,8 @@ for key in lines_dict:
 	    + title 
 	    + axis_x
 	    + axis_y
-	    + spacing
 	    + cutoff
+	    + spacing
 	)
 	plot.save(filename = RS_GS_yhat_plotname, height=6, width=8, units = 'in', dpi=1000)
 
@@ -416,7 +414,7 @@ for key in lines_dict:
 	)
 	plot.save(filename = deltaSNP, height=6, width=8, units = 'in', dpi=1000)
 
-	#Fitted delta SNP ratio plot
+	## Fitted delta SNP ratio plot
 	chart = ggplot(df, aes('pos_mb', y='ratio_yhat'))
 	title = ggtitle("Delta SNP ratio")
 	axis_x =  xlab("Position (Mb)")
