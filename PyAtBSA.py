@@ -81,8 +81,8 @@ for file in os.listdir('./input/'):
 		<line>.wt.fq.gz 
 		<line>.mu.fq.gz
 
-		Currently,there is no support for batch producing VCFs for mixes of 
-		single-read and paired-end files.  
+		Currently,there is no support for batch producing VCFs 
+		for mixes of single-read and paired-end files.  
 		""")
 		quit()
 
@@ -111,9 +111,9 @@ elif paired == 'single-read':
 #remove duplicate entrys from paired reads using dict
 lines_dict = list(dict.fromkeys(lines))
 
-#Iterate through detected files and produce VCFs
-# for key in lines_dict:
-# 	subprocess.call(['./code/VCFgen.sh', key, paired])
+Iterate through detected files and produce VCFs
+for key in lines_dict:
+	subprocess.call(['./code/VCFgen.sh', key, paired])
 
 #Create snp mask (not ready yet)
 # for key in lines_dict:
