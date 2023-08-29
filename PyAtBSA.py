@@ -95,9 +95,9 @@ elif paired == 'single-read':
 #remove duplicate entrys from paired reads and mu/wt designations using a dictionary
 lines_dict = list(dict.fromkeys(lines))
 
-# #Iterate through detected files and produce VCFs
-# for key in lines_dict:
-# 	subprocess.call(['./code/VCFgen.sh', key, paired])
+#Iterate through detected files and produce VCFs
+for key in lines_dict:
+	subprocess.call(['./code/VCFgen.sh', key, paired])
 
 #Create snp mask (not ready yet)
 # for key in lines_dict:
@@ -139,6 +139,33 @@ def gStatistic_Array(o1, o3, o2, o4):
     llr4 = np.where(o4/e4>0, 2*o4*np.log(o4/e4), 0.0)
 
     return np.where(e1*e2*e3*e4==0, 0.0, llr1+llr2+llr3+llr4)
+
+def shuffle(posin, wt, mu):
+    # Shuffle data, breaking the phenotype/genotype/position association 1000 times. 
+    dfShPos = posin.sample(frac=1)
+    dfShwt = wt.sample(frac=1)
+    dfShmu = mu.sample(frac=1)
+
+    smPos = dfShPos['pos'].to_numpy()
+    sm_wt_ref = dfShwt['wt_ref'].to_numpy()
+    sm_wt_alt = dfShwt['wt_alt'].to_numpy()
+    sm_mu_ref = dfShmu['mu_ref'].to_numpy()
+    sm_mu_alt = dfShmu['mu_alt'].to_numpy()
+    
+    #Calculate G-stats per iteration,collect results
+    smGstat = gStatistic_Array(sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt)
+    smGstatAll.extend(smGstat)
+
+    #Calculate snpRatio per iteration,collect results
+    smRatio = deltaSNParray(sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt)
+    smRatioAll.extend(smRatio)
+
+    #Calculate ratio-scaled G-stat per iteration,collect results
+    smRS_G = smRatio*smGstat
+    RS_GAll.extend(smRS_G)
+
+    #Lowess smooth per iteration, collect results
+    smRS_G_yhatAll.extend(lowess(smRS_G,smPos, frac=lowess_span)[:,1])
 
 
 # Establish variables
@@ -239,9 +266,10 @@ for key in lines_dict:
 
 	df = pd.concat(df_list)
 
-	# Randomize data 1000 times, calculate ratio, GS and fitted values to emperically derive cutoffs
-	pos = df[['pos']].copy()
-	dfShwt = df[['pos', 'wt_ref', 'wt_alt']].copy()
+	# Randomize data 1000 times, calculate ratio, GS and fitted values to empirically derive cutoffs
+	## subset position, wt and mu
+	dfShPos = df[['pos']].copy()
+	dfShwt = df[['wt_ref', 'wt_alt']].copy()
 	dfShmu = df[['mu_ref', 'mu_alt']].copy()
 
 	## Establish lists
@@ -251,32 +279,9 @@ for key in lines_dict:
 	smRS_G_yhatAll = []
 	smRatio_yhatAll = []
 
-
 	## Break the phenotype / read count / position association. iter and smooth 1000 times, collect metrics
 	for i in range(1000):
-	    dfShPos = pos.sample(frac=1)
-	    dfShwt = dfShwt.sample(frac=1)
-	    dfShmu = dfShmu.sample(frac=1)
-	    print(f" iteration {i}")
-	    smPos = dfShPos['pos'].to_numpy()
-	    sm_wt_ref = dfShwt['wt_ref'].to_numpy()
-	    sm_wt_alt = dfShwt['wt_alt'].to_numpy()
-	    sm_mu_ref = dfShmu['mu_ref'].to_numpy()
-	    sm_mu_alt = dfShmu['mu_alt'].to_numpy()
-	    #Calculate G-stats per iteration,collect results
-	    smGstat = gStatistic_Array(sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt)
-	    smGstatAll.extend(smGstat)
-
-	    #Calculate snpRatio per iteration,collect results
-	    smRatio = deltaSNParray(sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt)
-	    smRatioAll.extend(smRatio)
-
-	    #Calculate ratio-scaled G-stat per iteration,collect results
-	    smRS_G = smRatio*smGstat
-	    RS_GAll.extend(smRS_G)
-
-	    #Lowess smooth per iteration, collect results
-	    smRS_G_yhatAll.extend(lowess(smRS_G,smPos, frac=lowess_span)[:,1])
+		shuffle(pos, dfShwt, dfShmu)
 
 	# Collect emperical cutoffs from 1000x iter, identify candidates
 	G_S_95p = np.percentile(smGstatAll, 95)
