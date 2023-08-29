@@ -60,8 +60,7 @@ SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut)
 
 Also, the script will output a graph of the calculated g-statistics, also lowess smoothed. 
 
-![4743 BSA_g-stat](https://github.com/TeaShull/PyAtBSA/assets/125574642/2f1a7ff2-0eda-4258-bbbc-d6a2895997c4)
-
+![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/f29134fb-71cb-45b4-92a7-2a6e8847eb90)
 
 finally, a table of the likely candidates will be created, which should contain your mutation of interest. 
 
