@@ -5,6 +5,7 @@ import sys
 import argparse
 import subprocess
 import platform
+import warnings
 
 import csv
 import glob
@@ -49,24 +50,39 @@ Welcome to PyAtBSA. Checking files for formating
 #Check if files are formatted properly, and if paired end or not
 pair_test = 0
 
-#probably a more straightforward and safer way of doing this using fq headers...
+#probably a safer way of doing this using fq headers...
 for file in os.listdir('./input/'):
-	if (fnmatch.fnmatch(file, '*_1*')) and (fnmatch.fnmatch(file, '*wt.fq.gz*')) or (fnmatch.fnmatch(file, '*mu.fq.gz*')): 
+	if ((fnmatch.fnmatch(file, '*_1*')) 
+		and (fnmatch.fnmatch(file, '*wt.fq.gz*')) 
+		or (fnmatch.fnmatch(file, '*mu.fq.gz*'))): 
 		pair_test += 1
-	elif (fnmatch.fnmatch(file, '*_2*')) and (fnmatch.fnmatch(file, '*wt.fq.gz*')) or (fnmatch.fnmatch(file, '*mu.fq.gz*')):
+	elif ((fnmatch.fnmatch(file, '*_2*')) 
+		and (fnmatch.fnmatch(file, '*wt.fq.gz*')) 
+		or (fnmatch.fnmatch(file, '*mu.fq.gz*'))):
 		pair_test += 1
-	elif (fnmatch.fnmatch(file, '*wt.fq.gz*')) or (fnmatch.fnmatch(file, '*mu.fq.gz*')) and not (fnmatch.fnmatch(file, '*_2*')) or (fnmatch.fnmatch(file, '*_1*')):
+	elif ((fnmatch.fnmatch(file, '*wt.fq.gz*')) 
+		or (fnmatch.fnmatch(file, '*mu.fq.gz*')) 
+		and not (fnmatch.fnmatch(file, '*_2*')) 
+		or (fnmatch.fnmatch(file, '*_1*'))):
 		pair_test += 3
 	else:
 		print("""
-		check that your inputs are named properly, or perhaps if there are spurious(or no) files in 
-		input. 
+		check that your inputs are named properly, 
+		or perhaps if there are spurious(or no) files
+		in input. 
 		
-		file names must be in <line>_1.wt.fq.gz <line>_2.wt.fq.gz <line>_1.mu.fq.gz <line>_2.mu.fq.gz  
-		format for paired end reads and <line>.wt.fq.gz <line>.mu.fq.gz for unpaired. 
+		paired-end file names must be formatted as follows: 
+		<line>_1.wt.fq.gz 
+		<line>_2.wt.fq.gz
+		<line>_1.mu.fq.gz 
+		<line>_2.mu.fq.gz  
+		
+		unpaired-end file names must be formatted as follows: 
+		<line>.wt.fq.gz 
+		<line>.mu.fq.gz
 
-		Currently,there is no support for batch producing VCFs for mixes of single-read and 
-		paired-end files. This script won't do a good job detecting both. 
+		Currently,there is no support for batch producing VCFs for mixes of 
+		single-read and paired-end files.  
 		""")
 		quit()
 
@@ -92,12 +108,12 @@ elif paired == 'single-read':
 	for f in files_fq:
 		lines.append(f.split(".wt")[0])
 
-#remove duplicate entrys from paired reads and mu/wt designations using a dictionary
+#remove duplicate entrys from paired reads using dict
 lines_dict = list(dict.fromkeys(lines))
 
 #Iterate through detected files and produce VCFs
-for key in lines_dict:
-	subprocess.call(['./code/VCFgen.sh', key, paired])
+# for key in lines_dict:
+# 	subprocess.call(['./code/VCFgen.sh', key, paired])
 
 #Create snp mask (not ready yet)
 # for key in lines_dict:
@@ -141,7 +157,7 @@ def gStatistic_Array(o1, o3, o2, o4):
     return np.where(e1*e2*e3*e4==0, 0.0, llr1+llr2+llr3+llr4)
 
 def shuffle(posin, wt, mu):
-    # Shuffle data, breaking the phenotype/genotype/position association 1000 times. 
+    # Shuffle phenotype/genotype/position association 1000x
     dfShPos = posin.sample(frac=1)
     dfShwt = wt.sample(frac=1)
     dfShmu = mu.sample(frac=1)
@@ -173,14 +189,31 @@ def shuffle(posin, wt, mu):
 for key in lines_dict:
 
 	# Read in ems table, calculate metrics, format
-	vcftable = os.path.join("./output/" + key + "/" + key + ".noknownsnps.table")
+	vcftable = os.path.join(
+		"./output/" 
+		+ key 
+		+ "/" 
+		+ key 
+		+ ".noknownsnps.table"
+	)
+
 	df = pd.read_csv(vcftable, sep="\t")
 
 	## Calculate delta SNP ratio
-	df['ratio'] = deltaSNParray(df['wt_ref'], df['wt_alt'], df['mu_ref'], df['mu_alt'])
+	df['ratio'] = deltaSNParray(
+		df['wt_ref'], 
+		df['wt_alt'],
+		df['mu_ref'],
+		df['mu_alt']
+	)
 
 	## Calculate G-statistic to glean more info about potential causal SNPs
-	df['G_S'] = gStatistic_Array(df['wt_ref'], df['wt_alt'], df['mu_ref'], df['mu_alt'])
+	df['G_S'] = gStatistic_Array(
+		df['wt_ref'], 
+		df['wt_alt'], 
+		df['mu_ref'], 
+		df['mu_alt']
+	)
 
 	## Drop indels, leave only SNPs
 	df[
@@ -200,7 +233,7 @@ for key in lines_dict:
 	lowess_span=0.3
 
 	for i in chr_facets:
-	    # Establish copies of data by chromosome, and smooth edges by inverting duplicated data
+	    # Establish chr copies and smooth edges by inverting duplicated data
 	    df_chr = df[df['chr']==i].copy()
 
 	    ## establish inverted dataframes
@@ -218,11 +251,11 @@ for key in lines_dict:
 	    deltas_pos_inv = deltas[::-1][-15:-1]
 	    deltas_neg_inv = deltas[::-1][1:15]
 
-	    ## Extend deltas, making "mirrored" delta positions at both ends of chr
+	    ## Extend deltas, making "mirrored" delta positions at ends of chr
 	    deltas_mirrored_ends=[]
 	    deltas_mirrored_ends.extend(deltas_pos_inv+deltas+deltas_neg_inv)
 	    
-	    ## Create new pseudo positions for lowess smoothing by cumulative addition of deltas
+	    ## Create new pseudo positions for lowess smoothing 
 	    psuedo_pos = []
 	    for i, pos in enumerate(deltas_mirrored_ends):
 	        if i == 0:
@@ -266,7 +299,7 @@ for key in lines_dict:
 
 	df = pd.concat(df_list)
 
-	# Randomize data 1000 times, calculate ratio, GS and fitted values to empirically derive cutoffs
+	# Randomize data 1000 times, calculate metrics to derive cutoffs
 	## subset position, wt and mu
 	dfShPos = df[['pos']].copy()
 	dfShwt = df[['wt_ref', 'wt_alt']].copy()
@@ -279,9 +312,10 @@ for key in lines_dict:
 	smRS_G_yhatAll = []
 	smRatio_yhatAll = []
 
-	## Break the phenotype / read count / position association. iter and smooth 1000 times, collect metrics
+	## Break the phenotype / read count / position association.
+	## Iterated and smooth 1000 times 
 	for i in range(1000):
-		shuffle(pos, dfShwt, dfShmu)
+		shuffle(dfShPos, dfShwt, dfShmu)
 
 	# Collect emperical cutoffs from 1000x iter, identify candidates
 	G_S_95p = np.percentile(smGstatAll, 95)
@@ -299,7 +333,7 @@ for key in lines_dict:
 
 	df_likely_cands = df.loc[df['RS_G_yhat_001p'] == 1]
 
-	## Use emperically derived 99.99 percentile cutoff of fitted ratio-scaled g-stat to identify likely candidates
+	## Use 99.99 percentile cutoff to identify likely candidates
 	df_likely_cands_sorted = df_likely_cands.sort_values(
 	    by = ['G_S','RS_G_yhat'], 
 	    ascending = [False, False], 
@@ -307,24 +341,86 @@ for key in lines_dict:
 	    )
 
 	# Save complete table
-	finalcompletetablename = os.path.join("./output/" + key + "/" + key + ".complete_table" + ".tsv")
+	finalcompletetablename = os.path.join(
+		"./output/" 
+		+ key + "/" 
+		+ key 
+		+ ".complete_table" 
+		+ ".tsv"
+	)
+	
 	df.to_csv(finalcompletetablename, sep='\t', index=False)
 
 	## save likely candidate list	
-	finallikelycandidatestablename = os.path.join("./output/" + key + "/" + key + ".likely_candidates" + ".tsv")
-	df_likely_cands.to_csv(finallikelycandidatestablename, sep='\t', index=False)
+	finallikelycandidatestablename = os.path.join(
+		"./output/" 
+		+ key 
+		+ "/" 
+		+ key 
+		+ ".likely_candidates" 
+		+ ".tsv"
+	)
+
+	df_likely_cands.to_csv(
+		finallikelycandidatestablename, 
+		sep='\t', 
+		index=False
+	)
 
 	# Generate Plots
+	warnings.filterwarnings( "ignore", module = "plotnine\..*" )
 	df['pos_mb'] = df['pos']*0.000001
 	## Establish plot names
-	GS_plotname = os.path.join("./output/" + key + "/" + key + ".GS" + ".png")
-	GS_yhat_plotname = os.path.join("./output/" + key + "/" + key + ".GS_yhat" + ".png")
+	GS_plotname = os.path.join(
+		"./output/" 
+		+ key 
+		+ "/" 
+		+ key 
+		+ ".GS" 
+		+ ".png"
+	)
+	GS_yhat_plotname = os.path.join(
+		"./output/" 
+		+ key 
+		+ "/" 
+		+ key 
+		+ ".GS_yhat" 
+		+ ".png"
+	)
 
-	RS_GS_plotname = os.path.join("./output/" + key + "/" + key + ".RS_GS" + ".png")
-	RS_GS_yhat_plotname = os.path.join("./output/" + key + "/" + key + ".RS_GS" + ".png")
+	RS_GS_plotname = os.path.join(
+		"./output/" 
+		+ key 
+		+ "/" 
+		+ key 
+		+ ".RS_GS" 
+		+ ".png"
+	)
+	RS_GS_yhat_plotname = os.path.join(
+		"./output/" 
+		+ key 
+		+ "/" 
+		+ key 
+		+ ".RS_GS" 
+		+ ".png"
+	)
 
-	deltaSNP = os.path.join("./output/" + key + "/" + key + ".deltaSNP" + ".png")
-	deltaSNP_yhat_plotname = os.path.join("./output/" + key + "/" + key + ".deltaSNP_yhat" + ".png")
+	deltaSNP = os.path.join(
+		"./output/" 
+		+ key 
+		+ "/" 
+		+ key 
+		+ ".deltaSNP" 
+		+ ".png"
+	)
+	deltaSNP_yhat_plotname = os.path.join(
+		"./output/" 
+		+ key 
+		+ "/" 
+		+ key 
+		+ ".deltaSNP_yhat" 
+		+ ".png"
+	)
 
 	## G-stat plot
 	chart = ggplot(df, aes('pos_mb', y='G_S'))
@@ -345,7 +441,14 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = GS_plotname, height=6, width=8, units = 'in', dpi=500)
+
+	plot.save(
+		filename = GS_plotname, 
+		height=6, 
+		width=8, 
+		units = 'in', 
+		dpi=500
+	)
 
 	#G-stat yhat plot
 	chart = ggplot(df, aes('pos_mb', y='G_S_yhat'))
@@ -361,8 +464,15 @@ for key in lines_dict:
 	    + axis_x
 	    + axis_y
 	    + spacing
+
 	)
-	plot.save(filename = GS_yhat_plotname, height=6, width=8, units = 'in', dpi=500)
+	plot.save(
+		filename = GS_yhat_plotname, 
+		height=6, 
+		width=8, 
+		units = 'in', 
+		dpi=500
+	)
 	
 	## Ratio-scaled G-Stat plot
 	chart = ggplot(df, aes('pos_mb', y='RS_G'))
@@ -379,14 +489,25 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = RS_GS_plotname, height=6, width=8, units = 'in', dpi=500)
+	plot.save(
+		filename = RS_GS_plotname, 
+		height=6, 
+		width=8, 
+		units = 'in', 
+		dpi=500
+	)
 
 	## Fitted Ratio-Scaled G-stat plot
 	chart = ggplot(df, aes('pos_mb', y='RS_G_yhat'))
 	title = ggtitle("Lowess smoothed ratio-scaled G statistic")
 	axis_x =  xlab("Position (Mb)")
 	axis_y = ylab("Fitted Ratio-scaled G-statistic")
-	cutoff = geom_hline(yintercept = RS_G_Y_99p,color='red',linetype="dashed", size=0.3) # add one horizonal line
+	cutoff = geom_hline(
+		yintercept = RS_G_Y_99p, 
+		color='red', 
+		linetype="dashed", 
+		size=0.3
+		)
 	
 	plot = (chart 
 	    + points 
@@ -399,7 +520,14 @@ for key in lines_dict:
 	    + cutoff
 	    + spacing
 	)
-	plot.save(filename = RS_GS_yhat_plotname, height=6, width=8, units = 'in', dpi=500)
+
+	plot.save(
+		filename = RS_GS_yhat_plotname, 
+		height=6, 
+		width=8, 
+		units = 'in', 
+		dpi=500
+	)
 
 
 	## Delta SNP Ratio plot
@@ -417,7 +545,14 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = deltaSNP, height=6, width=8, units = 'in', dpi=500)
+
+	plot.save(
+		filename = deltaSNP, 
+		height=6, 
+		width=8, 
+		units = 'in', 
+		dpi=500
+	)
 
 	## Fitted delta SNP ratio plot
 	chart = ggplot(df, aes('pos_mb', y='ratio_yhat'))
@@ -435,7 +570,14 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = deltaSNP_yhat_plotname, height=6, width=8, units = 'in', dpi=500)
+
+	plot.save(
+		filename = deltaSNP_yhat_plotname, 
+		height=6, 
+		width=8, 
+		units = 'in', 
+		dpi=500
+	)
 
 	print(f'''
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
