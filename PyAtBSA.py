@@ -50,7 +50,6 @@ Welcome to PyAtBSA. Checking files for formating
 #Check if files are formatted properly, and if paired end or not
 pair_test = 0
 
-#probably a safer way of doing this using fq headers...
 for file in os.listdir('./input/'):
 	if ((fnmatch.fnmatch(file, '*_1*')) 
 		and (fnmatch.fnmatch(file, '*wt.fq.gz*')) 
@@ -96,10 +95,10 @@ if pair_test%3 == 0:
 # if single_test >= 4 or pair_test >= 8:
 # 	multiple_lines = True
 
-# #Read file names
+##Read file names
 files_fq = [os.path.basename(x) for x in glob.glob('./input/*')]
 
-#create a list from the line names
+# create a list from the line names
 lines = []
 if paired == 'paired-end':
 	for f in files_fq:
@@ -108,10 +107,10 @@ elif paired == 'single-read':
 	for f in files_fq:
 		lines.append(f.split(".wt")[0])
 
-#remove duplicate entrys from paired reads using dict
+# remove duplicate entrys from paired reads using dict
 lines_dict = list(dict.fromkeys(lines))
 
-Iterate through detected files and produce VCFs
+# Iterate through detected files and produce VCFs
 for key in lines_dict:
 	subprocess.call(['./code/VCFgen.sh', key, paired])
 
