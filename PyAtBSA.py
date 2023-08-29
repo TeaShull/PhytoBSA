@@ -340,7 +340,7 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = GS_plotname, height=6, width=8, units = 'in', dpi=1000)
+	plot.save(filename = GS_plotname, height=6, width=8, units = 'in', dpi=500)
 
 	#G-stat yhat plot
 	chart = ggplot(df, aes('pos_mb', y='G_S_yhat'))
@@ -357,7 +357,7 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = GS_yhat_plotname, height=6, width=8, units = 'in', dpi=1000)
+	plot.save(filename = GS_yhat_plotname, height=6, width=8, units = 'in', dpi=500)
 	
 	## Ratio-scaled G-Stat plot
 	chart = ggplot(df, aes('pos_mb', y='RS_G'))
@@ -374,7 +374,7 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = RS_GS_plotname, height=6, width=8, units = 'in', dpi=1000)
+	plot.save(filename = RS_GS_plotname, height=6, width=8, units = 'in', dpi=500)
 
 	## Fitted Ratio-Scaled G-stat plot
 	chart = ggplot(df, aes('pos_mb', y='RS_G_yhat'))
@@ -394,7 +394,7 @@ for key in lines_dict:
 	    + cutoff
 	    + spacing
 	)
-	plot.save(filename = RS_GS_yhat_plotname, height=6, width=8, units = 'in', dpi=1000)
+	plot.save(filename = RS_GS_yhat_plotname, height=6, width=8, units = 'in', dpi=500)
 
 
 	## Delta SNP Ratio plot
@@ -412,7 +412,7 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = deltaSNP, height=6, width=8, units = 'in', dpi=1000)
+	plot.save(filename = deltaSNP, height=6, width=8, units = 'in', dpi=500)
 
 	## Fitted delta SNP ratio plot
 	chart = ggplot(df, aes('pos_mb', y='ratio_yhat'))
@@ -430,7 +430,7 @@ for key in lines_dict:
 	    + axis_y
 	    + spacing
 	)
-	plot.save(filename = deltaSNP_yhat_plotname, height=6, width=8, units = 'in', dpi=1000)
+	plot.save(filename = deltaSNP_yhat_plotname, height=6, width=8, units = 'in', dpi=500)
 
 	print(f'''
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
