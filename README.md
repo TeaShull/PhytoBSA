@@ -55,23 +55,27 @@ Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identi
 
 SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
 
-Ratio Scale G-statistics
-![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/7cf0c138-8626-4e95-9624-0e8cc66be77d)
+Ratio Scaled G-statistics
+![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/7a73e741-4722-4a1b-86be-1cc10b185535)
 
 Ratio Scale G-statistics, Lowess smoothed
-![RS_G_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/e336358f-5e27-479a-bc93-abd7401e5e06)
+![RS_G_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/b7e8dd00-af16-42c7-a396-cad954f27de9)
 
 G-statistics
-![GS_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/ff51e5eb-322f-4e8e-8f3e-180330f77754)
+![GS_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/becc60be-21f6-4e05-8176-261c78e91563)
+
 
 G-statistics, Lowess smoothed
-![GS_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/0c927d3c-9963-4761-91ff-36283ef9524b)
+![GS_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/3217b417-aac3-4e72-993c-71995421a01a)
+
 
 Ratio
-![SNP_ratio_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/0d5419f0-9d31-4a98-aea6-3a1a83cb7a15)
+![SNP_ratio_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/21b42e24-5dbb-4c5b-b32d-ff7d2072b42e)
+
 
 Ratio, Lowess smooted 
-![ratio_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/783d4c5f-03d3-444f-8355-0f4f7270d0ef)
+![ratio_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/074361b6-3c43-4d12-9976-1a7e530e2535)
+
 
 
 
