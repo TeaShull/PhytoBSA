@@ -62,8 +62,7 @@ Ratio Scale G-statistics, Lowess smoothed
 ![RS_G_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/b7e8dd00-af16-42c7-a396-cad954f27de9)
 
 G-statistics
-![GS_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/becc60be-21f6-4e05-8176-261c78e91563)
-
+![GS_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/0214466f-749e-4f3f-910b-50560840b647)
 
 G-statistics, Lowess smoothed
 ![GS_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/3217b417-aac3-4e72-993c-71995421a01a)
