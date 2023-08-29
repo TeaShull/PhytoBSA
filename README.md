@@ -49,18 +49,35 @@ The files must be formatted as follows:
 
 ## Output
 
-Will output a plot with calculated ratios, lowess smoothed ratios and SNPS in the top 98th percentile g-statistic highlighted in red. Causal SNPs nearly always appear clearly at the top of a peak, labeled as in the 98th g-stat percentile
+Will output 6 plots: Calculated ratios, G statistics, and ratio-scaled G statistics as well as their corresponding lowess smoothed graphs. Red dashed lines represent calculated empirical cutoffs for likely candidate genes. Causal SNPs nearly always appear clearly at the top of a the lowess smoothed ratio-scaled g statistic graph. 
 
 Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identifies early stop codon in *SHR*
 
 SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
 
-![4743 BSA_linkage_map](https://github.com/TeaShull/PyAtBSA/assets/125574642/9dd07e55-b747-408b-9592-7f85b885a810)
+Ratio Scale G-statistics
+![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/7cf0c138-8626-4e95-9624-0e8cc66be77d)
+
+Ratio Scale G-statistics, Lowess smoothed
+![RS_G_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/e336358f-5e27-479a-bc93-abd7401e5e06)
+
+G-statistics
+![GS_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/ff51e5eb-322f-4e8e-8f3e-180330f77754)
+
+G-statistics, Lowess smoothed
+![GS_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/0c927d3c-9963-4761-91ff-36283ef9524b)
+
+Ratio
+![SNP_ratio_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/0d5419f0-9d31-4a98-aea6-3a1a83cb7a15)
+
+Ratio, Lowess smooted 
+![ratio_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/783d4c5f-03d3-444f-8355-0f4f7270d0ef)
 
 
-Also, the script will output a graph of the calculated g-statistics, also lowess smoothed. 
 
-![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/f29134fb-71cb-45b4-92a7-2a6e8847eb90)
+
+
+
 
 finally, a table of the likely candidates will be created, which should contain your mutation of interest. 
 
