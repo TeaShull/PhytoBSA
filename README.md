@@ -1,7 +1,7 @@
 # PyAtBSA
 This python script analyzes and visualizes bulk segrigant analysis (BSA) data. It takes sequenced segrigant bulks as an input and outputs 
-a list of likely casual alleles underlying the phenotypic segrigation of the two bulks. Likely causal alleles are identified using g-statistics and a
-comparison of the ratio of reference to non-reference alleles in each bulk. Currently, this script is optimized for running Arabidopsis BSA experiments, but can handle 
+a list of likely casual polymorphisms underlying the phenotypic segrigation of the two bulks. Likely causal polymorphisms are identified using g-statistics and a
+comparison of the ratio of reference to non-reference reads in each bulk. Currently, this script is optimized for running Arabidopsis BSA experiments, but can handle 
 other organisms with some tinkering.   
 
 For a simple explanation of the experimental design of BSA -> https://doi.org/10.1104/pp.17.00415 
