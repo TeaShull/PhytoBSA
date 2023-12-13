@@ -65,12 +65,12 @@ bwa mem \
     -t "$threads" \
     -M "$reference_genome" \
     -v 1 \
-    "$input_files_wt" > "./output/$1/$1_wt.sam" &
+    $input_files_wt > "./output/$1/$1_wt.sam" &
 bwa mem \
     -t "$threads" \
     -M "$reference_genome" \
     -v 1 \
-    "$input_files_mu" > "./output/$1/$1_mu.sam"
+    $input_files_mu > "./output/$1/$1_mu.sam"
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "Converting sam to bam"

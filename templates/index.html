@@ -72,9 +72,11 @@
 
         <h1>Threads</h1>
         <select name="threads_limit">
-            {% for i in range(1, available_threads + 1) %}
-                <option value="{{ i }}" {% if i == threads_limit %}selected{% endif %}>{{ i }}</option>
-            {% endfor %}
+        {% for i in range(1, available_threads + 1) %}
+            <option value="{{ i }}" {% if loop.index == threads_limit %}selected{% endif %}>{{ loop.index }}</option>
+        {% endfor %}
+        </select>
+
         </select>
         {% if threads_limit == available_threads %}
             <p style="color: red;">Are you sure you want to use all the resources available? This may cause performance issues.</p>
@@ -87,26 +89,26 @@
         <button type="submit">Submit</button>
     </form>
 
+    <form action="{{ url_for('run_create_experiment_dictionary') }}" method="post">
+        <button type="submit">Detect</button>
+    </form>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+
+    <form action="{{ url_for('run_vcf_file_generation') }}" method="post">
+        <button type="submit">Align</button>
+    </form>
+
+    <form action="{{ url_for('run_data_analysis') }}" method="post">
+        <button type="submit">Run Data Analysis</button>
+    </form>
+
     <script>
         function showInput(inputId) {
             document.getElementById(inputId).style.display = "block";
         }
     </script>
 </body>
-<body>
-    <form action="{{ url_for('run_create_experiment_dictionary') }}" method="post">
-        <button type="submit">Detect</button>
-    </form>
-</body>
-    {% if message %}
-        <p>{{ message }}</p>
-    {% endif %}
-<body>
-    <form action="{{ url_for('run_vcf_file_generation') }}" method="get">
-        <button type="submit">Align</button>
-    </form>
-<body>
-    <form action="{{ url_for('run_data_analysis') }}" method="get">
-        <button type="Analyze"></button>
-    </form>
 </html>
