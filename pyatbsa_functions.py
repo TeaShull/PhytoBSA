@@ -92,16 +92,15 @@ def vcf_file_generation():
 		cmd = ['./code/VCFgen.sh', key, reads, allele]
 		subprocess.run(cmd, text=True)
 
+def data_analysis():
+	experiment_dictionary = session.get('experiment_dictionary', {})
+	
+	for key in experiment_dictionary:
+	  cmd = ['python', ./code/analysis.py, key]
+	  subprocess.run(cmd, text=True)
+
 # ####### SNP mask generation ########
 # # Create snp mask (not ready yet)
 # #cmd = ['snp_mask.sh']
 # #subprocess.run(cmd text=True)
 # #files_vcf = [os.path.basename(x) for x in glob.glob('./VCFs/*')]
-
-
-# ####### Data analysis ########
-# analysis_script = './code/analysis.py'
-
-# for key in lines_dict:
-# 	cmd = ['python', analysis_script, key]
-# 	subprocess.run(cmd, text=True)

@@ -58,25 +58,28 @@ echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo  "$1 reads seem to be $2"
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-#set input files as paired-end or single-read
+#set input files as paired-end or single-read 
+
 if [ "$2" == "paired-end" ]; then
-  fa_in_wt="./input/$1_1.wt.fq.gz ./input/$1_2.wt.fq.gz"
-  fa_in_mu="./input/$1_1.mu.fq.gz ./input/$1_2.mu.fq.gz"
+  fa_in_wt="./input/$1.$3_1.wt.fq.gz ./input/$1.$3_2.wt.fq.gz"
+  fa_in_mu="./input/$1.$3_1.mu.fq.gz ./input/$1.$3_2.mu.fq.gz"
 fi
 
 if [ "$2" == "single-read" ]; then
-  fa_in_wt="./input/$1.wt.fq.gz"
-  fa_in_wt="./input/$1.mu.fq.gz"
+  fa_in_wt="./input/$1.$3.wt.fq.gz"
+  fa_in_wt="./input/$1.$3.mu.fq.gz"
 fi
 
 #mapping
 bwa mem \
 	-t $threads \
 	-M $fa \
+	-v 1 \
 	$fa_in_wt > ./output/$1/$1_wt.sam &
 bwa mem \
 	-t $threads \
 	-M $fa \
+	-v 1 \
 	$fa_in_mu > ./output/$1/$1_mu.sam
 
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
@@ -191,7 +194,7 @@ grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1/$1.table > ./output
 sed -i 's/NaN://g' ./output/$1/$1.ems.table.tmp
 
 #[mu:wt] genotypes. Grab appropriate genotypes for analysis. 0/1:0/1 included in both analyses due to occasianal leaky genotyping by GATK HC. 
-if [ "$mutation" = 'recessive' ]; then 
+if [ "$3" = 'R' ]; then 
 	grep -F -e '1/1:0/1' -e '0/1:0/0' -e '0/1:0/1' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
 else 
 	grep -F -e '0/1:0/0' -e '1/1:0/0' -e '0/1:0/1' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table

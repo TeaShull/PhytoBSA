@@ -30,7 +30,12 @@
     {% endif %}
 <body>
     <form action="{{ url_for('run_vcf_file_generation') }}" method="get">
-        <button type="submit">Run</button>
+        <button type="submit">Align</button>
     </form>
+<body>
+    <form action="{{ url_for('run_data_analysis') }}" method="get">
+        <button type="Analyze"></button>
+    </form>
+
 
 </html>
