@@ -2,26 +2,56 @@
 
 from flask import Flask, render_template, request, session
 
-import subprocess
-
-from pyatbsa_functions import *
+from pyatbsa_functions import create_experiment_dictionary, vcf_file_generation, data_analysis
 
 app = Flask(__name__)
 app.secret_key = '1111'
 
-@app.route('/')
+# Initialize variables
+my_species = ""
+reference_genome_source = ""
+known_snps = ""
+threads_limit = 0
+cleanup = False
+
+# Get the number of threads available on the machine
+import os
+import multiprocessing
+available_threads = multiprocessing.cpu_count()
+threads_limit = max(1, available_threads // 2)  # Set half the available threads as the default limit
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    global my_species, reference_genome_source, known_snps, threads_limit, cleanup
+
+    if request.method == 'POST':
+        my_species = request.form['species']
+        reference_genome_source = request.form['reference_source']
+        known_snps = request.form['known_snps']
+        threads_limit = int(request.form['threads_limit'])
+        cleanup = 'cleanup' in request.form
+
+        # Check if the selected threads limit is equal to the maximum available threads
+        if threads_limit == available_threads:
+            warning_message = "Are you sure you want to use all the resources available? This may cause performance issues."
+
+    return render_template('index.html',
+                           my_species=my_species,
+                           reference_genome_source=reference_genome_source,
+                           known_snps=known_snps,
+                           threads_limit=threads_limit,
+                           cleanup=cleanup,
+                           available_threads=available_threads)
 
 @app.route('/run_create_experiment_dictionary', methods=['POST'])
 def run_create_experiment_dictionary():
     experiment_dictionary = create_experiment_dictionary()
     session['experiment_dictionary'] = experiment_dictionary
-    return render_template('index.html', message = experiment_dictionary)
+    return render_template('index.html', message=experiment_dictionary)
 
 @app.route('/run_vcf_file_generation', methods=['GET'])
 def run_vcf_file_generation():
-     vcf_file_generation()
+    vcf_file_generation()
 
 @app.route('/run_data_analysis', methods=['GET'])
 def run_data_analysis():
@@ -29,7 +59,6 @@ def run_data_analysis():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
 
 
 

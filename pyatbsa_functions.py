@@ -1,103 +1,58 @@
 #!/usr/bin/env python
 
-import sys
 import os
-import argparse
 import subprocess
-
-import glob
 import fnmatch
 
 from flask import session
 
+def detect_file_type(file):
+    """Detect if a file is labeled as Recessive (R) or Dominant (D)."""
+    if fnmatch.fnmatch(file, '*.R*'):
+        return "R"
+    elif fnmatch.fnmatch(file, '*.D*'):
+        return "D"
+    return None
+
 def create_experiment_dictionary():
-	lines_dict = dict()
-	input_dir = './input/'
-	#Check if files are paired-end or single-read
-	for file in os.listdir(input_dir):
-		if ((fnmatch.fnmatch(file, '*_1*')) 
-			and (fnmatch.fnmatch(file, '*wt.fq.gz*')) 
-			or (fnmatch.fnmatch(file, '*mu.fq.gz*'))): 
-			line = file.split(".")[0]
-			lines_dict[line] = lines_dict.get(line, 0) + 1
+    """Create a dictionary to store experiment details."""
+    lines_dict = {}
+    input_dir = './input/'
 
-		elif ((fnmatch.fnmatch(file, '*_2*')) 
-			and (fnmatch.fnmatch(file, '*wt.fq.gz*')) 
-			or (fnmatch.fnmatch(file, '*mu.fq.gz*'))):
-			line = file.split(".")[0]
-			lines_dict[line] = lines_dict.get(line, 0) + 1
+    for file in os.listdir(input_dir):
+        key = file.split(".")[0]
+        lines_dict[key] = lines_dict.get(key, {'count': 0, 'allele': None})
+        lines_dict[key]['count'] += 1
+        lines_dict[key]['allele'] = detect_file_type(file)
 
-		elif ((fnmatch.fnmatch(file, '*wt.fq.gz*')) 
-			or (fnmatch.fnmatch(file, '*mu.fq.gz*')) 
-			and not (fnmatch.fnmatch(file, '*_2*')) 
-			and not (fnmatch.fnmatch(file, '*_1*'))):
-			line = file.split(".")[0]
-			lines_dict[line] = lines_dict.get(line, 1) + 1
-		else:
-			print("""
-			check that your inputs are named properly, 
-			or perhaps if there are spurious(or no) files
-			in input. 
-			
-			paired-end file names must be formatted as follows: 
-			<line>_1.wt.fq.gz 
-			<line>_2.wt.fq.gz
-			<line>_1.mu.fq.gz 
-			<line>_2.mu.fq.gz  
-			
-			unpaired-end file names must be formatted as follows: 
-			<line>.wt.fq.gz 
-			<line>.mu.fq.gz
-			""")
-			quit()
+    # Convert counts and types to a readable format
+    for key, value in lines_dict.items():
+        if value['count'] == 4:
+            value['reads'] = "paired-end"
+        elif value['count'] == 2:
+            value['reads'] = "single-read"
 
-	#convert dict int values to list, and replace pairedness 
-	#quantification with a readable string
-	
-	for key, value in lines_dict.items():
-		if lines_dict[key] == 4:
-			lines_dict[key] = ["paired-end"]
-		elif lines_dict[key] == 2:
-			lines_dict[key] = ["single-read"]
-		
-	#Detect if files are labeled Recessive or Dominant. Add 
-	#designation to the list. 
-	marked_keys = {}
-	
-	for file in os.listdir(input_dir):
-		for key in lines_dict:
-			key_match = f"*{key}*"
-			if ((fnmatch.fnmatch(file, key_match))
-				and (fnmatch.fnmatch(file, '*.R*'))
-				and key not in marked_keys):
+    return lines_dict
 
-				lines_dict[key].append("R")
-				marked_keys[key] = True
+def vcf_file_generation(experiment_dictionary):
+    """Generate VCF files based on the experiment details."""
+    for key, value in experiment_dictionary.items():
+        cmd = ['./code/VCFgen.sh', key, value['reads'], value['allele']]
+        subprocess.run(cmd, text=True)
 
-			elif ((fnmatch.fnmatch(file, key_match))
-				and (fnmatch.fnmatch(file, '*.D*'))
-				and key not in marked_keys):
-				
-				lines_dict[key].append("D")
-				marked_keys[key] = True
+def data_analysis(experiment_dictionary):
+    """Perform data analysis based on the experiment details."""
+    for key in experiment_dictionary:
+        cmd = ['python', './code/analysis.py', key]
+        subprocess.run(cmd, text=True)
 
-	return(lines_dict)
+if __name__ == "__main__":
+    experiment_dict = create_experiment_dictionary()
+    session['experiment_dictionary'] = experiment_dict
 
-def vcf_file_generation():
-	experiment_dictionary = session.get('experiment_dictionary', {})
-	
-	for key in experiment_dictionary:
-		reads = experiment_dictionary[key][0]
-		allele = experiment_dictionary[key][1]
-		cmd = ['./code/VCFgen.sh', key, reads, allele]
-		subprocess.run(cmd, text=True)
+    vcf_file_generation(experiment_dict)
+    data_analysis(experiment_dict)
 
-def data_analysis():
-	experiment_dictionary = session.get('experiment_dictionary', {})
-	
-	for key in experiment_dictionary:
-	  cmd = ['python', ./code/analysis.py, key]
-	  subprocess.run(cmd, text=True)
 
 # ####### SNP mask generation ########
 # # Create snp mask (not ready yet)

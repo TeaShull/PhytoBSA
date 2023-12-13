@@ -1,185 +1,174 @@
 #!/usr/bin/env bash
-#pull in variables
+# pull in variables
 source ./code/variables.sh
 
-echo	"Preparing references and directory structure"
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo "Preparing references and directory structure"
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-#make directory structure if it doesn't exist. 
+# make directory structure if it doesn't exist.
 if [ ! -d "./output/$1" ]; then
-	mkdir ./output/$1
+    mkdir "./output/$1"
 fi
 
 if [ ! -d "./output/VCFs" ]; then
-	mkdir ./output/VCFs
+    mkdir "./output/VCFs"
 fi
 
 if [ ! -d "./output/$1/snpEff" ]; then
-	mkdir ./output/$1/snpEff
+    mkdir "./output/$1/snpEff"
 fi
 
-# #get genomic features file if it doesn't exist (for later...)
-# if ! [ -f ./references/$my_species.gff ]; then
-#   curl -o ./references/$my_species.gff.gz $gff_file_source
-#   gzip -d ./references/$my_species.gff.gz
-# fi
-
-#make reference genome if it doesn't exist 
-if ! [ -f ./references/$my_species.fa ]; then
-  curl -o ./references/$my_species.fa.gz $reference_genome_source
-  gzip -d ./references/$my_species.fa.gz
+# make reference genome if it doesn't exist
+if ! [ -f "./references/$my_species.fa" ]; then
+    curl -o "./references/$my_species.fa.gz" "$reference_genome_source"
+    gzip -d "./references/$my_species.fa.gz"
 fi
 
-#make .chrs file if it doesn't exist, set reference variable
-if ! [ -f ./references/$my_species.chrs.fa ]; then
-	awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' ./references/$my_species.fa > ./references/$my_species.chrs.fa
+# make .chrs file if it doesn't exist, set reference variable
+if ! [ -f "./references/$my_species.chrs.fa" ]; then
+    awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' "./references/$my_species.fa" > "./references/$my_species.chrs.fa"
 fi
 
-fa=./references/$my_species.chrs.fa
+reference_genome="./references/$my_species.chrs.fa"
 
-# #creating .fai and index files if they don't exist
-if ! [ -f ./references/$my_species.chrs.fa.fai ]; then
-	samtools faidx \
-		$fa
-	bwa index \
-		-p ./references/$my_species.chrs.fa \
-		-a is $fa
+# creating .fai and index files if they don't exist
+if ! [ -f "./references/$my_species.chrs.fa.fai" ]; then
+    samtools faidx "$reference_genome"
+    bwa index -p "./references/$my_species.chrs.fa" -a is "$reference_genome"
 fi
 
-#create dictory for gatk haplotype caller if it doesn't exist
+# create dictionary for gatk haplotype caller if it doesn't exist
 if [ ! -f "./references/$my_species.chrs.dict" ]; then
-	picard CreateSequenceDictionary \
-		-R .fa \
-		-O ./references/$my_species.chrs.dict
+    picard CreateSequenceDictionary \
+        -R "$reference_genome" \
+        -O "./references/$my_species.chrs.dict"
 fi
 
-echo	"References prepared, preparing VCF for $1"
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo  "$1 reads seem to be $2"
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo "References prepared, preparing VCF for $1"
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo "$1 reads seem to be $2"
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-#set input files as paired-end or single-read 
-
+# set input files as paired-end or single-read
 if [ "$2" == "paired-end" ]; then
-  fa_in_wt="./input/$1.$3_1.wt.fq.gz ./input/$1.$3_2.wt.fq.gz"
-  fa_in_mu="./input/$1.$3_1.mu.fq.gz ./input/$1.$3_2.mu.fq.gz"
+    input_files_wt="./input/$1.$3_1.wt.fq.gz ./input/$1.$3_2.wt.fq.gz"
+    input_files_mu="./input/$1.$3_1.mu.fq.gz ./input/$1.$3_2.mu.fq.gz"
 fi
 
 if [ "$2" == "single-read" ]; then
-  fa_in_wt="./input/$1.$3.wt.fq.gz"
-  fa_in_wt="./input/$1.$3.mu.fq.gz"
+    input_files_wt="./input/$1.$3.wt.fq.gz"
+    input_files_mu="./input/$1.$3.mu.fq.gz"
 fi
 
-#mapping
+# mapping
 bwa mem \
-	-t $threads \
-	-M $fa \
-	-v 1 \
-	$fa_in_wt > ./output/$1/$1_wt.sam &
+    -t "$threads" \
+    -M "$reference_genome" \
+    -v 1 \
+    "$input_files_wt" > "./output/$1/$1_wt.sam" &
 bwa mem \
-	-t $threads \
-	-M $fa \
-	-v 1 \
-	$fa_in_mu > ./output/$1/$1_mu.sam
+    -t "$threads" \
+    -M "$reference_genome" \
+    -v 1 \
+    "$input_files_mu" > "./output/$1/$1_mu.sam"
 
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo	"Converting sam to bam"
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo "Converting sam to bam"
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 samtools view \
-  -bSh \
-	-@ $threads \
-	./output/$1/$1_mu.sam > ./output/$1/$1_mu.bam &
+    -bSh \
+    -@ "$threads" \
+    "./output/$1/$1_mu.sam" > "./output/$1/$1_mu.bam" &
 samtools view \
-	-bSh \
-	-@ $threads \
-	./output/$1/$1_wt.sam > ./output/$1/$1_wt.bam
+    -bSh \
+    -@ "$threads" \
+    "./output/$1/$1_wt.sam" > "./output/$1/$1_wt.bam"
 wait
 
-#fix paired end
+# fix paired end
 if [ "$2" == "paired-end" ]; then
-	samtools fixmate \
-		./output/$1/$1_mu.bam ./output/$1/$1_mu.fix.bam &
-	samtools fixmate \
-		./output/$1/$1_wt.bam ./output/$1/$1_wt.fix.bam
+    samtools fixmate \
+        "./output/$1/$1_mu.bam" "./output/$1/$1_mu.fix.bam" &
+    samtools fixmate \
+        "./output/$1/$1_wt.bam" "./output/$1/$1_wt.fix.bam"
 fi
 
-echo	"Sorting by coordinate"
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo "Sorting by coordinate"
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-#Coordinate sorting
+# Coordinate sorting
 picard SortSam \
-	I=./output/$1/$1_mu.fix.bam \
-	O=./output/$1/$1_mu.sort.bam \
-	SORT_ORDER=coordinate &
+    I="./output/$1/$1_mu.fix.bam" \
+    O="./output/$1/$1_mu.sort.bam" \
+    SORT_ORDER=coordinate &
 picard SortSam \
-	I=./output/$1/$1_wt.fix.bam \
-	O=./output/$1/$1_wt.sort.bam \
-	SORT_ORDER=coordinate
+    I="./output/$1/$1_wt.fix.bam" \
+    O="./output/$1/$1_wt.sort.bam" \
+    SORT_ORDER=coordinate
 wait
 
-#Mark duplicates. Consider using sambamba for this step. I hear it is much faster, and this seems to take longer than it should
+# Mark duplicates. Consider using sambamba for this step.
 picard MarkDuplicates \
-	I=./output/$1/$1_mu.sort.bam \
-	O=./output/$1/$1_mu.sort.md.bam \
-	METRICS_FILE=./output/$1/$1_mu.matrics.txt \
-	ASSUME_SORTED=true &
+    I="./output/$1/$1_mu.sort.bam" \
+    O="./output/$1/$1_mu.sort.md.bam" \
+    METRICS_FILE="./output/$1/$1_mu.metrics.txt" \
+    ASSUME_SORTED=true &
 picard MarkDuplicates \
-	I=./output/$1/$1_wt.sort.bam \
-	O=./output/$1/$1_wt.sort.md.bam \
-	METRICS_FILE=./output/$1/$1_wt.matrics.txt \
-	ASSUME_SORTED=true
+    I="./output/$1/$1_wt.sort.bam" \
+    O="./output/$1/$1_wt.sort.md.bam" \
+    METRICS_FILE="./output/$1/$1_wt.metrics.txt" \
+    ASSUME_SORTED=true
 wait
 
-#add header for gatk
+# add header for gatk
 picard AddOrReplaceReadGroups \
-	I=./output/$1/$1_mu.sort.md.bam \
-	O=./output/$1/$1_mu.sort.md.rg.bam \
-	RGLB=$1_mu \
-	RGPL=illumina \
-	RGSM=$1_mu \
-	RGPU=run1 \
-	SORT_ORDER=coordinate &
+    I="./output/$1/$1_mu.sort.md.bam" \
+    O="./output/$1/$1_mu.sort.md.rg.bam" \
+    RGLB="$1_mu" \
+    RGPL=illumina \
+    RGSM="$1_mu" \
+    RGPU=run1 \
+    SORT_ORDER=coordinate &
 picard AddOrReplaceReadGroups \
-	I=./output/$1/$1_wt.sort.md.bam \
-	O=./output/$1/$1_wt.sort.md.rg.bam \
-	RGLB=$1_wt \
-	RGPL=illumina \
-	RGSM=$1_wt \
-	RGPU=run1 \
-	SORT_ORDER=coordinate
+    I="./output/$1/$1_wt.sort.md.bam" \
+    O="./output/$1/$1_wt.sort.md.rg.bam" \
+    RGLB="$1_wt" \
+    RGPL=illumina \
+    RGSM="$1_wt" \
+    RGPU=run1 \
+    SORT_ORDER=coordinate
 wait
 
-#build BAM index
+# build BAM index
 picard BuildBamIndex \
-INPUT=./output/$1/$1_mu.sort.md.rg.bam \
-O=./output/$1/${1}_mu.sort.md.rg.bai &
+    INPUT="./output/$1/$1_mu.sort.md.rg.bam" \
+    O="./output/$1/${1}_mu.sort.md.rg.bai" &
 picard BuildBamIndex \
-INPUT=./output/$1/$1_wt.sort.md.rg.bam \
-O=./output/$1/${1}_wt.sort.md.rg.bai
+    INPUT="./output/$1/$1_wt.sort.md.rg.bam" \
+    O="./output/$1/${1}_wt.sort.md.rg.bai"
 wait
 
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo	"Calling haplotypes. This may take awhile..."
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo "Calling haplotypes. This may take awhile..."
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-#GATK HC Variant calling (I believe there is a way to parrelalize this by chr, and merge at the end. Improve later)
+# GATK HC Variant calling
 gatk HaplotypeCaller \
-	-R $fa \
-	-I ./output/$1/$1_mu.sort.md.rg.bam \
-	-I ./output/$1/$1_wt.sort.md.rg.bam \
-	-O ./output/$1/$1.hc.vcf \
-	-output-mode EMIT_ALL_CONFIDENT_SITES \
-	--native-pair-hmm-threads 20
+    -R "$reference_genome" \
+    -I "./output/$1/$1_mu.sort.md.rg.bam" \
+    -I "./output/$1/$1_wt.sort.md.rg.bam" \
+    -O "./output/$1/$1.hc.vcf" \
+    -output-mode EMIT_ALL_CONFIDENT_SITES \
+    --native-pair-hmm-threads 20
 
-#snpEff, labeling snps with annotations and potential impact on gene function
+# snpEff, labeling snps with annotations and potential impact on gene function
+snpEff "$my_species" \
+    -s "./output/$1/snpEff/${1}_snpEff_summary.html" \
+    "./output/$1/$1.hc.vcf" > "./output/$1/$1.se.vcf"
 
-snpEff $my_species \
-	-s ./output/$1/snpEff/${1}_snpEff_summary.html \
-	./output/$1/$1.hc.vcf > ./output/$1/$1.se.vcf
-
-echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo	"Haplotypes called and snps labeled. Cleaning data...."
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+echo "Haplotypes called and snps labeled. Cleaning data."
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 #extract snpEFF data and variant information into a table, remove repetative NaN's and retain only those polymorphisms likely to arise from EMS.
