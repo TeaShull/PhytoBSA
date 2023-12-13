@@ -23,8 +23,13 @@ def run_create_experiment_dictionary():
 def run_vcf_file_generation():
      vcf_file_generation()
 
-  
+@app.route('/run_data_analysis', methods=['GET'])
+def run_data_analysis():
+    data_analysis()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+
 
