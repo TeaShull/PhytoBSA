@@ -34,21 +34,23 @@ def create_experiment_dictionary():
 
     return lines_dict
 
-def vcf_file_generation(experiment_dictionary):
+def vcf_file_generation():
     """Generate VCF files based on the experiment details."""
+    experiment_dictionary = session.get('experiment_dictionary', {})
     for key, value in experiment_dictionary.items():
         cmd = ['./code/VCFgen.sh', key, value['reads'], value['allele']]
         subprocess.run(cmd, text=True)
 
-def data_analysis(experiment_dictionary):
+def data_analysis():
     """Perform data analysis based on the experiment details."""
+    experiment_dictionary = session.get('experiment_dictionary', {})
     for key in experiment_dictionary:
         cmd = ['python', './code/analysis.py', key]
         subprocess.run(cmd, text=True)
 
 if __name__ == "__main__":
     experiment_dict = create_experiment_dictionary()
-    session['experiment_dictionary'] = experiment_dict
+    session['experiment_dictionary'] = experiment_dictionary
 
     vcf_file_generation(experiment_dict)
     data_analysis(experiment_dict)

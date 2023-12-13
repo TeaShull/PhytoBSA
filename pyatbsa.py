@@ -2,7 +2,7 @@
 
 from flask import Flask, render_template, request, session
 
-from pyatbsa_functions import create_experiment_dictionary, vcf_file_generation, data_analysis
+from pyatbsa_functions import *
 
 app = Flask(__name__)
 app.secret_key = '1111'
@@ -47,13 +47,13 @@ def index():
 def run_create_experiment_dictionary():
     experiment_dictionary = create_experiment_dictionary()
     session['experiment_dictionary'] = experiment_dictionary
-    return render_template('index.html', message=experiment_dictionary)
+    return render_template('index.html', message=experiment_dictionary, available_threads=available_threads)
 
-@app.route('/run_vcf_file_generation', methods=['GET'])
+@app.route('/run_vcf_file_generation', methods=['POST'])
 def run_vcf_file_generation():
     vcf_file_generation()
 
-@app.route('/run_data_analysis', methods=['GET'])
+@app.route('/run_data_analysis', methods=['POST'])
 def run_data_analysis():
     data_analysis()
 
