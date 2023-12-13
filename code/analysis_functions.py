@@ -66,3 +66,38 @@ def empircal_cutoff(posin, wt, mu):
     RS_G_Y_99p = np.percentile(smRS_G_yhatAll, 99.99)
 
     return G_S_95p, RS_G_95p, RS_G_Y_99p
+
+# Define a function for plotting
+def plot_data(df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+    chart = ggplot(df, aes('pos_mb', y=y_column))
+    title = ggtitle(title_text)
+    axis_x = xlab("Position (Mb)")
+    axis_y = ylab(ylab_text)
+
+    if cutoff_value is not None:
+        cutoff = geom_hline(yintercept=cutoff_value, color='red', linetype="dashed", size=0.3)
+        plot = chart 
+            + geom_point(color='goldenrod', size=0.8) 
+            + theme_linedraw() 
+            + facet_grid('. ~ chr', space='free_x', scales='free_x') 
+            + title 
+            + axis_x 
+            + axis_y 
+            + theme(panel_spacing=0.025) 
+            + cutoff
+    else:
+        plot = chart 
+            + geom_point(color='goldenrod', size=0.8) 
+            + theme_linedraw() 
+        + facet_grid('. ~ chr', space='free_x', scales='free_x') 
+        + title 
+        + axis_x 
+        + axis_y 
+        + theme(panel_spacing=0.025)
+
+    if lines:
+        plot += geom_line(color='blue')
+
+    # Save plot
+    plot_name = f"./output/{current_line_name}_{y_column.lower()}.png"
+    plot.save(filename = plot_name, height=6, width=8, units='in', dpi=500)

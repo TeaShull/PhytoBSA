@@ -4,10 +4,7 @@
 #species name you want used in the script
 my_species='Arabidopsis_thaliana'
 
-#is the mutation 'recessive' or 'dominant'?
-mutation='recessive'
-
-#reference genomea and genome features file (gff) to be sourced. You can download seperately and this will be skipped if you stick to the $my_species.fa and $my_species.gff format for the reference genome. 
+#reference genome and genome features file (gff) to be sourced. You can download seperately and this will be skipped if you stick to the $my_species.fa and $my_species.gff format for the reference genome. 
 reference_genome_source='ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz'
 
 #gff is for later. Going to be used to generate gene feature and SNP visualizations for likely causal mutations. Working on making a relational database in GFFutils
