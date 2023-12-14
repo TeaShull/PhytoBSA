@@ -1,9 +1,20 @@
 #!/usr/bin/env python
-
+import os
+import sys
+import multiprocessing
 from flask import Flask, render_template, request, session
-from thaleBSA_utilities import ThaleBSAUtilities  # Import ThaleBSAUtilities
 
-app = Flask(__name__)
+modules_dir = os.path.join(os.getcwd(),'src','modules')
+sys.path.append(modules_dir)
+
+from thaleBSA_utilities import ThaleBSAUtilities
+import config
+
+src_dir = config.SRC_DIR
+template_dir = config.TEMPLATE_DIR
+static_dir = config.STATIC_DIR
+
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 app.secret_key = '1111'
 
 # Initialize variables
@@ -14,8 +25,7 @@ threads_limit = 0
 cleanup = False
 
 # Get the number of threads available on the machine
-import os
-import multiprocessing
+
 
 available_threads = multiprocessing.cpu_count()
 threads_limit = max(1, available_threads // 2)  # Set half the available threads as the default limit
@@ -64,10 +74,13 @@ def run_create_experiment_dictionary():
 @app.route('/run_vcf_file_generation', methods=['POST'])
 def run_vcf_file_generation():
     thale_bsa_utils.vcf_file_generation()  # Use the class method
+    return render_template('index.html', message="VCF file generation started.", available_threads=available_threads)
 
 @app.route('/run_data_analysis', methods=['POST'])
 def run_data_analysis():
     thale_bsa_utils.data_analysis()  # Use the class method
+    return render_template('index.html', message="Data analysis started.", available_threads=available_threads)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

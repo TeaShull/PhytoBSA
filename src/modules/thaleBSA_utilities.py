@@ -4,7 +4,7 @@ import os
 import subprocess
 import fnmatch
 from flask import session
-from config import BASE_DIR, INPUT_DIR, OUTPUT_DIR
+import config
 
 class ThaleBSAUtilities:
     def __init__(self):
@@ -21,7 +21,7 @@ class ThaleBSAUtilities:
 
     def create_experiment_dictionary(self):
         """Create a dictionary to store experiment details."""
-        input_dir = './input/'
+        input_dir = config.INPUT_DIR
 
         for file in os.listdir(input_dir):
             key = file.split(".")[0]
@@ -49,8 +49,10 @@ class ThaleBSAUtilities:
     def data_analysis(self):
         """Perform data analysis based on the experiment details."""
         experiment_dictionary = session.get('experiment_dictionary', {})
+        modules_dir = config.MODULES_DIR
+        analysis_script = os.path.join(modules_dir,'analysis.py')
         for key in experiment_dictionary:
-            cmd = ['python', './code/analysis.py', key]
+            cmd = ['python', analysis_script, key]
             subprocess.run(cmd, text=True)
 
 

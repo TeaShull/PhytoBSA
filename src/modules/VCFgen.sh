@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # pull in variables
-source ./code/variables.sh
+source ./src/variables.sh
 
 echo "Preparing references and directory structure"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
