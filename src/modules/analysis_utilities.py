@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import statsmodels.api as sm
 from plotnine import ggplot, aes, geom_point, geom_line, theme_linedraw, facet_grid, theme, ggtitle, xlab, ylab, geom_hline
@@ -6,6 +7,10 @@ import config
 class AnalysisUtilities:
     def __init__(self):
         pass  # You can initialize any class-specific variables here
+
+    def abort_analysis(self):
+        print(f"Aborting analysis of {self.current_line_name}")
+        quit()
 
     def delta_snp_array(self, wtr, wta, mur, mua):
         # Calculate delta-SNP ratio
@@ -27,7 +32,7 @@ class AnalysisUtilities:
 
         return np.where(e1*e2*e3*e4==0, 0.0, llr1+llr2+llr3+llr4)
 
-    def empircal_cutoff(self, posin, wt, mu):
+    def empirical_cutoff(self, posin, wt, mu):
         # Shuffle phenotype/genotype/position association 1000x
         # Establish variables
         lowess = sm.nonparametric.lowess
@@ -73,6 +78,7 @@ class AnalysisUtilities:
         return G_S_95p, RS_G_95p, RS_G_Y_99p
 
     def plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+        df['pos_mb'] = df['pos']*0.000001
         chart = ggplot(df, aes('pos_mb', y=y_column))
         title = ggtitle(title_text)
         axis_x = xlab("Position (Mb)")
@@ -89,5 +95,6 @@ class AnalysisUtilities:
 
         # Save plot
         output_dir = config.OUTPUT_DIR
-        plot_name = f"{output_dir}{self.current_line_name}_{y_column.lower()}.png"
-        plot.save(filename=plot_name, height=6, width=8, units='in', dpi=500)
+        plot_name = f"{self.current_line_name}_{y_column.lower()}.png"
+        file_path_name = os.path.join(output_dir, self.current_line_name, plot_name)
+        plot.save(filename=file_path_name, height=6, width=8, units='in', dpi=500)
