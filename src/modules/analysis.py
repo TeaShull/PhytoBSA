@@ -29,7 +29,7 @@ if __name__ == "__main__":
         quit()
 
     print({current_line_name})
-    analysis_utils = AnalysisUtilities()
+    analysis_utils = AnalysisUtilities(current_line_name)
     current_line_out_dir = os.path.join(output_dir, current_line_name)
 
     print(f"""
@@ -51,110 +51,40 @@ Producing plots and putative causal mutations for {current_line_name}
         print(f"The VCF table for line {current_line_name} was successfully loaded.")
     except FileNotFoundError:
         print(f"Error: File '{vcftable}' not found.")
-        analysis_utils.abort_analysis(current_line_name)
     except pd.errors.EmptyDataError:
         print(f"Error: File '{vcftable}' is empty.")
-        analysis_utils.abort_analysis(current_line_name)
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        analysis_utils.abort_analysis(current_line_name)
 
     # Calculate delta SNP ratio and G-statistic
+    print(f" Attempting to calculate delta-SNP ratios and G-statistics.")
     try:
-        df['ratio'] = analysis_utils.delta_snp_array(df['wt_ref'], df['wt_alt'], df['mu_ref'], df['mu_alt'])
-        df['G_S'] = analysis_utils.g_statistic_array(df['wt_ref'], df['wt_alt'], df['mu_ref'], df['mu_alt'])
+        suppress = False
+        df['ratio'] = analysis_utils.delta_snp_array(
+            df['wt_ref'], df['wt_alt'], df['mu_ref'], df['mu_alt'], suppress
+        )
+        
+        df['G_S'] = analysis_utils.g_statistic_array(
+            df['wt_ref'], df['wt_alt'], df['mu_ref'], df['mu_alt'], suppress
+        )
+        
         print("Calculation of delta-SNP ratios and G-statistics were successful.")
     except Exception as e:
         print(f"An error occurred during calculation: {e}")
-        analysis_utils.abort_analysis(current_line_name)
 
     # Clean up data by dropping indels and NAs
-    try:
-        df = df[(df["ref"].apply(lambda x: len(x) == 1)) & (df["alt"].apply(lambda x: len(x) == 1))]
-        df.dropna(axis=0, how='any', subset=["ratio"], inplace=True)
-        print("Indels dropped, and NaN values cleaned successfully.")
-    except Exception as e:
-        print(f"An error occurred during data processing: {e}")
-        analysis_utils.abort_analysis(current_line_name)
+    analysis_utils.drop_NA_and_indels(df)
 
     # LOESS smoothing of ratio and G-stat by chromosome
     try:
-        chr_facets = df["chr"].unique()
-        df_list = []
-        lowess = sm.api.nonparametric.lowess
         lowess_span = 0.3
+        smooth_edges_bounds = 15
 
-        for i in chr_facets:
-            # Establish chr copies and smooth edges by inverting duplicated data
-            df_chr = df[df['chr']==i].copy()
-
-            ## establish inverted dataframes
-
-            positions = df_chr['pos'].to_numpy()
-            deltas=[]
-            # Produce deltas
-            for i, pos in enumerate(positions):
-                if i == 0:
-                    deltas.append(pos)
-                if i > 0:
-                    deltas.append(positions[i] - positions[i-1])
-            
-            ## Create negative and positive delta extensions
-            deltas_pos_inv = deltas[::-1][-15:-1]
-            deltas_neg_inv = deltas[::-1][1:15]
-
-            ## Extend deltas, making "mirrored" delta positions at ends of chr
-            deltas_mirrored_ends=[]
-            deltas_mirrored_ends.extend(deltas_pos_inv+deltas+deltas_neg_inv)
-            
-            ## Create new pseudo positions for lowess smoothing 
-            psuedo_pos = []
-            for i, pos in enumerate(deltas_mirrored_ends):
-                if i == 0:
-                    psuedo_pos.append(0)
-                if i > 0:
-                    psuedo_pos.append(pos+psuedo_pos[i-1])
-
-            ## Create "mirrored" data from both ends of chr
-            df_chr_inv_neg = df_chr[::-1].iloc[-15:-1]
-            df_chr_inv_pos = df_chr[::-1].iloc[1:15]
-
-            ## Concat dataframe
-            df_chr_smooth_list = [df_chr_inv_neg, df_chr, df_chr_inv_pos]
-
-            df_chr = pd.concat(df_chr_smooth_list, ignore_index=False)
-                    
-            ## Add psuedo positions to dataframe
-            df_chr['psuedo_pos'] = psuedo_pos
-
-            ## Fit LOWESS ratio and G-statistic ~ position
-            X=df_chr['psuedo_pos'].values
-
-            ## Fit ratio 
-            ratio_Y=df_chr['ratio'].values
-            df_chr['ratio_yhat'] = lowess(ratio_Y,X, frac=lowess_span)[:,1]
-           
-            ## Fit G-Statistic
-            G_S_Y = df_chr['G_S'].values
-            df_chr['GS_yhat'] = lowess(G_S_Y,X, frac=lowess_span)[:,1]
-            
-            ## Produce ratio-scaled G-statistic and fit
-            df_chr['RS_G'] = df_chr['G_S']*df_chr['ratio']
-            
-            RS_G_Y = df_chr['RS_G'].values
-            df_chr['RS_G_yhat'] = lowess(RS_G_Y,X, frac=lowess_span)[:,1]
-
-            ## remove edge smoothing (mirrored) data
-            df_chr = df_chr[14:-14]
-            df_chr.drop(axis=1, inplace=True, columns='psuedo_pos')
-            df_list.append(df_chr)
-
-        df = pd.concat(df_list)
-
+        df = analysis_utils.smooth_chr_facets(df, lowess_span, smooth_edges_bounds)
         print("LOESS smoothing calculations successful.")
     except Exception as e:
         print(f"An error occurred during LOESS smoothing: {e}")
-        analysis_utils.abort_analysis(current_line_name)
+    
     print("""
 Calculating empirical cutoff for LOESS ratio-scaled g-stats 
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
@@ -165,11 +95,23 @@ Calculating empirical cutoff for LOESS ratio-scaled g-stats
         dfShPos = df[['pos']].copy()
         dfShwt = df[['wt_ref', 'wt_alt']].copy()
         dfShmu = df[['mu_ref', 'mu_alt']].copy()
-        gs_cutoff, rsg_cutoff, rsg_y_cutoff = analysis_utils.empirical_cutoff(dfShPos, dfShwt, dfShmu)
+        iterations = 1000
+        lowess_span = 0.3
 
-        df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) or (x > gs_cutoff)) else 0 for x in df['G_S']]
-        df['RS_G_05p'] = [1 if (np.isclose(x, rsg_cutoff) or (x > rsg_cutoff)) else 0 for x in df['RS_G']]
-        df['RS_G_yhat_01p'] = [1 if (np.isclose(x, rsg_y_cutoff) or (x > rsg_y_cutoff)) else 0 for x in df['RS_G_yhat']]
+        gs_cutoff, rsg_cutoff, rsg_y_cutoff = analysis_utils.empirical_cutoff(
+            dfShPos, dfShwt, dfShmu, iterations, lowess_span
+        )
+
+        df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) 
+            or (x > gs_cutoff)) else 0 for x in df['G_S']
+        ]
+        df['RS_G_05p'] = [1 if (np.isclose(x, rsg_cutoff) 
+            or (x > rsg_cutoff)) else 0 for x in df['RS_G']
+        ]
+        df['RS_G_yhat_01p'] = [1 if (np.isclose(x, rsg_y_cutoff) 
+            or (x > rsg_y_cutoff)) else 0 for x in df['RS_G_yhat']
+        ]
+      
         df_likely_cands = df.loc[df['RS_G_yhat_01p'] == 1]
         
         print(f"G-statistic cutoff = {gs_cutoff}.")
@@ -178,7 +120,6 @@ Calculating empirical cutoff for LOESS ratio-scaled g-stats
         print("Empirical cutoff via randomization calculation completed.")
     except Exception as e:
         print(f"An error occurred during cutoff calculations: {e}")
-        analysis_utils.abort_analysis(current_line_name)
     
     try:
         # Identify likely candidates using G-stat and smoothed ratio-scaled G-stat
@@ -203,7 +144,7 @@ Calculating empirical cutoff for LOESS ratio-scaled g-stats
         print("Results and candidates tables generated.")
     except Exception as e:
         print(f"An error occurred during table generation: {e}")
-        analysis_utils.abort_analysis(current_line_name)
+    
     print("""
 Generating plots 
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
@@ -220,6 +161,7 @@ Generating plots
         ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True),
     ]
 
+    print(f"Attempting to produce and save plots...")
     try:
         analysis_utils.current_line_name = current_line_name
         for plot_scenario in plot_scenarios:
@@ -235,5 +177,4 @@ Results for {current_line_name} generated.
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<
         ''')
     except Exception as e:
-        print(f"An error occurred during plot generation: {e}")
-        analysis_utils.abort_analysis(current_line_name)
+        print(f"An error occurred while producing and saving plots: {e}")
