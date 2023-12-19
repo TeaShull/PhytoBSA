@@ -1,76 +1,85 @@
 #!/usr/bin/env bash
-# pull in variables
-source ./src/variables.sh
+# Organize variables passed from thale_bsa_utils.vcf_file_generation(args)
+line_name = $1
+pairedness = $2
+allele_R_or_D = $3
+reference_genome_name = $4
+snpEff_db_name = $5
+reference_genome_source = $6
+threads_limit = $7
+threads_halfed = ${threads_limit}/2
+cleanup = $8
+known_snps = $9
 
 echo "Preparing references and directory structure"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # make directory structure if it doesn't exist.
-if [ ! -d "./output/$1" ]; then
-    mkdir "./output/$1"
+if [ ! -d "./output/${line_name}" ]; then
+    mkdir "./output/${line_name}"
 fi
 
 if [ ! -d "./output/VCFs" ]; then
     mkdir "./output/VCFs"
 fi
 
-if [ ! -d "./output/$1/snpEff" ]; then
-    mkdir "./output/$1/snpEff"
+if [ ! -d "./output/${line_name}/snpEff" ]; then
+    mkdir "./output/${line_name}/snpEff"
 fi
 
 # make reference genome if it doesn't exist
-if ! [ -f "./references/$my_species.fa" ]; then
-    curl -o "./references/$my_species.fa.gz" "$reference_genome_source"
-    gzip -d "./references/$my_species.fa.gz"
+if ! [ -f "./references/$reference_genome_name.fa" ]; then
+    curl -o "./references/$reference_genome_name.fa.gz" "$reference_genome_source"
+    gzip -d "./references/$reference_genome_name.fa.gz"
 fi
 
 # make .chrs file if it doesn't exist, set reference variable
-if ! [ -f "./references/$my_species.chrs.fa" ]; then
-    awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' "./references/$my_species.fa" > "./references/$my_species.chrs.fa"
+if ! [ -f "./references/$reference_genome_name.chrs.fa" ]; then
+    awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' "./references/$reference_genome_name.fa" > "./references/$reference_genome_name.chrs.fa"
 fi
 
-reference_genome="./references/$my_species.chrs.fa"
+reference_genome="./references/$reference_genome_name.chrs.fa"
 
 # creating .fai and index files if they don't exist
-if ! [ -f "./references/$my_species.chrs.fa.fai" ]; then
+if ! [ -f "./references/$reference_genome_name.chrs.fa.fai" ]; then
     samtools faidx "$reference_genome"
-    bwa index -p "./references/$my_species.chrs.fa" -a is "$reference_genome"
+    bwa index -p "./references/$reference_genome_name.chrs.fa" -a is "$reference_genome"
 fi
 
 # create dictionary for gatk haplotype caller if it doesn't exist
-if [ ! -f "./references/$my_species.chrs.dict" ]; then
+if [ ! -f "./references/$reference_genome_name.chrs.dict" ]; then
     picard CreateSequenceDictionary \
         -R "$reference_genome" \
-        -O "./references/$my_species.chrs.dict"
+        -O "./references/$reference_genome_name.chrs.dict"
 fi
 
-echo "References prepared, preparing VCF for $1"
+echo "References prepared, preparing VCF for ${line_name}"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "$1 reads seem to be $2"
+echo "${line_name} reads seem to be ${pairedness}"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # set input files as paired-end or single-read
-if [ "$2" == "paired-end" ]; then
-    input_files_wt="./input/$1.$3_1.wt.fq.gz ./input/$1.$3_2.wt.fq.gz"
-    input_files_mu="./input/$1.$3_1.mu.fq.gz ./input/$1.$3_2.mu.fq.gz"
+if [ "${pairedness}" == "paired-end" ]; then
+    input_files_wt="./input/${line_name}.${allele_R_or_D}_1.wt.fq.gz ./input/${line_name}.${allele_R_or_D}_2.wt.fq.gz"
+    input_files_mu="./input/${line_name}.${allele_R_or_D}_1.mu.fq.gz ./input/${line_name}.${allele_R_or_D}_2.mu.fq.gz"
 fi
 
-if [ "$2" == "single-read" ]; then
-    input_files_wt="./input/$1.$3.wt.fq.gz"
-    input_files_mu="./input/$1.$3.mu.fq.gz"
+if [ "${pairedness}" == "single-read" ]; then
+    input_files_wt="./input/${line_name}.${allele_R_or_D}.wt.fq.gz"
+    input_files_mu="./input/${line_name}.${allele_R_or_D}.mu.fq.gz"
 fi
 
 # mapping
 bwa mem \
-    -t "$threads" \
+    -t "$threads_halfed" \
     -M "$reference_genome" \
     -v 1 \
-    $input_files_wt > "./output/$1/$1_wt.sam" &
+    $input_files_wt > "./output/${line_name}/${line_name}_wt.sam" &
 bwa mem \
-    -t "$threads" \
+    -t "$threads_halfed" \
     -M "$reference_genome" \
     -v 1 \
-    $input_files_mu > "./output/$1/$1_mu.sam"
+    $input_files_mu > "./output/${line_name}/${line_name}_mu.sam"
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "Converting sam to bam"
@@ -78,20 +87,20 @@ echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 samtools view \
     -bSh \
-    -@ "$threads" \
-    "./output/$1/$1_mu.sam" > "./output/$1/$1_mu.bam" &
+    -@ "$threads_halfed" \
+    "./output/${line_name}/${line_name}_mu.sam" > "./output/${line_name}/${line_name}_mu.bam" &
 samtools view \
     -bSh \
-    -@ "$threads" \
-    "./output/$1/$1_wt.sam" > "./output/$1/$1_wt.bam"
+    -@ "$threads_halfed" \
+    "./output/${line_name}/${line_name}_wt.sam" > "./output/${line_name}/${line_name}_wt.bam"
 wait
 
 # fix paired end
-if [ "$2" == "paired-end" ]; then
+if [ "${pairedness}" == "paired-end" ]; then
     samtools fixmate \
-        "./output/$1/$1_mu.bam" "./output/$1/$1_mu.fix.bam" &
+        "./output/${line_name}/${line_name}_mu.bam" "./output/${line_name}/${line_name}_mu.fix.bam" &
     samtools fixmate \
-        "./output/$1/$1_wt.bam" "./output/$1/$1_wt.fix.bam"
+        "./output/${line_name}/${line_name}_wt.bam" "./output/${line_name}/${line_name}_wt.fix.bam"
 fi
 
 echo "Sorting by coordinate"
@@ -99,54 +108,54 @@ echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # Coordinate sorting
 picard SortSam \
-    I="./output/$1/$1_mu.fix.bam" \
-    O="./output/$1/$1_mu.sort.bam" \
+    I="./output/${line_name}/${line_name}_mu.fix.bam" \
+    O="./output/${line_name}/${line_name}_mu.sort.bam" \
     SORT_ORDER=coordinate &
 picard SortSam \
-    I="./output/$1/$1_wt.fix.bam" \
-    O="./output/$1/$1_wt.sort.bam" \
+    I="./output/${line_name}/${line_name}_wt.fix.bam" \
+    O="./output/${line_name}/${line_name}_wt.sort.bam" \
     SORT_ORDER=coordinate
 wait
 
 # Mark duplicates. Consider using sambamba for this step.
 picard MarkDuplicates \
-    I="./output/$1/$1_mu.sort.bam" \
-    O="./output/$1/$1_mu.sort.md.bam" \
-    METRICS_FILE="./output/$1/$1_mu.metrics.txt" \
+    I="./output/${line_name}/${line_name}_mu.sort.bam" \
+    O="./output/${line_name}/${line_name}_mu.sort.md.bam" \
+    METRICS_FILE="./output/${line_name}/${line_name}_mu.metrics.txt" \
     ASSUME_SORTED=true &
 picard MarkDuplicates \
-    I="./output/$1/$1_wt.sort.bam" \
-    O="./output/$1/$1_wt.sort.md.bam" \
-    METRICS_FILE="./output/$1/$1_wt.metrics.txt" \
+    I="./output/${line_name}/${line_name}_wt.sort.bam" \
+    O="./output/${line_name}/${line_name}_wt.sort.md.bam" \
+    METRICS_FILE="./output/${line_name}/${line_name}_wt.metrics.txt" \
     ASSUME_SORTED=true
 wait
 
 # add header for gatk
 picard AddOrReplaceReadGroups \
-    I="./output/$1/$1_mu.sort.md.bam" \
-    O="./output/$1/$1_mu.sort.md.rg.bam" \
-    RGLB="$1_mu" \
+    I="./output/${line_name}/${line_name}_mu.sort.md.bam" \
+    O="./output/${line_name}/${line_name}_mu.sort.md.rg.bam" \
+    RGLB="${line_name}_mu" \
     RGPL=illumina \
-    RGSM="$1_mu" \
+    RGSM="${line_name}_mu" \
     RGPU=run1 \
     SORT_ORDER=coordinate &
 picard AddOrReplaceReadGroups \
-    I="./output/$1/$1_wt.sort.md.bam" \
-    O="./output/$1/$1_wt.sort.md.rg.bam" \
-    RGLB="$1_wt" \
+    I="./output/${line_name}/${line_name}_wt.sort.md.bam" \
+    O="./output/${line_name}/${line_name}_wt.sort.md.rg.bam" \
+    RGLB="${line_name}_wt" \
     RGPL=illumina \
-    RGSM="$1_wt" \
+    RGSM="${line_name}_wt" \
     RGPU=run1 \
     SORT_ORDER=coordinate
 wait
 
 # build BAM index
 picard BuildBamIndex \
-    INPUT="./output/$1/$1_mu.sort.md.rg.bam" \
-    O="./output/$1/${1}_mu.sort.md.rg.bai" &
+    INPUT="./output/${line_name}/${line_name}_mu.sort.md.rg.bam" \
+    O="./output/${line_name}/${1}_mu.sort.md.rg.bai" &
 picard BuildBamIndex \
-    INPUT="./output/$1/$1_wt.sort.md.rg.bam" \
-    O="./output/$1/${1}_wt.sort.md.rg.bai"
+    INPUT="./output/${line_name}/${line_name}_wt.sort.md.rg.bam" \
+    O="./output/${line_name}/${1}_wt.sort.md.rg.bai"
 wait
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
@@ -156,16 +165,16 @@ echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 # GATK HC Variant calling
 gatk HaplotypeCaller \
     -R "$reference_genome" \
-    -I "./output/$1/$1_mu.sort.md.rg.bam" \
-    -I "./output/$1/$1_wt.sort.md.rg.bam" \
-    -O "./output/$1/$1.hc.vcf" \
+    -I "./output/${line_name}/${line_name}_mu.sort.md.rg.bam" \
+    -I "./output/${line_name}/${line_name}_wt.sort.md.rg.bam" \
+    -O "./output/${line_name}/${line_name}.hc.vcf" \
     -output-mode EMIT_ALL_CONFIDENT_SITES \
-    --native-pair-hmm-threads 20
+    --native-pair-hmm-threads_limit $threads_limit
 
 # snpEff, labeling snps with annotations and potential impact on gene function
-snpEff "$my_species" \
-    -s "./output/$1/snpEff/${1}_snpEff_summary.html" \
-    "./output/$1/$1.hc.vcf" > "./output/$1/$1.se.vcf"
+snpEff "$reference_genome_name" \
+    -s "./output/${line_name}/snpEff/${1}_snpEff_summary.html" \
+    "./output/${line_name}/${line_name}.hc.vcf" > "./output/${line_name}/${line_name}.se.vcf"
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "Haplotypes called and snps labeled. Cleaning data."
@@ -175,45 +184,45 @@ echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 SnpSift extractFields \
 	-s ":" \
 	-e "NaN" \
-	./output/$1/$1.se.vcf \
-	CHROM POS  REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" "ANN[*].IMPACT" "GEN[*].GT" "GEN[$1_mu].AD" "GEN[$1_wt].AD" > ./output/$1/$1.table
+	./output/${line_name}/${line_name}.se.vcf \
+	CHROM POS  REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" "ANN[*].IMPACT" "GEN[*].GT" "GEN[${line_name}_mu].AD" "GEN[${line_name}_wt].AD" > ./output/${line_name}/${line_name}.table
 
-grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/$1/$1.table > ./output/$1/$1.ems.table.tmp
+grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' ./output/${line_name}/${line_name}.table > ./output/${line_name}/${line_name}.ems.table.tmp
 
-sed -i 's/NaN://g' ./output/$1/$1.ems.table.tmp
+sed -i 's/NaN://g' ./output/${line_name}/${line_name}.ems.table.tmp
 
 #[mu:wt] genotypes. Grab appropriate genotypes for analysis. 0/1:0/1 included in both analyses due to occasianal leaky genotyping by GATK HC. 
-if [ "$3" = 'R' ]; then 
-	grep -F -e '1/1:0/1' -e '0/1:0/0' -e '0/1:0/1' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
+if [ "${allele_R_or_D}" = 'R' ]; then 
+	grep -F -e '1/1:0/1' -e '0/1:0/0' -e '0/1:0/1' ./output/${line_name}/${line_name}.ems.table.tmp > ./output/${line_name}/${line_name}.ems.table
 else 
-	grep -F -e '0/1:0/0' -e '1/1:0/0' -e '0/1:0/1' ./output/$1/$1.ems.table.tmp > ./output/$1/$1.ems.table
+	grep -F -e '0/1:0/0' -e '1/1:0/0' -e '0/1:0/1' ./output/${line_name}/${line_name}.ems.table.tmp > ./output/${line_name}/${line_name}.ems.table
 fi
 
-awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", $10) ; gsub(",", "\t", $11) ; print }' ./output/$1/$1.ems.table
+awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", ${line_name}0) ; gsub(",", "\t", ${line_name}1) ; print }' ./output/${line_name}/${line_name}.ems.table
 
 #remove complex genotypes
-awk -i inplace -F'\t' 'NF==13' ./output/$1/$1.ems.table
+awk -i inplace -F'\t' 'NF==13' ./output/${line_name}/${line_name}.ems.table
 
 #remove non-numeric chromasomes. This will get rid of chloroplastic and mitochondrial polymorphisms. 
-awk -i inplace '$1 == ($1+0)' ./output/$1/$1.ems.table
+awk -i inplace '${line_name} == (${line_name}+0)' ./output/${line_name}/${line_name}.ems.table
 
 #remove known snps
-awk 'FNR==NR{a[$1$2];next};!($1$2 in a) || $1~/#CHROM/' $knownsnps ./output/$1/$1.ems.table > ./output/$1/$1.noknownsnps.table
+awk 'FNR==NR{a[${line_name}${pairedness}];next};!(${line_name}${pairedness} in a) || ${line_name}~/#CHROM/' $knownsnps ./output/${line_name}/${line_name}.ems.table > ./output/${line_name}/${line_name}.noknownsnps.table
 
 #add headers
-sed -i '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' ./output/$1/$1.noknownsnps.table
+sed -i '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' ./output/${line_name}/${line_name}.noknownsnps.table
 
 #clean up and organize. Change cleanup variable to "False", or comment out to disable.  
 if [ "$cleanup" = True ]; then
-	rm ./output/$1/*.tmp
-	rm ./output/$1/*.bam
-	rm ./output/$1/*.sam
-	rm ./output/$1/*.idx
-	rm ./output/$1/*.bai
-	rm ./output/$1/*.matrics.txt
-	rm ./output/$1/${1}.table
-	rm ./output/$1/${1}.ems.table
-	rm ./output/$1/${1}.hc.vcf
+	rm ./output/${line_name}/*.tmp
+	rm ./output/${line_name}/*.bam
+	rm ./output/${line_name}/*.sam
+	rm ./output/${line_name}/*.idx
+	rm ./output/${line_name}/*.bai
+	rm ./output/${line_name}/*.matrics.txt
+	rm ./output/${line_name}/${1}.table
+	rm ./output/${line_name}/${1}.ems.table
+	rm ./output/${line_name}/${1}.hc.vcf
 
 fi
 
