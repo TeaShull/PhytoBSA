@@ -15,13 +15,13 @@ My aim is to consolidate multiple techniques for identifiying causal EMS-induced
 ## Installation
 Install and activate the conda environment from the pyatbsa_env.yml file. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda's environment solver is comparitivly very inefficient (conda sometimes freezes trying to resolve this environment).
 
-`mamba env update --name pyatbsa --file pyatbsa_env.yml`
+`mamba env update --name pyatbsa --file env_thale_BSA.yml`
 
 `mamba activate pyatbsa`
 
 or, if you are attempting to use conda (not recommended, but probably possible)
 
-`conda env update --name pyatbsa --file pyatbsa_env.yml`
+`conda env update --name pyatbsa --file env_thale_BSA.yml`
 
 `conda activate pyatbsa`
 
