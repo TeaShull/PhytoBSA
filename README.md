@@ -48,7 +48,7 @@ The files must be formatted as follows:
 
 ### Running
  
- `./PyAtBSA.py -cl` 
+ `./thale_BSA.py -cl` 
 
 
 ## Output
