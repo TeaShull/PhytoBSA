@@ -41,10 +41,10 @@ try:
             from variables import *
             experiment_dictionary = thale_bsa_utils.create_experiment_dictionary()
 
-            #thale_bsa_utils.vcf_file_generation(experiment_dictionary, 
-            #reference_genome_name, snpEff_db_name, reference_genome_source, 
-            #threads_limit, cleanup, known_snps
-            #)
+            thale_bsa_utils.vcf_file_generation(experiment_dictionary, 
+            reference_genome_name, snpEff_db_name, reference_genome_source, 
+            threads_limit, cleanup, known_snps
+            )
             thale_bsa_utils.data_analysis(experiment_dictionary, command_line)
             quit()
         else:

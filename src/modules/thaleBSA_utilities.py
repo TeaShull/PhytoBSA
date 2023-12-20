@@ -69,7 +69,8 @@ class ThaleBSAUtilities:
             for key, value in experiment_dictionary.items():
                 try:
                     error_handler('attempt', f"Generating VCF file for {key}...")
-                    vcfgen_script_path = os.path.join(os.getcwd(), 'VCFgen.sh')
+                    modules_dir = MODULES_DIR
+                    vcfgen_script_path = os.path.join(modules_dir, 'VCFgen.sh')
                     args = (key, value['reads'], value['allele'],
                             reference_genome_name, snpEff_db_name,
                             reference_genome_source, threads_limit,

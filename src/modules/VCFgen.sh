@@ -7,16 +7,17 @@
 #     cleanup, known_snps
 # )
 
-line_name = $1
-pairedness = $2
-allele_R_or_D = $3
-reference_genome_name = $4
-snpEff_db_name = $5
-reference_genome_source = $6
-threads_limit = $7
-threads_halfed = ${threads_limit}/2
-cleanup = $8
-known_snps = $9
+line_name="${1}"
+pairedness="${2}"
+allele_R_or_D="${3}"
+reference_genome_name="${4}"
+snpEff_db_name="${5}"
+reference_genome_source="${6}"
+threads_limit="${7}"
+threads_halfed="$((threads_limit / 2))"
+cleanup="${8}"
+known_snps="${9}"
+
 
 echo "Preparing references and directory structure"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
