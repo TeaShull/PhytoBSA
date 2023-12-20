@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 # Organize variables passed from thale_bsa_utils.vcf_file_generation(args)
+# args - 
+# (key, value['reads'], value['allele'],
+#     reference_genome_name, snpEff_db_name,
+#     reference_genome_source, threads_limit,
+#     cleanup, known_snps
+# )
+
 line_name = $1
 pairedness = $2
 allele_R_or_D = $3

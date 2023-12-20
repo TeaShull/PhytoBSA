@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import inspect
 
 BASE_DIR = os.getcwd()
 SRC_DIR =  os.path.join(BASE_DIR, 'src')
@@ -11,3 +12,36 @@ STATIC_DIR = os.path.join(SRC_DIR,'static')
 MODULES_DIR = os.path.join(SRC_DIR,'modules')
 
 
+def error_handler(error_type, message):
+    function_name = inspect.currentframe().f_back.f_code.co_name
+    caller_frame = inspect.currentframe().f_back
+    script_name = os.path.basename(inspect.getfile(caller_frame))
+    prefixes = {
+        'trigger': '[Flask Trigger]',
+        'attempt': '[Attempt]',
+        'success': '[Success]',
+        'fail': '[Fail]'
+    }
+
+    if error_type in prefixes:
+        prefix = prefixes[error_type]
+    else:
+        prefix = '(Unknown Type)'
+
+    if function_name != '<module>':
+    	error_message = f"{prefix} (Function:{function_name}) {message}"
+    else:
+    	error_message = f"{prefix} (Core logic of:{script_name}) {message}"
+    print(error_message)
+
+def print_delimiter(message):
+	print(f'''
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
+||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
+|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\||/ \|||\|||/ \|||\|||
+~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `~   `-~ `-`   `-~ `-`
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+{message}
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+        ''')
