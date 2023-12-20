@@ -12,6 +12,7 @@ STATIC_DIR = os.path.join(SRC_DIR,'static')
 MODULES_DIR = os.path.join(SRC_DIR,'modules')
 
 
+# General Functions
 def error_handler(error_type, message):
     function_name = inspect.currentframe().f_back.f_code.co_name
     caller_frame = inspect.currentframe().f_back
@@ -29,13 +30,13 @@ def error_handler(error_type, message):
         prefix = '(Unknown Type)'
 
     if function_name != '<module>':
-    	error_message = f"{prefix} (Function:{function_name}) {message}"
+        error_message = f"{prefix} (Function:{function_name}) {message}"
     else:
-    	error_message = f"{prefix} (Core logic of:{script_name}) {message}"
+        error_message = f"{prefix} (Core logic of:{script_name}) {message}"
     print(error_message)
 
 def print_delimiter(message):
-	print(f'''
+    print(f'''
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
 -. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
 ||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||

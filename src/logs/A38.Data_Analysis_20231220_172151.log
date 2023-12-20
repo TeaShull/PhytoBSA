@@ -1,0 +1,107 @@
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:587: PlotnineWarning: Saving 8 x 6 in image.
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:588: PlotnineWarning: Filename: /mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PyAtBSA/output/A38/A38_g_s.png
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:587: PlotnineWarning: Saving 8 x 6 in image.
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:588: PlotnineWarning: Filename: /mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PyAtBSA/output/A38/A38_gs_yhat.png
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:587: PlotnineWarning: Saving 8 x 6 in image.
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:588: PlotnineWarning: Filename: /mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PyAtBSA/output/A38/A38_rs_g.png
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:587: PlotnineWarning: Saving 8 x 6 in image.
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:588: PlotnineWarning: Filename: /mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PyAtBSA/output/A38/A38_ratio.png
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:587: PlotnineWarning: Saving 8 x 6 in image.
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:588: PlotnineWarning: Filename: /mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PyAtBSA/output/A38/A38_ratio_yhat.png
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:587: PlotnineWarning: Saving 8 x 6 in image.
+/opt/mambaforge/envs/pyatbsa/lib/python3.11/site-packages/plotnine/ggplot.py:588: PlotnineWarning: Filename: /mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PyAtBSA/output/A38/A38_rs_g_yhat.png
+
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
+||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
+|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\||/ \|||\|||/ \|||\|||
+~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `~   `-~ `-`   `-~ `-`
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+Beginning analysis of A38. Loading VCF tables.
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+        
+[Attempt] (Core logic of:analysis.py) Attempting to load VCF table for line A38
+[Attempt] (Core logic of:analysis.py) The VCF table for line A38 was successfully loaded.
+
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
+||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
+|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\||/ \|||\|||/ \|||\|||
+~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `~   `-~ `-`   `-~ `-`
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+Calculating Segregation Statistics for A38.
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+        
+[Attempt] (Core logic of:analysis.py) Initialize calculations for delta-SNP ratios and G-statistics for A38
+[Attempt] (Function:delta_snp_array) Calculate delta-SNP ratios for A38...
+[Success] (Function:delta_snp_array) Delta-SNP ratio calculation successful for A38
+[Attempt] (Function:g_statistic_array) Calculate G-statistics for A38....
+[Success] (Function:g_statistic_array) G-statistic calculation completed for A38
+[Success] (Core logic of:analysis.py) Calculation of delta-SNP ratios and G-statistics were successful.
+[Attempt] (Function:drop_NA_and_indels) Removing NAs and indels
+[Success] (Function:drop_NA_and_indels) Indels dropped, and NaN values cleaned successfully.
+[Attempt] (Core logic of:analysis.py) Initialize LOESS smoothing calculations.
+[Attempt] (Function:smooth_chr_facets) Smooth Facets
+[Attempt] (Function:smooth_single_chr) Loess smoothing of chromosome:1 for A38...
+[Success] (Function:smooth_single_chr) Loess smoothing of chromosome:1 for A38 complete
+[Attempt] (Function:smooth_single_chr) Loess smoothing of chromosome:2 for A38...
+[Success] (Function:smooth_single_chr) Loess smoothing of chromosome:2 for A38 complete
+[Attempt] (Function:smooth_single_chr) Loess smoothing of chromosome:3 for A38...
+[Success] (Function:smooth_single_chr) Loess smoothing of chromosome:3 for A38 complete
+[Attempt] (Function:smooth_single_chr) Loess smoothing of chromosome:4 for A38...
+[Success] (Function:smooth_single_chr) Loess smoothing of chromosome:4 for A38 complete
+[Attempt] (Function:smooth_single_chr) Loess smoothing of chromosome:5 for A38...
+[Success] (Function:smooth_single_chr) Loess smoothing of chromosome:5 for A38 complete
+[Success] (Core logic of:analysis.py) LOESS smoothing calculations successful.
+
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
+||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
+|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\||/ \|||\|||/ \|||\|||
+~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `~   `-~ `-`   `-~ `-`
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+Calculating empirical cutoff for LOESS ratio-scaled g-stats
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+        
+[Attempt] (Core logic of:analysis.py) Initialize calculation of empirical cutoffs
+[Attempt] (Function:empirical_cutoff) Calculate empirical cutoff for A38...
+[Success] (Function:empirical_cutoff) Empirical cutoff calculation completed for A38
+[Success] (Core logic of:analysis.py) G-statistic cutoff = 14.278714566121778.
+[Success] (Core logic of:analysis.py) Ratio-scaled G-statistic cutoff = 12.93932055557952.
+[Success] (Core logic of:analysis.py) LOESS smoothed Ratio-scaled G-statistic cutoff = 0.8709895587313156.
+[Success] (Core logic of:analysis.py) Empirical cutoff via randomization for A38 completed.
+[Attempt] (Core logic of:analysis.py) Initialize the identification of likely candidates
+[Success] (Core logic of:analysis.py) Results and candidates tables for A38 generated.
+
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
+||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
+|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\||/ \|||\|||/ \|||\|||
+~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `~   `-~ `-`   `-~ `-`
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+Generating plots
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+        
+[Attempt] (Core logic of:analysis.py) Attempting to produce and save plots for A38...
+[Attempt] (Function:plot_data) Plot data and save plots for A38...
+[Success] (Function:plot_data) Plots saved for A38
+[Attempt] (Function:plot_data) Plot data and save plots for A38...
+[Success] (Function:plot_data) Plots saved for A38
+[Attempt] (Function:plot_data) Plot data and save plots for A38...
+[Success] (Function:plot_data) Plots saved for A38
+[Attempt] (Function:plot_data) Plot data and save plots for A38...
+[Success] (Function:plot_data) Plots saved for A38
+[Attempt] (Function:plot_data) Plot data and save plots for A38...
+[Success] (Function:plot_data) Plots saved for A38
+[Attempt] (Function:plot_data) Plot data and save plots for A38...
+[Success] (Function:plot_data) Plots saved for A38
+
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
+||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
+|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\||/ \|||\|||/ \|||\|||
+~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `~   `-~ `-`   `-~ `-`
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+Results for A38 generated.
+>=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+        

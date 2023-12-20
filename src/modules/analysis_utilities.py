@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+import warnings
 from plotnine import ggplot, aes, geom_point, geom_line, theme_linedraw, facet_grid, theme, ggtitle, xlab, ylab, geom_hline
 from config import error_handler, BASE_DIR, SRC_DIR, INPUT_DIR, MODULES_DIR, OUTPUT_DIR
 
@@ -156,6 +157,7 @@ class AnalysisUtilities:
             return None, None, None
 
     def plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+        warnings.filterwarnings( "ignore", module = "plotnine\..*" )
         error_handler('attempt', f"Plot data and save plots for {self.current_line_name}...")
         try:
             mb_conversion_constant = 0.000001
@@ -204,7 +206,7 @@ class AnalysisUtilities:
                 dpi=500
             )
 
-            error_handler('success', f"Plots saved for {self.current_line_name}")
+            error_handler('success', f"Plot saved {file_path_name}")
         except Exception as e:
             error_handler('fail', f"Plotting data failed for {self.current_line_name}: {e}")
 
