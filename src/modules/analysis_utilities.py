@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from plotnine import ggplot, aes, geom_point, geom_line, theme_linedraw, facet_grid, theme, ggtitle, xlab, ylab, geom_hline
-import config
+from config import error_handler, BASE_DIR, SRC_DIR, INPUT_DIR, MODULES_DIR, OUTPUT_DIR
 
 class AnalysisUtilities:
     LOWESS_SPAN = 0.3
@@ -12,37 +12,34 @@ class AnalysisUtilities:
         self.current_line_name = current_line_name
 
     def drop_NA_and_indels(self, df):
-        print(f"(Attempt) Removing NAs and indels")
+        error_handler('attempt', 'Removing NAs and indels')
         try:
             df = df[(df["ref"].apply(lambda x: len(x) == 1)) & (df["alt"].apply(lambda x: len(x) == 1))]
             df.dropna(axis=0, how='any', subset=["ratio"], inplace=True)
-            print("(Success)Indels dropped, and NaN values cleaned successfully.")
+            error_handler('success', 'Indels dropped, and NaN values cleaned successfully.')
             return df
         except Exception as e:
-            print(f"An error occurred during data processing: {e}")
+            error_handler('fail', f"An error occurred during data processing: {e}")
             return None
 
-
     def delta_snp_array(self, wtr, wta, mur, mua, suppress):
-        """Calculate delta-SNP ratio."""
+        if suppress == False:
+            error_handler('attempt', f"Calculate delta-SNP ratios for {self.current_line_name}...")
         try:
-            if suppress == False:
-                print(f"(Attempt) calculate delta-SNP ratios for {self.current_line_name}...")
             result = ((wtr) / (wtr + wta)) - ((mur) / (mur + mua))
             if suppress == False:
-                print(f"(Success) Delta-SNP ratio calculation successful for {self.current_line_name}")
+                error_handler('success', f"Delta-SNP ratio calculation successful for {self.current_line_name}")
             return result
         except Exception as e:
-            print(f"(Fail) Error in delta_snp_array for {self.current_line_name}: {e}")
+            error_handler('fail', f"Error in delta_snp_array for {self.current_line_name}: {e}")
             return None
 
     def g_statistic_array(self, o1, o3, o2, o4, suppress):
-        """Calculate G-statistic using numpy array input."""
-        if suppress == False:
-            print(f"(Attempt) calculate G-statistics for {self.current_line_name}....")
+        if suppress == False:  
+            error_handler('attempt', f"Calculate G-statistics for {self.current_line_name}....")
         try:
             np.seterr(all='ignore')
-
+            
             nonzero_mask = o1 + o2 + o3 + o4 != 0
 
             e1 = np.where(nonzero_mask, (o1 + o2) * (o1 + o3) / (o1 + o2 + o3 + o4), 0)
@@ -57,17 +54,19 @@ class AnalysisUtilities:
 
             result = np.where(e1 * e2 * e3 * e4 == 0, 0.0, llr1 + llr2 + llr3 + llr4)
             if suppress == False:
-                print(f"(Success) G-statistic calculation completed for {self.current_line_name}")
+                error_handler('success', f"G-statistic calculation completed for {self.current_line_name}")
             return result
         except Exception as e:
-            print(f"(Fail) Error in g_statistic_array for {self.current_line_name}: {e}")
+            error_handler('fail', f"Error in g_statistic_array for {self.current_line_name}: {e}")
             return None
 
     def smooth_chr_facets(self, df, lowess_span, smooth_edges_bounds):
+        error_handler('attempt', 'Smooth Facets')
         lowess_function = sm.nonparametric.lowess
         df_list = []
 
-        def smooth_single_chr(df_chr):
+        def smooth_single_chr(df_chr, chr):
+            error_handler('attempt', f"Loess smoothing of chromosome:{chr} for {self.current_line_name}...")
             psuedo_pos = []
             positions = df_chr['pos'].to_numpy()
             deltas = [pos - positions[i - 1] if i > 0 else pos for i, pos in enumerate(positions)]
@@ -101,19 +100,21 @@ class AnalysisUtilities:
             df_chr['RS_G_yhat'] = lowess_function(RS_G_Y, X, frac=lowess_span)[:, 1]
 
             df_chr = df_chr[smooth_edges_bounds:-smooth_edges_bounds].drop(columns='pseudo_pos')
+            error_handler('success', f"Loess smoothing of chromosome:{chr} for {self.current_line_name} complete")
             return df_chr
 
         chr_facets = df["chr"].unique()
 
         for i in chr_facets:
             df_chr = df[df['chr'] == i].copy()
-            df_list.append(smooth_single_chr(df_chr))
+            result = smooth_single_chr(df_chr, i)
+            if result is not None:
+                df_list.append(result)
 
         return pd.concat(df_list)
 
     def empirical_cutoff(self, posin, wt, mu, shuffle_iterations, lowess_span):
-        """Calculate empirical cutoff."""
-        print(f"(Attempt) Calculate empirical cutoff for {self.current_line_name}...")
+        error_handler('attempt', f"Calculate empirical cutoff for {self.current_line_name}...")
         try:
             lowess = sm.nonparametric.lowess
             smGstatAll, smRatioAll, RS_GAll, smRS_G_yhatAll = [], [], [], []
@@ -145,15 +146,14 @@ class AnalysisUtilities:
             RS_G_Y_99p = np.percentile(smRS_G_yhatAll, 99.99)
 
             result = G_S_95p, RS_G_95p, RS_G_Y_99p
-            print(f"(Success) Empirical cutoff calculation completed for {self.current_line_name}")
+            error_handler('success', f"Empirical cutoff calculation completed for {self.current_line_name}")
             return result
         except Exception as e:
-            print(f"(Fail) Error in empirical_cutoff for {self.current_line_name}: {e}")
+            error_handler('fail', f"Error in empirical_cutoff for {self.current_line_name}: {e}")
             return None, None, None
 
     def plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
-        """Plot data."""
-        print(f"(Attempt) Plot data and save plots for {self.current_line_name}...")
+        error_handler('attempt', f"Plot data and save plots for {self.current_line_name}...")
         try:
             mb_conversion_constant = 0.000001
             df['pos_mb'] = df['pos'] * mb_conversion_constant
@@ -191,16 +191,27 @@ class AnalysisUtilities:
                 plot += geom_line(color='blue')
 
             # Save plot
-            output_dir = config.OUTPUT_DIR
+            output_dir = OUTPUT_DIR  # Assuming OUTPUT_DIR is defined somewhere
             plot_name = f"{self.current_line_name}_{y_column.lower()}.png"
             file_path_name = os.path.join(output_dir, self.current_line_name, plot_name)
             plot.save(filename=file_path_name, 
                 height=6, 
                 width=8, 
-                units = 'in', 
+                units='in', 
                 dpi=500
             )
 
-            print(f"(Success) Plots saved for {self.current_line_name}")
+            error_handler('success', f"Plots saved for {self.current_line_name}")
         except Exception as e:
-            print(f"(Fail) Plotting data failed for {self.current_line_name}: {e}")
+            error_handler('fail', f"Plotting data failed for {self.current_line_name}: {e}")
+
+# Assuming OUTPUT_DIR is defined somewhere
+# OUTPUT_DIR = ...
+
+# Example usage
+# Replace with your actual data and parameters
+# analysis = AnalysisUtilities("YourCurrentLineName")
+# df = pd.DataFrame(...)  # Your DataFrame
+# analysis.drop_NA_and_indels(df)
+# analysis.plot_data(df, y_column='your_column', title_text='Your Title', ylab_text='Your Y-axis Label')
+

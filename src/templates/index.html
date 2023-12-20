@@ -9,26 +9,23 @@
 
 <body>
     <h1>PyAtBSA</h1>
-    <form method="post">
-        <h1>Species</h1>
+    <form method="post" action="{{ url_for('index') }}">
+        <h1>Reference Genome Name</h1>
         <div class="button-container">
             <button type="button" onclick="showInput('urlInput')">URL</button>
             <button type="button" onclick="showInput('fileInput')">On this Device</button>
         </div>
         <div id="urlInput">
-            <label for="reference_source">Enter URL:</label>
-            <input type="text" name="reference_source">
+            <label for="reference_genome_name_url">Enter URL:</label>
+            <input type="text" name="reference_genome_name_url">
         </div>
         <div id="fileInput">
-            <label for="reference_source">Upload File:</label>
-            <input type="file" name="reference_source">
+            <label for="reference_genome_name_file">Upload File:</label>
+            <input type="file" name="reference_genome_name_file">
         </div>
 
         <h1>Reference Genome</h1>
-        <div class="button-container">
-            <button type="button" onclick="showInput('urlInput')">URL</button>
-            <button type="button" onclick="showInput('fileInput')">On this Device</button>
-        </div>
+        <!-- Assuming you want a similar structure for Reference Genome -->
 
         <h1>Threads</h1>
         <select name="threads_limit">
@@ -36,18 +33,14 @@
                 <option value="{{ i }}" {% if i == threads_limit %}selected{% endif %}>{{ i }}</option>
             {% endfor %}
         </select>
-    
+
         <label class="cleanup-container">
             <input type="checkbox" name="cleanup" {% if cleanup %}checked{% endif %}>
             <span>Cleanup Intermediate Files</span>
         </label>
 
-
-
         <br><br>
-        <button type="
-
-                <button type="submit">Submit</button>
+        <button type="submit">Submit</button>
     </form>
 
     <form action="{{ url_for('run_create_experiment_dictionary') }}" method="post">
@@ -73,4 +66,3 @@
     </script>
 </body>
 </html>
-
