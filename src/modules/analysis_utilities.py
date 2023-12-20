@@ -14,13 +14,16 @@ class AnalysisUtilities:
     def drop_NA_and_indels(self, df):
         error_handler('attempt', 'Removing NAs and indels')
         try:
-            df = df[(df["ref"].apply(lambda x: len(x) == 1)) & (df["alt"].apply(lambda x: len(x) == 1))]
+            # Use .loc for assignment to avoid the warning
+            df.loc[:, "ref"] = df["ref"].apply(lambda x: x if len(x) == 1 else np.nan)
+            df.loc[:, "alt"] = df["alt"].apply(lambda x: x if len(x) == 1 else np.nan)
             df.dropna(axis=0, how='any', subset=["ratio"], inplace=True)
             error_handler('success', 'Indels dropped, and NaN values cleaned successfully.')
             return df
         except Exception as e:
             error_handler('fail', f"An error occurred during data processing: {e}")
             return None
+
 
     def delta_snp_array(self, wtr, wta, mur, mua, suppress):
         if suppress == False:
