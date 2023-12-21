@@ -2,6 +2,7 @@
 
 import sys
 import os
+import uuid
 import pandas as pd
 import numpy as np
 from plotnine import (
@@ -14,6 +15,8 @@ from config import (
     BASE_DIR, SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR
 )
 from analysis_utilities import AnalysisUtilities
+from thaleBSA_utilities import ThaleBSAUtilities
+
 
 # Set up directories
 src_dir = SRC_DIR
@@ -26,12 +29,13 @@ log_dir = LOG_DIR
 if __name__ == "__main__":
     try:
         current_line_name = sys.argv[1]
+        analysis_uuid = sys.argv[2]
     except IndexError:
         error_handler('fail','Error parsing current_line_name as arg passed from analysis.py')
         print(f"Aborting analysis of {current_line_name}")
         quit()
 
-    print_delimiter(f"Beginning analysis of {current_line_name}. Loading VCF tables.")
+    thale_bsa_utils = ThaleBSAUtilities()
     analysis_utils = AnalysisUtilities(current_line_name)
     current_line_out_dir = os.path.join(output_dir, current_line_name)
 
@@ -49,6 +53,13 @@ if __name__ == "__main__":
     except Exception as e:
         error_handler('fail', f"An unexpected error occurred: {e}")
 
+        print(thale_bsa_utils.extract_uuid(vcftable_path))
+    
+    print_delimiter(
+    f"""
+        Beginning analysis of {current_line_name}. Loading VCF tables.
+    """)
+    
     # Calculate delta SNP ratio and G-statistic
     print_delimiter(f"Calculating Segregation Statistics for {current_line_name}.")
     error_handler('attempt', f"Initialize calculations for delta-SNP ratios and G-statistics for {current_line_name}")
@@ -128,13 +139,12 @@ if __name__ == "__main__":
         results_table_path = os.path.join(
             current_line_out_dir, results_table_name
         )
+        df.to_csv(results_table_path, sep='\t', index=False)
 
         candidates_table_name = f"{current_line_name}_candidates_table.tsv"
         candidates_table_path = os.path.join(
             current_line_out_dir, candidates_table_name
         )
-
-        df.to_csv(results_table_path, sep='\t', index=False)
         likely_cands_sorted.to_csv(candidates_table_path, sep='\t', index=False)
         
         error_handler('success', f"Results and candidates tables for {current_line_name} generated.")
@@ -158,7 +168,7 @@ if __name__ == "__main__":
     try:
         analysis_utils.current_line_name = current_line_name
         for plot_scenario in plot_scenarios:
-            analysis_utils.plot_data(df, *plot_scenario)
+            analysis_utils.plot_data(df, analysis_uuid, *plot_scenario)
         print_delimiter(f"Results for {current_line_name} generated.")
     except Exception as e:
         error_handler('fail', f"An error occurred while producing and saving plots: {e}")

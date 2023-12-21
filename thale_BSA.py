@@ -48,10 +48,8 @@ try:
             thale_bsa_utils.data_analysis(experiment_dictionary)
             quit()
         else:
-            command_line = False
             error_handler('success', "Command line argument is not set to 'cl'. Starting flask app...")
     else:
-        command_line = False
         error_handler('success', "No command line arguments provided. Starting flask app...")
 except Exception as e:
     error_handler('fail', 'Starting thaleBSA has failed: {e}')
@@ -132,18 +130,18 @@ def run_vcf_file_generation():
 @app.route('/run_data_analysis', methods=['POST'])
 def run_data_analysis():
     error_handler('trigger', 'Run data analysis triggered')
-    try:
-        experiment_dictionary = session.get('experiment_dictionary', {})
-        thale_bsa_utils.data_analysis(experiment_dictionary, command_line)  # Use the class method
-        return render_template('index.html', 
-            message="Data analysis started.", 
-            available_threads=available_threads
-        )
-    except Exception as e:
-         return render_template('index.html', 
-            message="Flask trigger for running analysis seems to have failed.", 
-            available_threads=available_threads
-        )
+    #try:
+    experiment_dictionary = session.get('experiment_dictionary', {})
+    thale_bsa_utils.data_analysis(experiment_dictionary)  # Use the class method
+    return render_template('index.html', 
+        message="Data analysis started.", 
+        available_threads=available_threads
+    )
+    # #except Exception as e:
+    #      return render_template('index.html', 
+    #         message="Flask trigger for running analysis seems to have failed.", 
+    #         available_threads=available_threads
+    #     )
 
 #Initialize Flask App
 error_handler('attempt', 'Starting ThaleBSA Flask App')

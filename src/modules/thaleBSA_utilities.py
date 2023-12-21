@@ -9,9 +9,6 @@ from config import error_handler, INPUT_DIR, MODULES_DIR, LOG_DIR
 
 #General Utilities Class
 class ThaleBSAUtilities:
-    def __init__(self, vcf_uuid, analysis_uuid):
-        self.vcf_uuid
-        self.analysis_uuid
 
     @staticmethod
     def detect_file_type(file):
@@ -30,22 +27,23 @@ class ThaleBSAUtilities:
             return None
 
     def extract_uuid(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            # Read the first line from the file
-            first_line = file.readline().strip()
+        error_handler('attempt', "attempting to retrieve UUID from vcf table...")
+        try:
+            with open(file_path, 'r') as file:
+                # Read the first line from the file
+                first_line = file.readline().strip()
 
-            # Check if the line starts with '#UUID'
-            if first_line.startswith('#UUID'):
-                # Extract characters directly after '#UUID'
-                uuid_value = first_line[len('#UUID'):].strip()
-                print(f"UUID value: {uuid_value}")
-            else:
-                print("No matching pattern found in the first line.")
-    except FileNotFoundError:
-        print(f"File not found: {file_path}")
-    except Exception as e:
-        print(f"Error: {e}")
+                # Check if the line contains '# UUID:'
+                if '# UUID:' in first_line:
+                    # Extract characters directly after '# UUID:'
+                    uuid_value = first_line.split('# UUID:', 1)[1].strip()
+                    return uuid_value
+                else:
+                    error_handler('fail', "No UUID found in the first line of the table.")
+        except FileNotFoundError:
+            error_handler('fail', f"File not found: {file_path}")
+        except Exception as e:
+            error_handler('fail', f"Error: {e}")
 
     def create_experiment_dictionary(self):
         error_handler('attempt', "Creating a dictionary to store experiment details...")
@@ -101,37 +99,42 @@ class ThaleBSAUtilities:
             try:
                 # Construct cmd
                 modules_dir = MODULES_DIR
+                log_dir = LOG_DIR
+                vcf_table_uuid = str(uuid.uuid4())
                 vcfgen_script_path = os.path.join(modules_dir, 'VCFgen.sh')
                 args = (key, value['reads'], value['allele'],
                         reference_genome_name, snpEff_db_name,
                         reference_genome_source, threads_limit,
-                        cleanup, known_snps
+                        cleanup, known_snps, vcf_table_uuid
                         )
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                log_name = f"{key}.VCF_file_generation.{timestamp}.log"
-                cmd = f"{vcfgen_script_path} {' '.join(map(str, args))} | tee {log_name}"
+                log_name = f"{key}.VCF_file_generation.{timestamp}.{vcf_table_uuid}.log"
+                log_path = os.path.join(log_dir, log_name)
+                cmd = f"{vcfgen_script_path} {' '.join(map(str, args))} | tee {log_path}"
 
                 # Run cmd
                 subprocess.run(cmd, shell=True, text=True, check=True)
 
-                error_handler('success', f"VCF file generated for {key}. Log saved to {log_name}")
+                error_handler('success', f"VCF file generated for {key}. Log saved to {log_path}")
             except Exception as e:
                 error_handler('fail', f"Error while generating the VCF file for {key}: {e}")
 
         error_handler('success', "VCF file generation process complete")
 
 
-    def data_analysis(self, experiment_dictionary, command_line):
+    def data_analysis(self, experiment_dictionary):
         error_handler('attempt', "Attempting to perform data analysis...")
         try:
             modules_dir = MODULES_DIR
+            log_dir = LOG_DIR
+            analysis_uuid = str(uuid.uuid4())
             analysis_script = os.path.join(modules_dir, 'analysis.py')
             for key in experiment_dictionary:
                 # Construct cmd
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                log_name = f"{key}.Data_Analysis_{timestamp}.log"
-                cmd = f'python {analysis_script} {key} | tee {log_name}'
-
+                log_name = f"{key}.Data_Analysis_{timestamp}.{analysis_uuid}.log"
+                log_path = os.path.join(log_dir, log_name)
+                cmd = f'python {analysis_script} {key} {analysis_uuid} | tee {log_path}'
                 # Run cmd
                 subprocess.run(cmd, shell=True, text=True, check=True)
 

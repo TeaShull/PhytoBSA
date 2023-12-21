@@ -156,7 +156,7 @@ class AnalysisUtilities:
             error_handler('fail', f"Error in empirical_cutoff for {self.current_line_name}: {e}")
             return None, None, None
 
-    def plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+    def plot_data(self, df, analysis_uuid, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
         warnings.filterwarnings("ignore", module="plotnine\..*")
         error_handler('attempt', f"Plot data and save plots for {self.current_line_name}...")
         
@@ -194,15 +194,11 @@ class AnalysisUtilities:
             if lines:
                 plot += geom_line(color='blue')
 
-            # Add VCF UUID and Analysis UUID text
-            uuid_text = f"VCF UUID: {self.vcf_uuid}\nAnalysis UUID: {self.analysis_uuid}"
-            uuid_annotation = annotate("text", x=0, y=0, label=uuid_text, size=7, hjust=0, vjust=0)
-
             # Save plot
             output_dir = OUTPUT_DIR  # Assuming OUTPUT_DIR is defined somewhere
             plot_name = f"{self.current_line_name}_{y_column.lower()}.png"
             file_path_name = os.path.join(output_dir, self.current_line_name, plot_name)
-            (plot + uuid_annotation).save(
+            plot.save(
                 filename=file_path_name,
                 height=6,
                 width=8,
