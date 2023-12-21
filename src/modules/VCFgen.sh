@@ -18,8 +18,9 @@ threads_halfed="$((threads_limit / 2))"
 cleanup="${8}"
 known_snps="${9}"
 
+formatted_timestamp=$(date "+%Y.%m.%d ~%H:%M")
 
-echo "Preparing references and directory structure"
+echo "$formatted_timestamp Preparing references and directory structure"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # make directory structure if it doesn't exist.
@@ -63,7 +64,7 @@ fi
 
 echo "References prepared, preparing VCF for ${line_name}"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "${line_name} reads seem to be ${pairedness}"
+echo "$formatted_timestamp ${line_name} reads seem to be ${pairedness}"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # set input files as paired-end or single-read
@@ -90,7 +91,7 @@ bwa mem \
     $input_files_mu > "./output/${line_name}/${line_name}_mu.sam"
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "Converting sam to bam"
+echo $formatted_timestamp "Converting sam to bam"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 samtools view \
@@ -111,7 +112,7 @@ if [ "${pairedness}" == "paired-end" ]; then
         "./output/${line_name}/${line_name}_wt.bam" "./output/${line_name}/${line_name}_wt.fix.bam"
 fi
 
-echo "Sorting by coordinate"
+echo $formatted_timestamp "Sorting by coordinate"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # Coordinate sorting
@@ -167,7 +168,7 @@ picard BuildBamIndex \
 wait
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "Calling haplotypes. This may take awhile..."
+echo $formatted_timestamp "Calling haplotypes. This may take awhile..."
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # GATK HC Variant calling
@@ -185,7 +186,7 @@ snpEff "$reference_genome_name" \
     "./output/${line_name}/${line_name}.hc.vcf" > "./output/${line_name}/${line_name}.se.vcf"
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "Haplotypes called and snps labeled. Cleaning data."
+echo $formatted_timestamp "Haplotypes called and snps labeled. Cleaning data."
 echo	">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 #extract snpEFF data and variant information into a table, remove repetative NaN's and retain only those polymorphisms likely to arise from EMS.

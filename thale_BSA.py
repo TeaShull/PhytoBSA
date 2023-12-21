@@ -36,7 +36,6 @@ try:
     if len(sys.argv) > 1:
         # Check if the first command line argument is set to 'cl'
         if sys.argv[1] == '-cl':
-            command_line = True
             error_handler('success', 'Command line argument is set to [-cl]. Running on command line.')
             error_handler('attempt', "Sourcing variables from variables.py")
             from variables import *
@@ -46,7 +45,7 @@ try:
             reference_genome_name, snpEff_db_name, reference_genome_source, 
             threads_limit, cleanup, known_snps
             )
-            thale_bsa_utils.data_analysis(experiment_dictionary, command_line)
+            thale_bsa_utils.data_analysis(experiment_dictionary)
             quit()
         else:
             command_line = False
@@ -114,21 +113,21 @@ def run_create_experiment_dictionary():
 @app.route('/run_vcf_file_generation', methods=['POST'])
 def run_vcf_file_generation():
     error_handler('trigger', 'VCF file generation triggered.')
-    try:
-        experiment_dictionary = session.get('experiment_dictionary', {})
-        thale_bsa_utils.vcf_file_generation(experiment_dictionary, species,
-            reference_genome_source, threads_limit, cleanup, known_snps
-        )  # Use the class method
-        return render_template('index.html', 
-            message="VCF file generation started.", 
-            available_threads=available_threads
-        )
-    except:
-        return render_template(
-            'index.html',
-            message='Flask trigger for VCF file generation seems to have failed.',
-            available_threads=available_threads
-        )
+    #try:
+    experiment_dictionary = session.get('experiment_dictionary', {})
+    thale_bsa_utils.vcf_file_generation(experiment_dictionary, reference_genome_name,
+        reference_genome_source, threads_limit, cleanup, known_snps
+    )  # Use the class method
+    return render_template('index.html', 
+        message="VCF file generation started.", 
+        available_threads=available_threads
+    )
+    # except:
+    #     return render_template(
+    #         'index.html',
+    #         message='Flask trigger for VCF file generation seems to have failed.',
+    #         available_threads=available_threads
+    #     )
 
 @app.route('/run_data_analysis', methods=['POST'])
 def run_data_analysis():

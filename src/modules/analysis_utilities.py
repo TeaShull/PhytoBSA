@@ -157,8 +157,9 @@ class AnalysisUtilities:
             return None, None, None
 
     def plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
-        warnings.filterwarnings( "ignore", module = "plotnine\..*" )
+        warnings.filterwarnings("ignore", module="plotnine\..*")
         error_handler('attempt', f"Plot data and save plots for {self.current_line_name}...")
+        
         try:
             mb_conversion_constant = 0.000001
             df['pos_mb'] = df['pos'] * mb_conversion_constant
@@ -168,9 +169,7 @@ class AnalysisUtilities:
             axis_y = ylab(ylab_text)
 
             if cutoff_value is not None:
-                cutoff = geom_hline(yintercept=cutoff_value, color='red',
-                                    linetype="dashed", size=0.3
-                                    )
+                cutoff = geom_hline(yintercept=cutoff_value, color='red', linetype="dashed", size=0.3)
                 plot = (chart
                         + geom_point(color='goldenrod', size=0.8)
                         + theme_linedraw()
@@ -195,14 +194,19 @@ class AnalysisUtilities:
             if lines:
                 plot += geom_line(color='blue')
 
+            # Add VCF UUID and Analysis UUID text
+            uuid_text = f"VCF UUID: {self.vcf_uuid}\nAnalysis UUID: {self.analysis_uuid}"
+            uuid_annotation = annotate("text", x=0, y=0, label=uuid_text, size=7, hjust=0, vjust=0)
+
             # Save plot
             output_dir = OUTPUT_DIR  # Assuming OUTPUT_DIR is defined somewhere
             plot_name = f"{self.current_line_name}_{y_column.lower()}.png"
             file_path_name = os.path.join(output_dir, self.current_line_name, plot_name)
-            plot.save(filename=file_path_name, 
-                height=6, 
-                width=8, 
-                units='in', 
+            (plot + uuid_annotation).save(
+                filename=file_path_name,
+                height=6,
+                width=8,
+                units='in',
                 dpi=500
             )
 
