@@ -106,11 +106,11 @@ wait
 # Fix paired-end
 if [ "${pairedness}" == "paired-end" ]; then
     samtools fixmate \
-        "${output_file_prefix}_mu.bam" \
-        "${output_file_prefix}_mu.fix.bam" &
-    samtools fixmate \
         "${output_file_prefix}_wt.bam" \
-        "${output_file_prefix}_wt.fix.bam"
+        "${output_file_prefix}_wt.fix.bam" &
+    samtools fixmate \ 
+        "${output_file_prefix}_mu.bam" \
+        "${output_file_prefix}_mu.fix.bam"
 fi
 
 echo "$formatted_timestamp Sorting by coordinate"
@@ -188,13 +188,16 @@ echo "$formatted_timestamp Haplotypes called and snps labeled. Cleaning data."
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # Extract snpEFF data and variant information into a table, 
-# remove repetitive NaN's and retain only those polymorphisms likely to arise from
 SnpSift extractFields \
     -s ":" \
     -e "NaN" "${output_file_prefix}.se.vcf" \
     CHROM POS REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" \
     "ANN[*].IMPACT" "GEN[*].GT" "GEN[${line_name}_mu].AD" \
     "GEN[${line_name}_wt].AD" > "${output_file_prefix}.table"
+
+# remove repetitive NaN's, retain EMS point mutations
+
+sed -i 's/NaN://g' "${output_file_prefix}.ems.table.tmp"
 
 grep \
     -e $'G\tA' \
@@ -203,7 +206,6 @@ grep \
     -e $'T\tC' \
     "${output_file_prefix}.table" > "${output_file_prefix}.ems.table.tmp"
 
-sed -i 's/NaN://g' "${output_file_prefix}.ems.table.tmp"
 
 # [mu:wt] genotypes. Grab appropriate genotypes for analysis. 
 # 0/1:0/1 included in both analyses due to occasional leaky genotyping by GATK HC.
