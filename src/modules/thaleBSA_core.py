@@ -9,99 +9,99 @@ from flask import session
 from config import error_handler, INPUT_DIR, OUTPUT_DIR, MODULES_DIR, LOG_DIR
 import analysis_module
 
-class ThaleBSAParentFunctions
-"""Main thaleBSA parent functions. These functions ingest raw data and 
-initiate all data processing steps and manage logging"""
+class ThaleBSAParentFunctions:
+    """Main thaleBSA parent functions. These functions ingest raw data and 
+    initiate all data processing steps and manage logging"""
 
-def vcf_generation(experiment_dictionary,
-                     reference_genome_name, snpEff_db_name,
-                     reference_genome_source, threads_limit,
-                     cleanup, known_snps
-                     ):
+    def vcf_generation(self, experiment_dictionary,
+                         reference_genome_name, snpEff_db_name,
+                         reference_genome_source, threads_limit,
+                         cleanup, known_snps
+                         ):
 
-    error_handler('attempt', 
-        'Generating VCF files for experiments in dictionary'
-    )
-    for key, value in experiment_dictionary.items():
-        print(f"Generating VCF file for {key}...")
-        try:
-            # Construct cmd
-            modules_dir = MODULES_DIR
-            log_dir = LOG_DIR
-            vcfgen_script_path = os.path.join(modules_dir, 'VCFgen.sh')
-            args = (key, value['reads'], value['allele'],
-                    reference_genome_name, snpEff_db_name,
-                    reference_genome_source, threads_limit,
-                    cleanup, known_snps, vcf_table_uuid
+        error_handler('attempt', 
+            'Generating VCF files for experiments in dictionary'
+        )
+        for key, value in experiment_dictionary.items():
+            print(f"Generating VCF file for {key}...")
+            try:
+                # Construct cmd
+                modules_dir = MODULES_DIR
+                log_dir = LOG_DIR
+                vcfgen_script_path = os.path.join(modules_dir, 'VCFgen.sh')
+                args = (key, value['reads'], value['allele'],
+                        reference_genome_name, snpEff_db_name,
+                        reference_genome_source, threads_limit,
+                        cleanup, known_snps, vcf_table_uuid
+                        )
+                
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                log_name = f"{key}.VCF_generation.{timestamp}.{vcf_table_uuid}.log"
+                log_path = os.path.join(log_dir, log_name)
+                cmd = f"{vcfgen_script_path} {' '.join(map(str, args))} | tee {log_path}"
+
+                # Run cmd
+                subprocess.run(cmd, shell=True, text=True, check=True)
+
+                error_handler('success', 
+                    f"VCF file generated for {key}. Log saved to {log_path}"
                     )
-            
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_name = f"{key}.VCF_generation.{timestamp}.{vcf_table_uuid}.log"
-            log_path = os.path.join(log_dir, log_name)
-            cmd = f"{vcfgen_script_path} {' '.join(map(str, args))} | tee {log_path}"
-
-            # Run cmd
-            subprocess.run(cmd, shell=True, text=True, check=True)
-
-            error_handler('success', 
-                f"VCF file generated for {key}. Log saved to {log_path}"
+            except Exception as e:
+                error_handler('fail', 
+                    f"Error while generating the VCF file for {key}: {e}"
                 )
+
+        error_handler('success', "VCF file generation process complete")
+
+
+    def bsa_analysis(self, experiment_dictionary):
+        """Run the data analysis script, and store the logs"""
+        error_handler('attempt', "Attempting to perform data analysis...")
+        try:
+            log_dir = LOG_DIR
+            output_dir = OUTPUT_DIR
+
+            for key in experiment_dictionary:
+                """Run analysis using analysis.module functions."""
+                # establish variables
+                current_line_name = key
+                vcftable_name = f"{current_line_name}.noknownsnps.table"
+                current_line_table_path = os.path.join(
+                    output_dir, current_line_name, vcftable_name
+                )
+                
+                #generate dataframe from vcf table
+                vcf_df = analysis_module.load_vcf_table(current_line_table_path, 
+                    current_line_name
+                )
+
+                #Data analysis, add features to dataframe. 
+                vcf_df = analysis_module.calculate_delta_snp_and_g_statistic(
+                    vcf_df, current_line_name
+                )
+                vcf_df = analysis_module.drop_na_and_indels(vcf_df, current_line_name)
+                vcf_df = analysis_module.loess_smoothing(vcf_df, current_line_name)
+                vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = (
+                    analysis_module.calculate_empirical_cutoffs(
+                        vcf_df, current_line_name)
+                )
+                #Identify candidates, save dataframe to csv and plot outputs.
+                analysis_module.sort_save_likely_candidates(
+                    vcf_df, current_line_name
+                )
+                analysis_module.generate_plots(
+                    vcf_df, current_line_name, gs_cutoff, rsg_cutoff, rsg_y_cutoff
+                )
+
+            error_handler('success', "Data analysis complete")
         except Exception as e:
-            error_handler('fail', 
-                f"Error while generating the VCF file for {key}: {e}"
-            )
-
-    error_handler('success', "VCF file generation process complete")
-
-
-def bsa_analysis(experiment_dictionary):
-    """Run the data analysis script, and store the logs"""
-    error_handler('attempt', "Attempting to perform data analysis...")
-    try:
-        log_dir = LOG_DIR
-        output_dir = OUTPUT_DIR
-
-        for key in experiment_dictionary:
-            """Run analysis using analysis.module functions."""
-            # establish variables
-            current_line_name = key
-            vcftable_name = f"{current_line_name}.noknownsnps.table"
-            current_line_table_path = os.path.join(
-                output_dir, current_line_name, vcftable_name
-            )
-            
-            #generate dataframe from vcf table
-            vcf_df = analysis_module.load_vcf_table(current_line_table_path, 
-                current_line_name
-            )
-
-            #Data analysis, add features to dataframe. 
-            vcf_df = analysis_module.calculate_delta_snp_and_g_statistic(
-                vcf_df, current_line_name
-            )
-            vcf_df = analysis_module.drop_na_and_indels(vcf_df, current_line_name)
-            vcf_df = analysis_module.loess_smoothing(vcf_df, current_line_name)
-            vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = (
-                analysis_module.calculate_empirical_cutoffs(
-                    vcf_df, current_line_name)
-            )
-            #Identify candidates, save dataframe to csv and plot outputs.
-            analysis_module.sort_save_likely_candidates(
-                vcf_df, current_line_name
-            )
-            analysis_module.generate_plots(
-                vcf_df, current_line_name, gs_cutoff, rsg_cutoff, rsg_y_cutoff
-            )
-
-        error_handler('success', "Data analysis complete")
-    except Exception as e:
-        error_handler('fail', f"Error during data analysis: {e}")
+            error_handler('fail', f"Error during data analysis: {e}")
 
 
 
 
 class ThaleBSAUtilities:
-"""General Utilities"""
+    """General Utilities"""
 
     @staticmethod
     def detect_file_type(file):
@@ -200,8 +200,8 @@ class ThaleBSAUtilities:
 
 
 class ThaleBSASQLDB:
-"""Handling the log database, so that analyses can be associated with 
-their respective VCF file runs. """
+    """Handling the log database, so that analyses can be associated with 
+    their respective VCF file runs. """
 
     def __init__(self, db_name="thale_bsa_sqldb.db"):
         self.conn = sqlite3.connect(db_name)

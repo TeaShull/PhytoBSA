@@ -35,30 +35,30 @@ thale_bsa_parent_functions = ThaleBSAParentFunctions()
 thale_bsa_utils = ThaleBSAUtilities()
 
 #Check if user wants to just use the command line and variables.py instead of flask app. 
-try: 
-    if len(sys.argv) > 1:
-        # Check if the first command line argument is set to 'cl'
-        if sys.argv[1] == '-cl':
-            error_handler('success', 'Command line argument is set to [-cl]. Running on command line.')
-            error_handler('attempt', "Sourcing variables from variables.py")
-            from variables import *
-            
-            experiment_dictionary = thale_bsa_utils.create_experiment_dictionary()
+#try: 
+if len(sys.argv) > 1:
+    # Check if the first command line argument is set to 'cl'
+    if sys.argv[1] == '-cl':
+        error_handler('success', 'Command line argument is set to [-cl]. Running on command line.')
+        error_handler('attempt', "Sourcing variables from variables.py")
+        from variables import *
+        
+        experiment_dictionary = thale_bsa_utils.create_experiment_dictionary()
 
-            thale_bsa_parent_functions.vcf_generation(
-            experiment_dictionary, reference_genome_name, snpEff_db_name, 
-            reference_genome_source, threads_limit, cleanup, known_snps
-            )
-            
-            thale_bsa_parent_functions.bsa_analysis(experiment_dictionary)
-            quit()
-            else:
-                error_handler('success', "Command line argument is not set to 'cl'. Starting flask app...")
-        else:
-            error_handler('success', "No command line arguments provided. Starting flask app...")
-except Exception as e:
-    error_handler('fail', 'Starting thaleBSA has failed: {e}')
-    quit()
+        # thale_bsa_parent_functions.vcf_generation(
+        # experiment_dictionary, reference_genome_name, snpEff_db_name, 
+        # reference_genome_source, threads_limit, cleanup, known_snps
+        # )
+        
+        thale_bsa_parent_functions.bsa_analysis(experiment_dictionary)
+        quit()
+    else:
+        error_handler('success', "Command line argument is not set to 'cl'. Starting flask app...")
+else:
+        error_handler('success', "No command line arguments provided. Starting flask app...")
+#except Exception as e:
+ #   error_handler('fail', 'Starting thaleBSA has failed: {e}')
+#    quit()
 
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 app.secret_key = '1111'

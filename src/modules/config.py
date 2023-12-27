@@ -13,7 +13,7 @@ STATIC_DIR = os.path.join(SRC_DIR,'static')
 MODULES_DIR = os.path.join(SRC_DIR,'modules')
 
 
-# General Functions
+# Error handling and delimiter
 def error_handler(error_type, message):
     error_handler_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
     function_name = inspect.currentframe().f_back.f_code.co_name
@@ -23,7 +23,9 @@ def error_handler(error_type, message):
         'trigger': '[Flask Trigger]',
         'attempt': '[Attempt]',
         'success': '[Success]',
-        'fail': '[Fail]'
+        'fail': '[Fail]',
+        'warning': '[WARNING]',
+        'note' : '[Note]'
     }
 
     if error_type in prefixes:
@@ -33,7 +35,7 @@ def error_handler(error_type, message):
 
     prefix = f"{error_handler_timestamp} {type_prefix}"
     if function_name != '<module>':
-        error_message = f"{prefix} (Function:{function_name}) {message}"
+        error_message = f"{prefix} (<{script_name}> Function:{function_name}) {message}"
     else:
         error_message = f"{prefix} (Core logic of:{script_name}) {message}"
     print(error_message)
