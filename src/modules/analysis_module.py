@@ -82,23 +82,6 @@ def drop_na_and_indels(vcf_df, current_line_name):
         return None
 
 
-def loess_smoothing(vcf_df, current_line_name):
-    analysis_utils = AnalysisUtilities(current_line_name)
-    """LOESS smoothing of ratio and G-stat by chromosome"""
-    lowess_span = 0.3
-    smooth_edges_bounds = 15
-
-    error_handler('attempt', "Initialize LOESS smoothing calculations.")
-    error_handler('attempt',f"span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
-    try:
-        vcf_df = analysis_utils.smooth_chr_facets(
-            vcf_df, lowess_span, smooth_edges_bounds
-        )
-        error_handler('success', "LOESS smoothing calculations successful.")
-        return vcf_df
-    except Exception as e:
-        error_handler('fail', f"An error occurred during LOESS smoothing: {e}")
-
 def calculate_empirical_cutoffs(vcf_df, current_line_name):
     analysis_utils = AnalysisUtilities(current_line_name)
     """Calculate empirical cutoffs"""
@@ -178,7 +161,7 @@ def generate_plots(vcf_df, current_line_name, gs_cutoff, rsg_cutoff, rsg_y_cutof
     # Plot scenarios format:
     # ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)
     plot_scenarios = [
-        ('G_S', 'G-statistic', 'G-statistic', None, False),
+        ('G_S', 'G-statistic', 'G-sttistic', None, False),
         ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', 
             gs_cutoff, True
         ),
