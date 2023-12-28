@@ -2,28 +2,40 @@ import os
 import subprocess
 import fnmatch
 import logging
-import uuid
-import sqlite3
 from datetime import datetime
-from flask import session
+from flask import session  # Keeping the imports for later use
 from config import error_handler, INPUT_DIR, OUTPUT_DIR, MODULES_DIR, LOG_DIR
 import analysis_module
 
 class ThaleBSAParentFunctions:
-    """Main thaleBSA parent functions. These functions ingest raw data and 
-    initiate all data processing steps and manage logging"""
+    def __init__(self):
+        logging.basicConfig(level=logging.INFO)
+
+    def _setup_logger(self, name, log_file_path):
+        logger = logging.getLogger(name)
+        file_handler = logging.FileHandler(log_file_path)
+        formatter = logging.Formatter('%(levelname)s: %(message)s')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+        error_handler('info', f"Logging to file: {log_file_path} for {name}")
+        return logger
 
     def vcf_generation(self, experiment_dictionary,
-                         reference_genome_name, snpEff_db_name,
-                         reference_genome_source, threads_limit,
-                         cleanup, known_snps
-                         ):
+                       reference_genome_name, snpEff_db_name,
+                       reference_genome_source, threads_limit,
+                       cleanup, known_snps, vcf_table_uuid):
+        log_name = self._generate_log_name('vcf_generation')
+        log_path = os.path.join(LOG_DIR, log_name)
+        vcf_gen_logger = self._setup_logger('vcf_generation', log_path)
 
-        error_handler('attempt', 
-            'Generating VCF files for experiments in dictionary'
-        )
+        error_handler('info', 'Generating VCF files for experiments in dictionary')
         for key, value in experiment_dictionary.items():
-            print(f"Generating VCF file for {key}...")
+            vcf_gen_logger.info(f"Generating VCF file for {key}...")
             try:
                 # Construct cmd
                 modules_dir = MODULES_DIR
@@ -34,71 +46,56 @@ class ThaleBSAParentFunctions:
                         reference_genome_source, threads_limit,
                         cleanup, known_snps, vcf_table_uuid
                         )
-                
+
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 log_name = f"{key}.VCF_generation.{timestamp}.{vcf_table_uuid}.log"
                 log_path = os.path.join(log_dir, log_name)
                 cmd = f"{vcfgen_script_path} {' '.join(map(str, args))} | tee {log_path}"
 
-                # Run cmd
                 subprocess.run(cmd, shell=True, text=True, check=True)
 
-                error_handler('success', 
-                    f"VCF file generated for {key}. Log saved to {log_path}"
-                    )
+                error_handler('success',
+                              f"VCF file generated for {key}. Log saved to {log_path}"
+                              )
             except Exception as e:
-                error_handler('fail', 
-                    f"Error while generating the VCF file for {key}: {e}"
-                )
+                error_handler('error',
+                              f"Error while generating the VCF file for {key}: {e}"
+                              )
 
-        error_handler('success', "VCF file generation process complete")
-
+        error_handler('info', "VCF file generation process complete")
 
     def bsa_analysis(self, experiment_dictionary):
-        """Run the data analysis script, and store the logs"""
-        error_handler('attempt', "Attempting to perform data analysis...")
+        log_name = self._generate_log_name('bsa_analysis')
+        log_path = os.path.join(LOG_DIR, log_name)
+        bsa_analysis_logger = self._setup_logger('bsa_analysis', log_path)
+        bsa_analysis_logger.info(f"TESTING")
+        error_handler('info', "Attempting to perform data analysis...")
         try:
             log_dir = LOG_DIR
             output_dir = OUTPUT_DIR
 
             for key in experiment_dictionary:
-                """Run analysis using analysis.module functions."""
-                # establish variables
                 current_line_name = key
                 vcftable_name = f"{current_line_name}.noknownsnps.table"
-                current_line_table_path = os.path.join(
-                    output_dir, current_line_name, vcftable_name
-                )
-                
-                #generate dataframe from vcf table
-                vcf_df = analysis_module.load_vcf_table(current_line_table_path, 
-                    current_line_name
-                )
+                current_line_table_path = os.path.join(output_dir, current_line_name, vcftable_name)
 
-                #Data analysis, add features to dataframe. 
-                vcf_df = analysis_module.calculate_delta_snp_and_g_statistic(
-                    vcf_df, current_line_name
-                )
+                vcf_df = analysis_module.load_vcf_table(current_line_table_path, current_line_name)
+
+                vcf_df = analysis_module.calculate_delta_snp_and_g_statistic(vcf_df, current_line_name)
                 vcf_df = analysis_module.drop_na_and_indels(vcf_df, current_line_name)
                 vcf_df = analysis_module.loess_smoothing(vcf_df, current_line_name)
-                vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = (
-                    analysis_module.calculate_empirical_cutoffs(
-                        vcf_df, current_line_name)
-                )
-                #Identify candidates, save dataframe to csv and plot outputs.
-                analysis_module.sort_save_likely_candidates(
-                    vcf_df, current_line_name
-                )
-                analysis_module.generate_plots(
-                    vcf_df, current_line_name, gs_cutoff, rsg_cutoff, rsg_y_cutoff
-                )
+                vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = analysis_module.calculate_empirical_cutoffs(vcf_df, current_line_name)
 
-            error_handler('success', "Data analysis complete")
+                analysis_module.sort_save_likely_candidates(vcf_df, current_line_name)
+                analysis_module.generate_plots(vcf_df, current_line_name, gs_cutoff, rsg_cutoff, rsg_y_cutoff)
+
+            error_handler('info', "Data analysis complete")
         except Exception as e:
             error_handler('fail', f"Error during data analysis: {e}")
 
-
-
+    def _generate_log_name(self, function_name):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return f"{function_name}_{timestamp}.log"
 
 class ThaleBSAUtilities:
     """General Utilities"""
@@ -201,7 +198,7 @@ class ThaleBSAUtilities:
 
 class ThaleBSASQLDB:
     """Handling the log database, so that analyses can be associated with 
-    their respective VCF file runs. """
+    their respective VCF file runs. IN PROGRESS...."""
 
     def __init__(self, db_name="thale_bsa_sqldb.db"):
         self.conn = sqlite3.connect(db_name)

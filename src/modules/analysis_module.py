@@ -41,16 +41,16 @@ def calculate_delta_snp_and_g_statistic(vcf_df, current_line_name):
     """Calculate delta SNP ratio and G-statistic"""
     error_handler('attempt', f"Initialize calculations for delta-SNP ratios and G-statistics")
     try:
+
         suppress = False
         vcf_df['ratio'] = analysis_utils.delta_snp_array(
             vcf_df['wt_ref'], vcf_df['wt_alt'], 
-            vcf_df['mu_ref'], vcf_df['mu_alt'], 
+            vcf_df['mu_ref'], vcf_df['mu_alt'],
             suppress
         )
-        
         vcf_df['G_S'] = analysis_utils.g_statistic_array(
             vcf_df['wt_ref'], vcf_df['wt_alt'], 
-            vcf_df['mu_ref'], vcf_df['mu_alt'], 
+            vcf_df['mu_ref'], vcf_df['mu_alt'],
             suppress
         )
 
@@ -64,12 +64,10 @@ def drop_na_and_indels(vcf_df, current_line_name):
     error_handler('attempt', 'Removing NAs and indels')
     try:
         # Use .loc for assignment to avoid the warning
-        vcf_df.loc[:, "ref"] = vcf_df["ref"].apply(
-            lambda x: x if len(x) == 1 else np.nan
-        )
-        vcf_df.loc[:, "alt"] = vcf_df["alt"].apply(
-            lambda x: x if len(x) == 1 else np.nan
-        )
+        apply_args = (lambda x: x if len(x) == 1 else np.nan)
+        vcf_df.loc[:, "ref"] = vcf_df["ref"].apply(apply_args)
+        vcf_df.loc[:, "alt"] = vcf_df["alt"].apply(apply_args)
+
         vcf_df.dropna(axis=0, how='any', subset=["ratio"], inplace=True)
         error_handler('success',
             f'Indels dropped, and NaN values for {current_line_name} cleaned successfully.'
@@ -81,6 +79,22 @@ def drop_na_and_indels(vcf_df, current_line_name):
         )
         return None
 
+def loess_smoothing(vcf_df, current_line_name):
+    analysis_utils = AnalysisUtilities(current_line_name)
+    """LOESS smoothing of ratio and G-stat by chromosome"""
+    lowess_span = 0.3
+    smooth_edges_bounds = 15
+
+    error_handler('attempt', "Initialize LOESS smoothing calculations.")
+    error_handler('attempt',f"span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
+    try:
+        vcf_df = analysis_utils.smooth_chr_facets(
+            vcf_df, lowess_span, smooth_edges_bounds
+        )
+        error_handler('success', "LOESS smoothing calculations successful.")
+        return vcf_df
+    except Exception as e:
+        error_handler('fail', f"An error occurred during LOESS smoothing: {e}")
 
 def calculate_empirical_cutoffs(vcf_df, current_line_name):
     analysis_utils = AnalysisUtilities(current_line_name)
