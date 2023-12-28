@@ -3,39 +3,23 @@ import subprocess
 import fnmatch
 import logging
 from datetime import datetime
+import pandas as pd
 from flask import session  # Keeping the imports for later use
-from config import error_handler, INPUT_DIR, OUTPUT_DIR, MODULES_DIR, LOG_DIR
-import analysis_module
+from config import setup_logger, log_handler, INPUT_DIR, OUTPUT_DIR, MODULES_DIR, LOG_DIR
+from analysis import AnalysisUtilities, PlotUtilities
 
 class ThaleBSAParentFunctions:
-    def __init__(self):
-        logging.basicConfig(level=logging.INFO)
-
-    def _setup_logger(self, name, log_file_path):
-        logger = logging.getLogger(name)
-        file_handler = logging.FileHandler(log_file_path)
-        formatter = logging.Formatter('%(levelname)s: %(message)s')
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-
-        error_handler('info', f"Logging to file: {log_file_path} for {name}")
-        return logger
+    def __init__(self, logger):
+        self.logger = logger 
 
     def vcf_generation(self, experiment_dictionary,
                        reference_genome_name, snpEff_db_name,
                        reference_genome_source, threads_limit,
                        cleanup, known_snps, vcf_table_uuid):
-        log_name = self._generate_log_name('vcf_generation')
-        log_path = os.path.join(LOG_DIR, log_name)
-        vcf_gen_logger = self._setup_logger('vcf_generation', log_path)
 
-        error_handler('info', 'Generating VCF files for experiments in dictionary')
+        log_handler(self.logger, 'info', 'Generating VCF files for experiments in dictionary')
         for key, value in experiment_dictionary.items():
-            vcf_gen_logger.info(f"Generating VCF file for {key}...")
+            log_handler(self.logger, 'attempt', f"Generating VCF file for {key}...")
             try:
                 # Construct cmd
                 modules_dir = MODULES_DIR
@@ -54,55 +38,67 @@ class ThaleBSAParentFunctions:
 
                 subprocess.run(cmd, shell=True, text=True, check=True)
 
-                error_handler('success',
+                log_handler(self.logger, 'success',
                               f"VCF file generated for {key}. Log saved to {log_path}"
                               )
             except Exception as e:
-                error_handler('error',
+                log_handler('error',
                               f"Error while generating the VCF file for {key}: {e}"
                               )
 
-        error_handler('info', "VCF file generation process complete")
+        log_handler(self.logger, 'info', "VCF file generation process complete")
 
     def bsa_analysis(self, experiment_dictionary):
-        log_name = self._generate_log_name('bsa_analysis')
-        log_path = os.path.join(LOG_DIR, log_name)
-        bsa_analysis_logger = self._setup_logger('bsa_analysis', log_path)
-        bsa_analysis_logger.info(f"TESTING")
-        error_handler('info', "Attempting to perform data analysis...")
+        
+        log_handler(self.logger, 'info', "Attempting to perform data analysis...")
         try:
-            log_dir = LOG_DIR
-            output_dir = OUTPUT_DIR
-
-            for key in experiment_dictionary:
+            for key, value in experiment_dictionary.items():
                 current_line_name = key
+                #Establishing VCF dataframe and variables
+                # Configure the analysis logger for each line. 
+                log_dir = LOG_DIR
+                output_dir = OUTPUT_DIR
+                timestamp = datetime.now().strftime("%Y.%m.%d_%H:%M")
+                
+                log_filename = f"{timestamp}_{current_line_name}_analysis.log"
+                log_path = os.path.join(log_dir, log_filename)
+                analysis_logger = setup_logger('analysis_logger', log_path)    
+                
+                file_utils = FileUtilities(analysis_logger)
+
+                reads = value['reads']
+                if value['allele'] == 'R':
+                    allele = 'recessive'
+                elif value['allele'] == 'D':
+                    allele = 'dominant'
+                print(f"analysis logger name? {analysis_logger.name}")
+                log_handler(analysis_logger, 'note', f"{current_line_name} is labeled {allele}. Pairdness is {reads}")
                 vcftable_name = f"{current_line_name}.noknownsnps.table"
                 current_line_table_path = os.path.join(output_dir, current_line_name, vcftable_name)
+                vcf_df = file_utils.load_vcf_table(current_line_table_path, current_line_name)
 
-                vcf_df = analysis_module.load_vcf_table(current_line_table_path, current_line_name)
+                #Analysis operations. sequential dataframe transformation
+                analysis_utils = AnalysisUtilities(current_line_name, analysis_logger)
+                vcf_df = analysis_utils.calculate_delta_snp_and_g_statistic(vcf_df)
+                vcf_df = analysis_utils.drop_na_and_indels(vcf_df)
+                vcf_df = analysis_utils.loess_smoothing(vcf_df)
+                vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = analysis_utils.calculate_empirical_cutoffs(vcf_df)
+                
+                #Saving and plotting outputs
+                analysis_utils.sort_save_likely_candidates(vcf_df)
+                plot_utils = PlotUtilities(current_line_name, analysis_logger)
+                plot_utils.generate_plots(vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff)
 
-                vcf_df = analysis_module.calculate_delta_snp_and_g_statistic(vcf_df, current_line_name)
-                vcf_df = analysis_module.drop_na_and_indels(vcf_df, current_line_name)
-                vcf_df = analysis_module.loess_smoothing(vcf_df, current_line_name)
-                vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = analysis_module.calculate_empirical_cutoffs(vcf_df, current_line_name)
-
-                analysis_module.sort_save_likely_candidates(vcf_df, current_line_name)
-                analysis_module.generate_plots(vcf_df, current_line_name, gs_cutoff, rsg_cutoff, rsg_y_cutoff)
-
-            error_handler('info', "Data analysis complete")
+            log_handler(self.logger, 'info', "Data analysis complete")
         except Exception as e:
-            error_handler('fail', f"Error during data analysis: {e}")
+            log_handler(self.logger, 'fail', f"Error during data analysis: {e}")
 
-    def _generate_log_name(self, function_name):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return f"{function_name}_{timestamp}.log"
+class FileUtilities:
+    def __init__(self, logger):
+        self.logger = logger 
 
-class ThaleBSAUtilities:
-    """General Utilities"""
-
-    @staticmethod
-    def detect_file_type(file):
-        error_handler('attempt', 
+    def detect_file_type(self, file):
+        log_handler(self.logger, 'attempt', 
             f"Detecting if {file} is labeled recessive (R) or dominant (D)..."
         )
         try:
@@ -110,14 +106,14 @@ class ThaleBSAUtilities:
                 label = "R"
             elif fnmatch.fnmatch(file, '*.D*'):
                 label = "D"
-            error_handler('success', f"{file} is labeled {label}")
+            log_handler(self.logger, 'success', f"{file} is labeled {label}")
             return label
         except Exception as e:
-            error_handler('fail', f"Error while detecting file type: {e}")
+            log_handler(self.logger, 'fail', f"Error while detecting file type: {e}")
             return None
 
     def create_experiment_dictionary(self):
-        error_handler('attempt', 
+        log_handler(self.logger, 'attempt', 
             "Creating a dictionary to store experiment details..."
             )
         try:
@@ -125,7 +121,7 @@ class ThaleBSAUtilities:
             lines_dict = {}
 
             for file in os.listdir(input_dir):
-                error_handler('attempt', f"Parsing {file}...")
+                log_handler(self.logger, 'attempt', f"Parsing {file}...")
                 try:
                     key = file.split(".")[0]
                     lines_dict[key] = lines_dict.get(
@@ -133,36 +129,63 @@ class ThaleBSAUtilities:
                     )
                     lines_dict[key]['count'] += 1
                     lines_dict[key]['allele'] = self.detect_file_type(file)
-                    error_handler('success', 
+                    log_handler(self.logger, 'success', 
                         f"{file} parsed and added to dictionary under key {key}"
                     )
                 except Exception as e:
-                    error_handler('fail', 
+                    log_handler(self.logger, 'fail', 
                         f"Error parsing {file} for the experiment dictionary: {e}"
                     )
 
             # Convert counts and types to a readable format
             for key, value in lines_dict.items():
-                error_handler('attempt', "Making dictionary more readable")
+                log_handler(self.logger, 'attempt', "Making dictionary more readable")
                 try:
                     if value['count'] == 4:
                         value['reads'] = "paired-end"
                     elif value['count'] == 2:
                         value['reads'] = "single-read"
-                    error_handler('success', "Dictionary is now more readable")
+                    log_handler(self.logger, 'success', "Dictionary is now more readable")
                 except Exception as e:
-                    error_handler('fail', 
+                    log_handler(self.logger, 'fail', 
                         f"Error converting formatting counts and types: {e}"
                     )
 
-            error_handler('success', "Experiment Dictionary Created ")
+            log_handler(self.logger, 'success', "Experiment Dictionary Created ")
             return lines_dict
 
         except Exception as e:
-            error_handler('fail', 
+            log_handler(self.logger, 'fail', 
                 f"Error while creating the experiment dictionary: {e}"
             )
             return {}
+
+    def load_vcf_table(self, current_line_table_path, current_line_name):
+        """Load VCF table"""
+        log_handler(self.logger, 'attempt', 
+            f"Attempting to load VCF table for line {current_line_name}"
+        )
+        try:
+            vcf_df = pd.read_csv(current_line_table_path, sep="\t")
+            log_handler(self.logger, 'attempt', 
+                f"The VCF table for line {current_line_name} was successfully loaded."
+            )
+            return vcf_df
+        except FileNotFoundError:
+            log_handler(self.logger, 'fail', 
+                f"Error: File '{current_line_table_path}' not found."
+            )
+        except pd.errors.EmptyDataError:
+            log_handler(self.logger, 'fail', 
+                f"Error: File '{current_line_table_path}' is empty."
+            )
+        except Exception as e:
+            log_handler(self.logger, 'fail', f"An unexpected error occurred: {e}")
+
+class GeneralUtilities:
+    """General Utilities"""
+    def __init__(self, logger):
+        self.logger = logger 
 
     def int32_to_id(n):
         """returns a human readable id for each integer fed. 
@@ -195,13 +218,13 @@ class ThaleBSAUtilities:
             # If no hyphen-separated parts, or only one part, return None
             return None
 
-
 class ThaleBSASQLDB:
     """Handling the log database, so that analyses can be associated with 
     their respective VCF file runs. IN PROGRESS...."""
 
-    def __init__(self, db_name="thale_bsa_sqldb.db"):
+    def __init__(self, logger, db_name="thale_bsa_sqldb.db"):
         self.conn = sqlite3.connect(db_name)
+        self.logger = logger 
         self.create_tables()
 
         # Initialize the last used IDs

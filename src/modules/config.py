@@ -2,6 +2,7 @@
 import os
 import inspect
 from datetime import datetime
+import logging
 
 BASE_DIR = os.getcwd()
 SRC_DIR =  os.path.join(BASE_DIR, 'src')
@@ -12,37 +13,71 @@ TEMPLATE_DIR = os.path.join(SRC_DIR,'templates')
 STATIC_DIR = os.path.join(SRC_DIR,'static')
 MODULES_DIR = os.path.join(SRC_DIR,'modules')
 
+import logging
 
-# Error handling and delimiter
-def error_handler(error_type, message):
-    error_handler_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
+def setup_logger(name, log_path):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)  # Set the default level for the logger
+
+    # Create a FileHandler and set the level to INFO
+    file_handler = logging.FileHandler(log_path)
+    file_handler.setLevel(logging.INFO)
+
+    # Create a formatter and add it to the handler
+    formatter = logging.Formatter('%(message)s')
+    file_handler.setFormatter(formatter)
+
+    # Add the handler to the logger
+    logger.addHandler(file_handler)
+
+    return logger
+
+def log_handler(logger, message_type, message):
+    log_handler_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
     function_name = inspect.currentframe().f_back.f_code.co_name
     caller_frame = inspect.currentframe().f_back
     script_name = os.path.basename(inspect.getfile(caller_frame))
+    
     prefixes = {
         'trigger': '[Flask Trigger]',
         'attempt': '[Attempt]',
         'success': '[Success]',
+        'note': '[Note]',
         'fail': '[Fail]',
         'warning': '[WARNING]',
-        'note' : '[Note]'
+        'delimiter': ''       
     }
 
-    if error_type in prefixes:
-        type_prefix = prefixes[error_type]
+    if message_type in prefixes:
+        type_prefix = prefixes[message_type]
     else:
-        type_prefix = '(Unknown Type)'
+        message_type = 'unknown'
+        type_prefix = '[Unknown Type]'
 
-    prefix = f"{error_handler_timestamp} {type_prefix}"
-    if function_name != '<module>':
-        error_message = f"{prefix} (<{script_name}> Function:{function_name}) {message}"
-    else:
-        error_message = f"{prefix} (Core logic of:{script_name}) {message}"
-    print(error_message)
+
+    prefix = f"{log_handler_timestamp} {type_prefix}"
+
+    if message_type == 'delimiter':
+        message = print_delimiter(message)
+    else:        
+        message = f"{prefix} (<{script_name}> Function:{function_name}) {message}"
+
+    if message_type == 'note' or 'trigger' or 'attempt' or 'success' or 'unknown':
+        logger.info(message)
+        print(message)
+    elif message_type == 'fail':
+        logger.critical(message)
+        print(message)
+    elif message_type == 'warning':
+        logger.warning(message)
+        print(message)
+    elif message_type =='delimiter':
+        logger.info(message)
+        print(message)
 
 def print_delimiter(message):
     delimiter_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
-    print(f'''
+    delimiter_message = (f'''
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
 -. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
 ||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
@@ -52,3 +87,4 @@ def print_delimiter(message):
 {delimiter_timestamp} {message}
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
         ''')
+    return delimiter_message
