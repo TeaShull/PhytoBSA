@@ -21,8 +21,29 @@ reference_chrs_path="$reference_dir/$reference_genome_name.chrs"
 input_dir="./input"
 input_name_prefix="${input_dir}/${line_name}.${allele_R_or_D}"
 output_dir="./output/${line_name}"
-output_file_prefix="$output_dir/${line_name}/${line_name}"
+output_file_prefix="$output_dir/${line_name}"
 snpeff_dir="$output_dir/snpEff"
+
+echo "Line Name: $line_name"
+echo "Pairedness: $pairedness"
+echo "Allele (R or D): $allele_R_or_D"
+echo "Reference Genome: $reference_genome_name"
+echo "SNPEff DB Name: $snpEff_db_name"
+echo "Reference Genome Source: $reference_genome_source"
+echo "Threads Limit: $threads_limit"
+echo "Threads Halved: $threads_halfed"
+echo "Cleanup: $cleanup"
+echo "Known SNPs: $known_snps"
+echo "VCF Table UUID: $vcf_table_uuid"
+echo "Formatted Timestamp: $formatted_timestamp"
+echo "Reference Genome Path: $reference_genome_path"
+echo "Reference Chromosomes Path: $reference_chrs_path"
+echo "Input Directory: $input_dir"
+echo "Input Name Prefix: $input_name_prefix"
+echo "Output Directory: $output_dir"
+echo "Output File Prefix: $output_file_prefix"
+echo "SNPEff Directory: $snpeff_dir"
+
 
 echo "$formatted_timestamp Preparing references and directory structure"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
@@ -44,18 +65,17 @@ if ! [ -f "$reference_chrs_path" ]; then
     "$reference_genome_path" > "$reference_chrs_path"
 fi
 
-reference_genome=""
-
 # creating .fai and index files if they don't exist
 if ! [ -f "${reference_chrs_path}.fa.fai" ]; then
-    samtools faidx "${reference_genome}"
-    bwa index -p "${reference_chrs_path}" -a is "${reference_genome}"
+    samtools faidx "${reference_chrs_path}"
+    bwa index -p "${reference_chrs_path}.fa" -a is "${reference_genome_path}"
 fi
-
+${reference_chrs_path}.fa
+echo "reference chrm path = ${reference_chrs_path}.fa.fai"
 # create dictionary for gatk haplotype caller if it doesn't exist
 if [ ! -f "${reference_chrs_path}.dict" ]; then
     picard CreateSequenceDictionary \
-        -R "$reference_genome" \
+        -R "$reference_genome_path" \
         -O "${reference_chrs_path}.dict"
 fi
 
@@ -63,8 +83,7 @@ echo "References prepared, preparing VCF for ${line_name}"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "$formatted_timestamp ${line_name} reads seem to be ${pairedness}"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-
-
+echo "Current Working Directory: $(pwd)"
 
 # Set input files as paired-end or single-read
 if [ "${pairedness}" == "paired-end" ]; then
@@ -78,15 +97,15 @@ if [ "${pairedness}" == "single-read" ]; then
     input_files_wt="${input_name_prefix}.wt.fq.gz"
     input_files_mu="${input_name_prefix}.mu.fq.gz"
 fi
-
+echo "old fa : ${reference_chrs_path}.fa"
 # Mapping
 bwa mem \
     -t "$threads_halfed" \
-    -M "$reference_genome" \
+    -M "${reference_chrs_path}.fa" \
     -v 1 $input_files_wt > "${output_file_prefix}_wt.sam" &
 bwa mem \
     -t "$threads_halfed" \
-    -M "$reference_genome" \
+    -M "${reference_chrs_path}.fa" \
     -v 1 $input_files_mu > "${output_file_prefix}_mu.sam"
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
@@ -105,12 +124,8 @@ wait
 
 # Fix paired-end
 if [ "${pairedness}" == "paired-end" ]; then
-    samtools fixmate \
-        "${output_file_prefix}_wt.bam" \
-        "${output_file_prefix}_wt.fix.bam" &
-    samtools fixmate \ 
-        "${output_file_prefix}_mu.bam" \
-        "${output_file_prefix}_mu.fix.bam"
+    samtools fixmate "${output_file_prefix}_wt.bam" "${output_file_prefix}_wt.fix.bam" &
+    samtools fixmate "${output_file_prefix}_mu.bam" "${output_file_prefix}_mu.fix.bam"
 fi
 
 echo "$formatted_timestamp Sorting by coordinate"
@@ -171,7 +186,7 @@ echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # GATK HC Variant calling
 gatk HaplotypeCaller \
-    -R "$reference_genome" \
+    -R "$reference_genome_path" \
     -I "${output_file_prefix}_mu.sort.md.rg.bam" \
     -I "${output_file_prefix}_wt.sort.md.rg.bam" \
     -O "${output_file_prefix}.hc.vcf" \
@@ -254,11 +269,10 @@ sed \
     \t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' \
     "$noknownsnps_tablename"
 
-
 #add unique identifiers? 
 
 # Clean up. Change cleanup variable to "False", or comment out to disable.
-if [ "$cleanup" = True ]; then
+if [ "$cleanup" = "True" ]; then
     rm "$output_dir/${line_name}"/*.tmp
     rm "$output_dir/${line_name}"/*.bam
     rm "$output_dir/${line_name}"/*.sam

@@ -13,9 +13,9 @@ class ThaleBSAParentFunctions:
         self.logger = logger 
 
     def vcf_generation(self, experiment_dictionary,
-                       reference_genome_name, snpEff_db_name,
-                       reference_genome_source, threads_limit,
-                       cleanup, known_snps, vcf_table_uuid):
+                   reference_genome_name, snpEff_species_db,
+                   reference_genome_source, threads_limit,
+                   cleanup, known_snps):
 
         log_handler(self.logger, 'info', 'Generating VCF files for experiments in dictionary')
         for key, value in experiment_dictionary.items():
@@ -26,23 +26,35 @@ class ThaleBSAParentFunctions:
                 log_dir = LOG_DIR
                 vcfgen_script_path = os.path.join(modules_dir, 'VCFgen.sh')
                 args = (key, value['reads'], value['allele'],
-                        reference_genome_name, snpEff_db_name,
+                        reference_genome_name, snpEff_species_db,
                         reference_genome_source, threads_limit,
-                        cleanup, known_snps, vcf_table_uuid
+                        cleanup, known_snps
                         )
 
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                log_name = f"{key}.VCF_generation.{timestamp}.{vcf_table_uuid}.log"
+                log_name = f"{key}.VCF_generation.{timestamp}.log"
                 log_path = os.path.join(log_dir, log_name)
-                cmd = f"{vcfgen_script_path} {' '.join(map(str, args))} | tee {log_path}"
 
-                subprocess.run(cmd, shell=True, text=True, check=True)
+                # Create the command
+                cmd = f"{vcfgen_script_path} {' '.join(map(str, args))}"
+
+                # Open the log file for writing
+                with open(log_path, 'w') as log_file:
+                    # Use subprocess.Popen to capture output in real-time
+                    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+                    # Iterate over lines from the process and write to the log file
+                    for line in process.stdout:
+                        log_file.write(line)
+                        log_handler(self.logger, 'info', line.strip())  # Print each line to the logger in real-time
+
+                    process.wait()  # Wait for the process to finish
 
                 log_handler(self.logger, 'success',
                               f"VCF file generated for {key}. Log saved to {log_path}"
                               )
             except Exception as e:
-                log_handler('error',
+                log_handler(self.logger, 'error',
                               f"Error while generating the VCF file for {key}: {e}"
                               )
 
@@ -71,7 +83,7 @@ class ThaleBSAParentFunctions:
                     allele = 'recessive'
                 elif value['allele'] == 'D':
                     allele = 'dominant'
-                print(f"analysis logger name? {analysis_logger.name}")
+
                 log_handler(analysis_logger, 'note', f"{current_line_name} is labeled {allele}. Pairdness is {reads}")
                 vcftable_name = f"{current_line_name}.noknownsnps.table"
                 current_line_table_path = os.path.join(output_dir, current_line_name, vcftable_name)
