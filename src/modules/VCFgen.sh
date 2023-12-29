@@ -17,12 +17,15 @@ vcf_table_uuid="${10}"
 formatted_timestamp=$(date "+%Y.%m.%d ~%H:%M")
 reference_dir="./references"
 reference_genome_path="$reference_dir/$reference_genome_name.fa"
-reference_chrs_path="$reference_dir/$reference_genome_name.chrs"
+reference_chrs_path="$reference_dir/$reference_genome_name.chrs.fa"
 input_dir="./input"
 input_name_prefix="${input_dir}/${line_name}.${allele_R_or_D}"
 output_dir="./output/${line_name}"
 output_file_prefix="$output_dir/${line_name}"
 snpeff_dir="$output_dir/snpEff"
+
+echo "$formatted_timestamp Variables initiated."
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 echo "Line Name: $line_name"
 echo "Pairedness: $pairedness"
@@ -44,11 +47,11 @@ echo "Output Directory: $output_dir"
 echo "Output File Prefix: $output_file_prefix"
 echo "SNPEff Directory: $snpeff_dir"
 
-
+echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "$formatted_timestamp Preparing references and directory structure"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
-# Create directory structure if it doesn't exist
+#Create directory structure if it doesn't exist
 mkdir -p "${output_dir}"
 mkdir -p "${snpeff_dir}"
 mkdir -p "${reference_dir}"
@@ -62,20 +65,20 @@ fi
 # Make .chrs file if it doesn't exist, set reference variable
 if ! [ -f "$reference_chrs_path" ]; then
     awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' \
-    "$reference_genome_path" > "$reference_chrs_path"
+    $reference_genome_path > $reference_chrs_path
 fi
 
 # creating .fai and index files if they don't exist
-if ! [ -f "${reference_chrs_path}.fa.fai" ]; then
+if ! [ -f "${reference_chrs_path}.fai" ]; then
     samtools faidx "${reference_chrs_path}"
-    bwa index -p "${reference_chrs_path}.fa" -a is "${reference_genome_path}"
+    bwa index -p "${reference_chrs_path}" -a is "${reference_genome_path}"
 fi
-${reference_chrs_path}.fa
-echo "reference chrm path = ${reference_chrs_path}.fa.fai"
+
+
 # create dictionary for gatk haplotype caller if it doesn't exist
 if [ ! -f "${reference_chrs_path}.dict" ]; then
     picard CreateSequenceDictionary \
-        -R "$reference_genome_path" \
+        -R "$reference_chrs_path" \
         -O "${reference_chrs_path}.dict"
 fi
 
@@ -84,7 +87,6 @@ echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "$formatted_timestamp ${line_name} reads seem to be ${pairedness}"
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "Current Working Directory: $(pwd)"
-
 # Set input files as paired-end or single-read
 if [ "${pairedness}" == "paired-end" ]; then
     input_files_wt="${input_name_prefix}_1.wt.fq.gz \
@@ -97,16 +99,20 @@ if [ "${pairedness}" == "single-read" ]; then
     input_files_wt="${input_name_prefix}.wt.fq.gz"
     input_files_mu="${input_name_prefix}.mu.fq.gz"
 fi
-echo "old fa : ${reference_chrs_path}.fa"
+
+echo "input files wt: $input_files_wt"
+echo "input files mu: $input_files_mu"
+
 # Mapping
 bwa mem \
-    -t "$threads_halfed" \
-    -M "${reference_chrs_path}.fa" \
-    -v 1 $input_files_wt > "${output_file_prefix}_wt.sam" &
+    -t $threads_halfed \
+    -M "${reference_chrs_path}" \
+    $input_files_wt > "${output_file_prefix}_wt.sam" &
 bwa mem \
-    -t "$threads_halfed" \
-    -M "${reference_chrs_path}.fa" \
-    -v 1 $input_files_mu > "${output_file_prefix}_mu.sam"
+    -t $threads_halfed \
+    -M "${reference_chrs_path}" \
+    $input_files_mu > "${output_file_prefix}_mu.sam"
+
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "$formatted_timestamp Converting sam to bam"
@@ -124,8 +130,10 @@ wait
 
 # Fix paired-end
 if [ "${pairedness}" == "paired-end" ]; then
-    samtools fixmate "${output_file_prefix}_wt.bam" "${output_file_prefix}_wt.fix.bam" &
-    samtools fixmate "${output_file_prefix}_mu.bam" "${output_file_prefix}_mu.fix.bam"
+    samtools fixmate "${output_file_prefix}_wt.bam" \
+        "${output_file_prefix}_wt.fix.bam" &
+    samtools fixmate "${output_file_prefix}_mu.bam" \
+        "${output_file_prefix}_mu.fix.bam"
 fi
 
 echo "$formatted_timestamp Sorting by coordinate"
@@ -186,15 +194,15 @@ echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # GATK HC Variant calling
 gatk HaplotypeCaller \
-    -R "$reference_genome_path" \
+    -R "$reference_chrs_path" \
     -I "${output_file_prefix}_mu.sort.md.rg.bam" \
     -I "${output_file_prefix}_wt.sort.md.rg.bam" \
     -O "${output_file_prefix}.hc.vcf" \
     -output-mode EMIT_ALL_CONFIDENT_SITES \
-    --native-pair-hmm-threads_limit "$threads_limit"
+    --native-pair-hmm-threads "$threads_limit"
 
 # snpEff, labeling snps with annotations and potential impact on gene function
-snpEff "$reference_genome_name" \
+snpEff "$snpEff_db_name" \
     -s "${output_dir}/snpEff/${1}_snpEff_summary.html" \
     "${output_file_prefix}.hc.vcf" > "${output_file_prefix}.se.vcf"
 
@@ -244,8 +252,8 @@ awk \
     -i inplace \
     -F'\t' \
     -vOFS='\t' \
-    '{ gsub(",", "\t", $9) ; gsub(",", "\t", ${line_name}0) ; \
-    gsub(",", "\t", ${line_name}1) ; print }' "${output_file_prefix}.ems.table"
+    { gsub(",", "\t", $9) ; gsub(",", "\t", ${line_name}0) ; \
+    gsub(",", "\t", ${line_name}1) ; print } "${output_file_prefix}.ems.table"
 
 # Remove complex genotypes
 awk -i inplace -F'\t' 'NF==13' "${output_file_prefix}.ems.table"
@@ -253,21 +261,18 @@ awk -i inplace -F'\t' 'NF==13' "${output_file_prefix}.ems.table"
 # Get rid of chloroplastic and mitochondrial polymorphisms.
 awk \
     -i inplace \
-    '${line_name} == (${line_name}+0)' "${output_file_prefix}.ems.table"
+    '${line_name} == (${line_name}+0)' ${output_file_prefix}.ems.table
 
 noknownsnps_tablename="${output_file_prefix}.noknownsnps.table"
 # Remove known snps
 awk \
-    'FNR==NR{a[${line_name}${pairedness}];next};!(${line_name}${pairedness} in a) \
-    || ${line_name}~/#CHROM/' "$known_snps" "${output_file_prefix}.ems.table" \
+    'FNR==NR{a[${line_name}${pairedness}];next};!(${line_name}${pairedness} in a) || ${line_name}~/#CHROM/' "$known_snps" "${output_file_prefix}.ems.table" \
     > "$noknownsnps_tablename"
 
 # Add headers
 sed \
     -i \
-    '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\
-    \t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' \
-    "$noknownsnps_tablename"
+    '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' "$noknownsnps_tablename"
 
 #add unique identifiers? 
 

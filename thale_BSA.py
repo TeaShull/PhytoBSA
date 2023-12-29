@@ -10,17 +10,14 @@ sys.path.append(modules_dir)
 
 from core import ThaleBSAParentFunctions, FileUtilities
 from config import (
-    setup_logger, log_handler, SRC_DIR, LOG_DIR, OUTPUT_DIR, TEMPLATE_DIR, STATIC_DIR
+    LogHandler, SRC_DIR, LOG_DIR, OUTPUT_DIR, TEMPLATE_DIR, STATIC_DIR
 )
 
-
 if __name__ == "__main__":
-    # Configure the logger
-    log_dir = LOG_DIR
+    # Initialize core logger
     timestamp = datetime.now().strftime("%Y.%m.%d_%H:%M")
     log_filename = f"{timestamp}_core.log"
-    log_path = os.path.join(log_dir, log_filename)
-    core_logger = setup_logger('core', log_path)
+    core_log = LogHandler('core', log_filename)
 
 #Initialize directory structure variables
 src_dir = SRC_DIR
@@ -37,30 +34,23 @@ threads_limit = 0
 cleanup = True
 known_snps = ""
 
-#Initialize core_logger
-timestamp = datetime.now().strftime("%Y.%m.%d_%H:%M")
-log_filename = f"{timestamp}_core.log"
-log_path = os.path.join(log_dir, log_filename)
-core_logger = setup_logger('core_logger', log_path) 
-
 # Get the number of threads available on the machine
 available_threads = multiprocessing.cpu_count()
 threads_limit = max(1, available_threads)  # Set half the available threads as the default limit
 
 # Create instances of ThaleBSAUtilities
-parent_functions = ThaleBSAParentFunctions(core_logger)
-file_utils = FileUtilities(core_logger)
+parent_functions = ThaleBSAParentFunctions(core_log)
+file_utils = FileUtilities(core_log)
 
 #Check if user wants to just use the command line and variables.py instead of flask app. 
 #try: 
 if len(sys.argv) > 1:
     # Check if the first command line argument is set to 'cl'
     if sys.argv[1] == '-cl':
-        log_handler(core_logger, 'success', 'Command line argument is set to [-cl]. Running on command line.')
-        log_handler(core_logger, 'attempt', "Sourcing variables from variables.py")
+        core_log.note('Command line argument is set to [-cl]. Running on command line.')
+        core_log.attempt("Sourcing variables from variables.py")
         from variables import *
         experiment_dictionary = file_utils.create_experiment_dictionary()
-
         parent_functions.vcf_generation(
         experiment_dictionary, reference_genome_name, snpEff_species_db, 
         reference_genome_source, threads_limit, cleanup, known_snps
@@ -69,11 +59,11 @@ if len(sys.argv) > 1:
         parent_functions.bsa_analysis(experiment_dictionary)
         quit()
     else:
-        log_handler(core_logger, 'success', "Command line argument is not set to 'cl'. Starting flask app...")
+        core_log.success("Command line argument is not set to 'cl'. Starting flask app...")
 else:
-        log_handler(core_logger, 'success', "No command line arguments provided. Starting flask app...")
+        core_log.success("No command line arguments provided. Starting flask app...")
 #except Exception as e:
- #   log_handler(core_logger, 'fail', 'Starting thaleBSA has failed: {e}')
+ #   core_log.fail('Starting thaleBSA has failed: {e}')
 #    quit()
 
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
@@ -113,7 +103,7 @@ def index():
 
 @app.route('/run_create_experiment_dictionary', methods=['POST'])
 def run_create_experiment_dictionary():
-    log_handler(core_logger, 'trigger', 'Create experiment dictionary triggered')
+    core_log.trigger('Create experiment dictionary triggered')
     try:
         experiment_dictionary = utils.create_experiment_dictionary()  # Use the class method
         session['experiment_dictionary'] = experiment_dictionary
@@ -131,7 +121,7 @@ def run_create_experiment_dictionary():
 
 @app.route('/run_vcf_file_generation', methods=['POST'])
 def run_vcf_file_generation():
-    log_handler(core_logger, 'trigger', 'VCF file generation triggered.')
+    core_log.trigger('VCF file generation triggered.')
     #try:
     experiment_dictionary = session.get('experiment_dictionary', {})
     utils.vcf_file_generation(experiment_dictionary, reference_genome_name,
@@ -150,7 +140,7 @@ def run_vcf_file_generation():
 
 @app.route('/run_data_analysis', methods=['POST'])
 def run_data_analysis():
-    log_handler(core_logger, 'trigger', 'Run data analysis triggered')
+    core_log.trigger('Run data analysis triggered')
     #try:
     experiment_dictionary = session.get('experiment_dictionary', {})
     utils.data_analysis(experiment_dictionary)  # Use the class method
@@ -165,9 +155,9 @@ def run_data_analysis():
     #     )
 
 #Initialize Flask App
-log_handler(core_logger, 'attempt', 'Starting ThaleBSA Flask App')
+core_log.attempt('Starting ThaleBSA Flask App')
 try:
     if __name__ == '__main__':
         app.run(debug=True)
 except Exception as e:
-    log_handler(core_logger, 'fail', 'Starting flask app has failed: {e}')
+    core_log.fail('Starting flask app has failed: {e}')

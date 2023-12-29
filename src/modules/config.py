@@ -15,76 +15,118 @@ MODULES_DIR = os.path.join(SRC_DIR,'modules')
 
 import logging
 
-def setup_logger(name, log_path):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)  # Set the default level for the logger
+class LogHandler:
+    def __init__(self, name, log_filename):
+        self.name = name 
+        log_dir = LOG_DIR
+        self.log_path = os.path.join(log_dir, log_filename)
+        self.logger = self.setup_logger()
 
-    # Create a FileHandler and set the level to INFO
-    file_handler = logging.FileHandler(log_path)
-    file_handler.setLevel(logging.INFO)
+    def setup_logger(self):
+        logger = logging.getLogger(self.name)
+        logger.setLevel(logging.INFO)  # Set the default level for the logger
 
-    # Create a formatter and add it to the handler
-    formatter = logging.Formatter('%(message)s')
-    file_handler.setFormatter(formatter)
+        # Create a FileHandler and set the level to INFO
+        file_handler = logging.FileHandler(self.log_path)
+        file_handler.setLevel(logging.INFO)
 
-    # Add the handler to the logger
-    logger.addHandler(file_handler)
+        # Create a formatter and add it to the handler
+        formatter = logging.Formatter('%(message)s')
+        file_handler.setFormatter(formatter)
 
-    return logger
+        # Add the handler to the logger
+        logger.addHandler(file_handler)
 
-def log_handler(logger, message_type, message):
-    log_handler_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
-    function_name = inspect.currentframe().f_back.f_code.co_name
-    caller_frame = inspect.currentframe().f_back
-    script_name = os.path.basename(inspect.getfile(caller_frame))
-    
-    prefixes = {
-        'trigger': '[Flask Trigger]',
-        'attempt': '[Attempt]',
-        'success': '[Success]',
-        'note': '[Note]',
-        'fail': '[Fail]',
-        'warning': '[WARNING]',
-        'delimiter': ''       
-    }
+        return logger
 
-    if message_type in prefixes:
-        type_prefix = prefixes[message_type]
-    else:
-        message_type = 'unknown'
-        type_prefix = '[Unknown Type]'
+    @static_method
+    def obtain_execution_frames(self):
+        current_frame = inspect.currentframe()
+        caller_frame = inspect.getouterframes(current_frame)[2]
+        
+        # Get function name and script name from one level higher
+        function_name = caller_frame[0].f_code.co_name
+        script_name = os.path.basename(caller_frame[1])
+        
+        return script_name, function_name
 
+    @static_method
+    def construct_message(self, prefix, script_name, function_name, message_in):
+        log_handler_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
+        if function_name != '<module>':
+            message_out = f"{prefix} (<{script_name}> Function:{function_name}) {message_in}"
+        else:
+            message_out = f"{prefix} (<{script_name}> :module:) {message_in}"
+        return message_out 
 
-    prefix = f"{log_handler_timestamp} {type_prefix}"
+    def trigger(self, message):
+        script_name, function_name = self.obtain_execution_frames()
+        log_message = self.construct_message(
+            '[Flask Trigger]', script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
 
-    if message_type == 'delimiter':
-        message = print_delimiter(message)
-    else:        
-        message = f"{prefix} (<{script_name}> Function:{function_name}) {message}"
+    def attempt(self, message):
+        script_name, function_name = self.obtain_execution_frames()
+        log_message = self.construct_message(
+            '[Attempt]', script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
 
-    if message_type == 'note' or 'trigger' or 'attempt' or 'success' or 'unknown':
-        logger.info(message)
-        print(message)
-    elif message_type == 'fail':
-        logger.critical(message)
-        print(message)
-    elif message_type == 'warning':
-        logger.warning(message)
-        print(message)
-    elif message_type =='delimiter':
-        logger.info(message)
-        print(message)
+    def success(self, message):
+        script_name, function_name = self.obtain_execution_frames()
+        log_message = self.construct_message(
+            '[Success]', script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
 
-def print_delimiter(message):
-    delimiter_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
-    delimiter_message = (f'''
->=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
--. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
-||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
-|/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\||/ \|||\|||/ \|||\|||
-~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `~   `-~ `-`   `-~ `-`
->=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
-{delimiter_timestamp} {message}
->=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
-        ''')
-    return delimiter_message
+    def note(self, message):
+        script_name, function_name = self.obtain_execution_frames()
+        log_message = self.construct_message(
+            '[Note]', script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
+
+    def fail(self, message):
+        script_name, function_name = self.obtain_execution_frames()
+        log_message = self.construct_message(
+            '[!-FAIL-!]', script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
+
+    def warning(self, message):
+        script_name, function_name = self.obtain_execution_frames()
+        log_message = self.construct_message(
+            '[!-WARNING-!]', script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
+
+    def bash(self, message):
+        script_name, function_name = self.obtain_execution_frames()
+        log_message = self.construct_message(
+            '[sh]', script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
+
+    def delimiter(self, message):
+        delimiter_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
+        log_message = (f'''
+    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+    -. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
+    ||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
+    |/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\|||/ \|||\||/ \|||\|||/ \|||\|||
+    ~   `-~ `-`   `-~ `-`   `-~ `-~   `-~ `-`   `-~ `-`   `-~ `~   `-~ `-`   `-~ `-`
+    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+    {delimiter_timestamp} {message}
+    >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
+            ''')
+        self.logger.info(log_message)
+        print(log_message)    
+
