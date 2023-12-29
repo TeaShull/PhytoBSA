@@ -15,7 +15,7 @@ reference_genome_source = 'ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fa
 threads_limit = '20'
 
 #cleanup intermedia files? 
-cleanup = "True"
+cleanup = "False"
 
 #vcf of known background snps. Makes your final data much more compact and clean. 
 known_snps = './references/Arabidopsis_thaliana.vcf'

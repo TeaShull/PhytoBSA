@@ -51,7 +51,7 @@ if len(sys.argv) > 1:
         core_log.attempt("Sourcing variables from variables.py")
         from variables import *
         experiment_dictionary = file_utils.create_experiment_dictionary()
-        parent_functions.vcf_generation(
+        experiment_dictionary = parent_functions.vcf_generation(
         experiment_dictionary, reference_genome_name, snpEff_species_db, 
         reference_genome_source, threads_limit, cleanup, known_snps
         )

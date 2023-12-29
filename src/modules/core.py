@@ -15,32 +15,34 @@ class ThaleBSAParentFunctions:
                    reference_genome_name, snpEff_species_db,
                    reference_genome_source, threads_limit,
                    cleanup, known_snps):
-
-        self.log.attempt('Generating VCF files for experiments in dictionary')
+        """Input raw reads, either single or paired end. 
+        Returns: the VCF file is generated, and the function returns an updated
+        experiment_dictionary now containing the paths to the noknownsnps.table
+        files that were just generated. """
         for key, value in experiment_dictionary.items():
             self.log.attempt(f"Generating VCF file for {key}...")
             self.log.delimiter(f"Shell [sh] VCF generator for {key} beginning...")
             try:
+                current_line_name = key
                 # Construct cmd
                 modules_dir = MODULES_DIR
                 log_dir = LOG_DIR
+                output_dir = OUTPUT_DIR
                 vcfgen_script_path = os.path.join(modules_dir, 'VCFgen.sh')
-                args = (key, value['reads'], value['allele'],
+                args = (current_line_name, value['reads'], value['allele'],
                         reference_genome_name, snpEff_species_db,
                         reference_genome_source, threads_limit,
                         cleanup, known_snps
                         )
-
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                log_name = f"{timestamp}.{key}.VCF_generation.log"
-                log_path = os.path.join(log_dir, log_name)
-
-                # Create the command
                 cmd = f"{vcfgen_script_path} {' '.join(map(str, args))}"
 
-                # Open the log file for writing
+                # Generate log path
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                log_name = f"{timestamp}.{current_line_name}.VCF_generation.log"
+                log_path = os.path.join(log_dir, log_name)
+
+                #run vcfgen shell subprocess. Log vcf generation seperately
                 with open(log_path, 'w') as log_file:
-                    # Use subprocess.Popen to capture output in real-time
                     process = subprocess.Popen(
                         cmd, shell=True, stdout=subprocess.PIPE, 
                         stderr=subprocess.STDOUT, text=True
@@ -49,52 +51,61 @@ class ThaleBSAParentFunctions:
                     # Iterate over lines from the process and write to the log file
                     for line in process.stdout:
                         log_file.write(line)
-                        self.log.bash(line.strip())  # Print each line to the logger in real-time
+                        self.log.bash(line.strip())
 
-                    process.wait()  # Wait for the process to finish
+                    process.wait()  
 
+                #add the vcftable_path to the experiment_dictionary. 
+                vcftable_name = f"{current_line_name}.noknownsnps.table"
+                vcftable_path = os.path.join(output_dir, current_line_name, vcftable_name)
+                experiment_dictionary[current_line_name]['vcftable_path'] = vcftable_path
+                vcftable_path = experiment_dictionary[current_line_name]['vcftable_path']
+                
                 self.log.note(
-                    f"VCF file generated for {key}. Log saved to {log_path}"
+                    f"VCF file generated for {current_line_name}. Log saved to {log_path}"
                 )
+                self.log.note(f'VCF table path added to experiments_dictionary: {vcftable_path}')
             except Exception as e:
                 self.log.error(
-                    f"Error while generating the VCF file for {key}: {e}"
+                    f"Error while generating the VCF file for {current_line_name}: {e}"
                 )
 
         self.log.success("VCF file generation process complete")
+        return experiment_dictionary
 
     def bsa_analysis(self, experiment_dictionary):
         self.log.attempt("Attempting to perform data analysis...")
         try:
             for key, value in experiment_dictionary.items():
                 current_line_name = key
-                #Establishing VCF dataframe and variables
+                
                 # Configure the analysis logger for each line. 
                 output_dir = OUTPUT_DIR
                 timestamp = datetime.now().strftime("%Y.%m.%d_%H:%M")
                 log_filename = f"{timestamp}_{current_line_name}_analysis.log"
-
                 analysis_log = LogHandler(f'analysis_{current_line_name}', log_filename)
                 self.log.note(
                     f"{current_line_name} is labeled {allele}. Pairdness is {reads}"
                 )
-
+                #FileUtilites instance that logs to analysis_log
                 file_utils = FileUtilities(analysis_log)
 
-                reads = value['reads']
-                if value['allele'] == 'R':
-                    allele = 'recessive'
-                elif value['allele'] == 'D':
-                    allele = 'dominant'
-
-                vcftable_name = f"{current_line_name}.noknownsnps.table"
-                current_line_table_path = os.path.join(output_dir, current_line_name, vcftable_name)
-                vcf_df = file_utils.load_vcf_table(current_line_table_path, current_line_name)
+                #Check if table path is in experiment_dictionary. Create if missing.
+                #this happens when running the analysis function alone. 
+                if 'vcftable_path' not in experiment_dictionary[current_line_name]:
+                    vcftable_name = f"{current_line_name}.noknownsnps.table"
+                    vcftable_path = os.path.join(
+                        output_dir, current_line_name, vcftable_name
+                    )
+                    experiment_dictionary[current_line_name]['vcftable_path'] = vcftable_path
+                else:
+                    vcftable_path = experiment_dictionary[current_line_name]['vcftable_path']
 
                 #Analysis operations. sequential dataframe transformation
+                vcf_df = file_utils.load_vcf_table(vcftable_path, current_line_name)
                 analysis_utils = AnalysisUtilities(current_line_name, analysis_log)
+                vcf_df = analysis_utils.drop_na_and_indels(vcf_df) 
                 vcf_df = analysis_utils.calculate_delta_snp_and_g_statistic(vcf_df)
-                vcf_df = analysis_utils.drop_na_and_indels(vcf_df)
                 vcf_df = analysis_utils.loess_smoothing(vcf_df)
                 vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = analysis_utils.calculate_empirical_cutoffs(vcf_df)
                 

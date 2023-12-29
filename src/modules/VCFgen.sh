@@ -17,7 +17,8 @@ vcf_table_uuid="${10}"
 formatted_timestamp=$(date "+%Y.%m.%d ~%H:%M")
 reference_dir="./references"
 reference_genome_path="$reference_dir/$reference_genome_name.fa"
-reference_chrs_path="$reference_dir/$reference_genome_name.chrs.fa"
+reference_chrs_path="$reference_dir/$reference_genome_name.chrs"
+reference_chrs_fa_path="$reference_dir/$reference_genome_name.chrs.fa"
 input_dir="./input"
 input_name_prefix="${input_dir}/${line_name}.${allele_R_or_D}"
 output_dir="./output/${line_name}"
@@ -40,7 +41,8 @@ echo "Known SNPs: $known_snps"
 echo "VCF Table UUID: $vcf_table_uuid"
 echo "Formatted Timestamp: $formatted_timestamp"
 echo "Reference Genome Path: $reference_genome_path"
-echo "Reference Chromosomes Path: $reference_chrs_path"
+echo "Reference Chromosomes Path": $reference_chrs_path
+echo "Reference Chromosomes Fasta Path: $reference_chrs_fa_path"
 echo "Input Directory: $input_dir"
 echo "Input Name Prefix: $input_name_prefix"
 echo "Output Directory: $output_dir"
@@ -63,22 +65,22 @@ if ! [ -f "$reference_genome_path" ]; then
 fi
 
 # Make .chrs file if it doesn't exist, set reference variable
-if ! [ -f "$reference_chrs_path" ]; then
+if ! [ -f "$reference_chrs_fa_path" ]; then
     awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' \
-    $reference_genome_path > $reference_chrs_path
+    $reference_genome_path > $reference_chrs_fa_path
 fi
 
 # creating .fai and index files if they don't exist
-if ! [ -f "${reference_chrs_path}.fai" ]; then
-    samtools faidx "${reference_chrs_path}"
-    bwa index -p "${reference_chrs_path}" -a is "${reference_genome_path}"
+if ! [ -f "${reference_chrs_fa_path}.fai" ]; then
+    samtools faidx "${reference_chrs_fa_path}"
+    bwa index -p "${reference_chrs_fa_path}" -a is "${reference_genome_path}"
 fi
 
 
 # create dictionary for gatk haplotype caller if it doesn't exist
 if [ ! -f "${reference_chrs_path}.dict" ]; then
     picard CreateSequenceDictionary \
-        -R "$reference_chrs_path" \
+        -R "${reference_chrs_fa_path}" \
         -O "${reference_chrs_path}.dict"
 fi
 
@@ -106,13 +108,13 @@ echo "input files mu: $input_files_mu"
 # Mapping
 bwa mem \
     -t $threads_halfed \
-    -M "${reference_chrs_path}" \
+    -M "${reference_chrs_fa_path}" \
     $input_files_wt > "${output_file_prefix}_wt.sam" &
 bwa mem \
     -t $threads_halfed \
-    -M "${reference_chrs_path}" \
+    -M "${reference_chrs_fa_path}" \
     $input_files_mu > "${output_file_prefix}_mu.sam"
-
+wait
 
 echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 echo "$formatted_timestamp Converting sam to bam"
@@ -176,7 +178,8 @@ picard AddOrReplaceReadGroups \
     O="${output_file_prefix}_wt.sort.md.rg.bam" \
     RGLB="${line_name}_wt" \
     RGPL=illumina RGSM="${line_name}_wt" \
-    RGPU=run1 SORT_ORDER=coordinate
+    RGPU=run1 \
+    SORT_ORDER=coordinate
 wait
 
 # Build BAM index
@@ -194,7 +197,7 @@ echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
 
 # GATK HC Variant calling
 gatk HaplotypeCaller \
-    -R "$reference_chrs_path" \
+    -R "$reference_chrs_fa_path" \
     -I "${output_file_prefix}_mu.sort.md.rg.bam" \
     -I "${output_file_prefix}_wt.sort.md.rg.bam" \
     -O "${output_file_prefix}.hc.vcf" \
