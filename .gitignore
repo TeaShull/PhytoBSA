@@ -23,3 +23,5 @@ other_data/
 *.ipynb*
 #ignore logs
 *.log*
+#ignore python cache
+*.pyc*
