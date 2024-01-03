@@ -78,7 +78,8 @@ class ThaleBSAParentFunctions:
         try:
             for key, value in experiment_dictionary.items():
                 current_line_name = key
-                
+                allele = current_line_name['allele']
+                reads = current_line_name['reads']
                 # Configure the analysis logger for each line. 
                 output_dir = OUTPUT_DIR
                 timestamp = datetime.now().strftime("%Y.%m.%d_%H:%M")
@@ -117,6 +118,7 @@ class ThaleBSAParentFunctions:
             self.log.success("Data analysis complete")
         except Exception as e:
             self.log.fail(f"Error during data analysis: {e}")
+    
 
 class FileUtilities:
     def __init__(self, logger):
@@ -206,6 +208,7 @@ class FileUtilities:
             )
         except Exception as e:
             self.log.fail(f"An unexpected error occurred: {e}")
+
 
 class GeneralUtilities:
     """General Utilities"""
