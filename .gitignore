@@ -27,3 +27,7 @@ other_data/
 *.pyc*
 #ignore sqldb
 *.db*
+#ignore sam files
+*.sam
+ignore bam files
+*.bam

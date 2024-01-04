@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-pwd
 source VCFfunctions.sh
+
 main() {
+    formatted_timestamp=$(date "+%Y.%m.%d ~%H:%M")
+
     # Organize variables passed from thale_bsa_utils.vcf_file_generation(args)
-    
     ## Organize variables passed from vcf_generation function in core.py
     declare -A passed_variables
     passed_variables["vcf_ulid"]=${1}
@@ -30,7 +31,6 @@ main() {
 
     ## Generate other needed variables
     declare -A generated_variables
-    generated_variables["formatted_timestamp"]=$(date "+%Y.%m.%d ~%H:%M")
     generated_variables["reference_genome_path"]=${reference_dir}/${reference_genome_name}.fa
     generated_variables["reference_chrs_path"]=${reference_dir}/${reference_genome_name}.chrs
     generated_variables["reference_chrs_fa_path"]=${reference_dir}/${reference_genome_name}.chrs.fa
