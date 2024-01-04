@@ -3,70 +3,79 @@ import os
 import sys
 import multiprocessing
 from datetime import datetime
-from flask import Flask, render_template, request, session
+from flask import Flask
+import argparse
 
-modules_dir = os.path.join(os.getcwd(),'src','modules')
+modules_dir = os.path.join(os.getcwd(), 'src', 'modules')
 sys.path.append(modules_dir)
 
 from core import ThaleBSAParentFunctions, FileUtilities
 from config import (
-    LogHandler, SRC_DIR, LOG_DIR, OUTPUT_DIR, TEMPLATE_DIR, STATIC_DIR
+    LogHandler, SRC_DIR, INPUT_DIR, LOG_DIR, OUTPUT_DIR, TEMPLATE_DIR, STATIC_DIR
 )
 
-if __name__ == "__main__":
-    # Initialize core logger
-    timestamp = datetime.now().strftime("%Y.%m.%d_%H:%M")
-    log_filename = f"{timestamp}_core.log"
-    core_log = LogHandler('core', log_filename)
+# Initialize core logger
 
-#Initialize directory structure variables
-src_dir = SRC_DIR
-log_dir = LOG_DIR
-template_dir = TEMPLATE_DIR
-static_dir = STATIC_DIR
+core_log = LogHandler('core')
 
-
-# Initialize variables
-reference_genome_name = ""
-snpEff_db_name = ""
-reference_genome_source = ""
-threads_limit = 0
-cleanup = True
-known_snps = ""
-
-# Get the number of threads available on the machine
-available_threads = multiprocessing.cpu_count()
-threads_limit = max(1, available_threads)  # Set half the available threads as the default limit
+# Argument parsing
+parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')
+parser.add_argument('-vt', '--vcf_table', type=str, help='path to the vcf table you wish to analyze.')
+parser.add_argument('-n', '--line_name', type=str, help='name of the line you wish to analyze. Will be used to name output files.')
+parser.add_argument('-cl', '--command_line', action='store_true', help='Run on the command line.')
+parser.add_argument('-an', '--analysis', action='store_true', help='Run the analysis.')
+args = parser.parse_args()
 
 # Create instances of ThaleBSAUtilities
 parent_functions = ThaleBSAParentFunctions(core_log)
 file_utils = FileUtilities(core_log)
 
-#Check if user wants to just use the command line and variables.py instead of flask app. 
-#try: 
-if len(sys.argv) > 1:
-    # Check if the first command line argument is set to 'cl'
-    if sys.argv[1] == '-cl':
+core_log.note(f'Core log begin. ulid: {core_log.ulid}')
+# Check if user wants to just use the command line and variables.py instead of the Flask app.
+try:
+    if args.command_line:
         core_log.note('Command line argument is set to [-cl]. Running on command line.')
         core_log.attempt("Sourcing variables from variables.py")
         from variables import *
-        experiment_dictionary = file_utils.create_experiment_dictionary()
+        experiment_dictionary = file_utils.experiment_detector()
         experiment_dictionary = parent_functions.vcf_generation(
-        experiment_dictionary, reference_genome_name, snpEff_species_db, 
-        reference_genome_source, threads_limit, cleanup, known_snps
+            experiment_dictionary, reference_genome_name, snpEff_species_db, 
+            reference_genome_source, threads_limit, cleanup, known_snps
         )
-        
         parent_functions.bsa_analysis(experiment_dictionary)
         quit()
     else:
-        core_log.success("Command line argument is not set to 'cl'. Starting flask app...")
-else:
-        core_log.success("No command line arguments provided. Starting flask app...")
-#except Exception as e:
- #   core_log.fail('Starting thaleBSA has failed: {e}')
-#    quit()
+        core_log.note("Command line argument is not set.")
 
-app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
+    if args.analysis:
+        try:
+            core_log.note('Command line argument to run analysis detected. Parsing line name and vcf table path..')
+            if args.line_name and args.vcf_table:
+                vcf_table_path = os.path.join(INPUT_DIR, args.vcf_table)
+                if os.path.exists(vcf_table_path):
+                    experiment_dictionary = {}
+                    experiment_dictionary[args.line_name] = {
+                        'vcf_table_path': args.vcf_table,
+                        'line_output_dir': setup_output_directory(OUTPUT_DIR, args.line_name),
+                        'vcf_ulid': file_utils.extract_ulid_from_filename()
+                    }
+                    parent_functions.bsa_analysis(experiment_dictionary)
+                else: 
+                    core_log.fail(f'vcf table path [{vcf_table_path}] does not exist.')
+            else:
+                core_log.fail('Either line_name [-n] or vcf_table [-vt] are not set.')
+        except Exception as e:
+            core_log.fail(f'There was an error parsing the line name and vcf table path: {e}')
+
+    if not args.command_line and args.analysis:
+        core_log.attempt('No command line arguments given. Starting Flask app....')
+
+except Exception as e:
+    core_log.fail(f'Starting thaleBSA has failed: {e}')
+    quit()
+
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 app.secret_key = '1111'
 
 @app.route('/', methods=['GET', 'POST'])

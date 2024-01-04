@@ -14,29 +14,43 @@ from config import (
 
 class AnalysisUtilities:
     
-    def __init__(self, current_line_name, logger):
+    def __init__(self, current_line_name, vcf_ulid, logger):
         self.current_line_name = current_line_name
         self.log = logger
+        self.vcf_ulid = vcf_ulid
+        self.analysis_out_prefix = f'{self.log.ulid}_-{current_line_name}_analysis'
+
+        if self.vcf_ulid:
+            self.analysis_out_path = os.path.join(
+                OUTPUT_DIR, 
+                f'{self.vcf_ulid}_-{current_line_name}', 
+                {self.analysis_out_prefix}
+            )
+        else:
+            self.analysis_out_path = os.path.join(
+                OUTPUT_DIR,
+                {self.analysis_out_prefix}
+            )
 
     def drop_na_and_indels(self, vcf_df):
         """Drops NA and insertion/deletions from VCF dataframe.
         Input: VCF dataframe
         Output: Cleaned VCF dataframe with no NA or indels"""
         self.log.attempt('Removing NAs and indels')
+        
         try:
             # Use .loc for assignment to avoid the warning
             apply_args = (lambda x: x if len(x) == 1 else np.nan)
             vcf_df.loc[:, "ref"] = vcf_df["ref"].apply(apply_args)
             vcf_df.loc[:, "alt"] = vcf_df["alt"].apply(apply_args)
-
             vcf_df.dropna(axis=0, how='any', subset=["ratio"], inplace=True)
-            self.log.success(                f'Indels dropped, and NaN values for {self.current_line_name} cleaned successfully.'
-            )
+            self.log.success(f'Indels dropped, and NaN values for {self.current_line_name} cleaned successfully.')
+            
             return vcf_df
+        
         except Exception as e:
-            self.log.fail(
-                f"An error occurred during data processing: {e}"
-            )
+            self.log.fail(f"An error occurred during data processing: {e}")
+            
             return None
 
     def calculate_delta_snp_and_g_statistic(self, vcf_df):
@@ -46,12 +60,12 @@ class AnalysisUtilities:
         self.log.attempt(f"Initialize calculations for delta-SNP ratios and G-statistics")
         try:
             suppress = False
-            vcf_df['ratio'] = self.delta_snp_array(
+            vcf_df['ratio'] = self._delta_snp_array(
                 vcf_df['wt_ref'], vcf_df['wt_alt'], 
                 vcf_df['mu_ref'], vcf_df['mu_alt'],
                 suppress
             )
-            vcf_df['G_S'] = self.g_statistic_array(
+            vcf_df['G_S'] = self._g_statistic_array(
                 vcf_df['wt_ref'], vcf_df['wt_alt'], 
                 vcf_df['mu_ref'], vcf_df['mu_alt'],
                 suppress
@@ -63,14 +77,16 @@ class AnalysisUtilities:
         except Exception as e:
             self.log.fail( f"An error occurred during calculation: {e}")
 
-    def delta_snp_array(self, wtr, wta, mur, mua, suppress):
+    def _delta_snp_array(self, wtr, wta, mur, mua, suppress):
+        '''Calculates delta SNP feature, which quantifies divergence in read depths between the 
+        two bulks.''' 
         if not suppress:
-            self.log.attempt(                f"Calculate delta-SNP ratios for {self.current_line_name}..."
+            self.log.attempt(f"Calculate delta-SNP ratios for {self.current_line_name}..."
             )
         try:
             result = ((wtr) / (wtr + wta)) - ((mur) / (mur + mua))
             if not suppress:
-                self.log.success(                    f"Delta-SNP calculation successful for {self.current_line_name}"
+                self.log.success(f"Delta-SNP calculation successful for {self.current_line_name}"
                 )
             return result
         except Exception as e:
@@ -79,10 +95,12 @@ class AnalysisUtilities:
             )
             return None
 
-    def g_statistic_array(self, o1, o3, o2, o4, suppress):
+    def _g_statistic_array(self, o1, o3, o2, o4, suppress):
+        '''Calculates g-statistic feature, which is a more statistically driven approach to 
+        calculating read-depth divergence from expected values. Chi square ish.''' 
         if not suppress:
-            self.log.attempt(                f"Calculate G-statistics for {self.current_line_name}...."
-            )
+            self.log.attempt(f"Calculate G-statistics for {self.current_line_name}....")
+        
         try:
             np.seterr(all='ignore')
 
@@ -102,15 +120,13 @@ class AnalysisUtilities:
             result = np.where(
                 e1 * e2 * e3 * e4 == 0, 0.0, llr1 + llr2 + llr3 + llr4
             )
-
             if not suppress:
-                self.log.success(                    f"G-statistic calculation complete for {self.current_line_name}"
+                self.log.success(f"G-statistic calculation complete for {self.current_line_name}"
                 )
             return result
+
         except Exception as e:
-            self.log.fail(
-                f"Error in g_statistic_array for {self.current_line_name}: {e}"
-            )
+            self.log.fail(f"Error in g_statistic_array for {self.current_line_name}: {e}")
             return None
 
     def loess_smoothing(self, vcf_df):
@@ -124,7 +140,7 @@ class AnalysisUtilities:
         self.log.attempt("span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
         try:
 
-            vcf_df = self.smooth_chr_facets(
+            vcf_df = self._smooth_chr_facets(
                 vcf_df, lowess_span, smooth_edges_bounds
             )
             self.log.success("LOESS smoothing calculations successful.")
@@ -132,7 +148,7 @@ class AnalysisUtilities:
         except Exception as e:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
-    def smooth_chr_facets(self, df, lowess_span, smooth_edges_bounds):
+    def _smooth_chr_facets(self, df, lowess_span, smooth_edges_bounds):
         self.log.attempt('Smoothing chromosome facets')
         df_list = []
 
@@ -141,8 +157,7 @@ class AnalysisUtilities:
         def smooth_single_chr(df_chr, chr):
             lowess_function = sm.nonparametric.lowess
 
-            self.log.attempt(                f"LOESS of chr:{chr} for {self.current_line_name}..."
-            )
+            self.log.attempt(f"LOESS of chr:{chr} for {self.current_line_name}...")
 
             positions = df_chr['pos'].to_numpy()
             
@@ -188,7 +203,7 @@ class AnalysisUtilities:
                 columns='pseudo_pos'
             )
 
-            self.log.success(                f"LOESS of chr:{chr} for {self.current_line_name} complete"
+            self.log.success(f"LOESS of chr:{chr} for {self.current_line_name} complete"
             )
             return df_chr
 
@@ -207,15 +222,14 @@ class AnalysisUtilities:
         iterations = 1000
         lowess_span = 0.3
         self.log.attempt("Initialize calculation of empirical cutoffs")
-        self.log.note(
-            f"breaking geno/pheno association. iterations:{iterations}, LOESS span:{lowess_span}"
-        )
+        self.log.note(f"breaking geno/pheno association. iterations:{iterations}, LOESS span:{lowess_span}")
+        
         try:
             vcf_df_position = vcf_df[['pos']].copy()
             vcf_df_wt = vcf_df[['wt_ref', 'wt_alt']].copy()
             vcf_df_mu = vcf_df[['mu_ref', 'mu_alt']].copy()
 
-            gs_cutoff, rsg_cutoff, rsg_y_cutoff = self.empirical_cutoff(
+            gs_cutoff, rsg_cutoff, rsg_y_cutoff = self._empirical_cutoff(
                 vcf_df_position, vcf_df_wt, vcf_df_mu, iterations, lowess_span
             )
 
@@ -231,24 +245,16 @@ class AnalysisUtilities:
             return vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff
 
             self.log.success(f"G-statistic cutoff = {gs_cutoff}.")
-            self.log.success(
-                f"Ratio-scaled G-statistic cutoff = {rsg_cutoff}."
-            )
-            self.log.success(
-                f"LOESS smoothed Ratio-scaled G-statistic cutoff = {rsg_y_cutoff}."
-            )
-            self.log.success(
-                f"Empirical cutoff via randomization for {self.current_line_name} completed."
-            )
-        except Exception as e:
-            self.log.fail(
-                f"An error occurred during cutoff calculations: {e}"
-            )
+            self.log.success(f"Ratio-scaled G-statistic cutoff = {rsg_cutoff}.")
+            self.log.success(f"LOESS smoothed Ratio-scaled G-statistic cutoff = {rsg_y_cutoff}.")
+            self.log.success(f"Empirical cutoff via randomization for {self.current_line_name} completed.")
 
-    def empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu, shuffle_iterations, lowess_span):
-        self.log.attempt(
-            f"Calculate empirical cutoff for {self.current_line_name}..."
-        )
+        except Exception as e:
+            self.log.fail(f"An error occurred during cutoff calculations: {e}")
+
+    def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu, shuffle_iterations, lowess_span):
+        self.log.attempt(f"Calculate empirical cutoff for {self.current_line_name}...")
+        
         try:
             lowess = sm.nonparametric.lowess
             smGstatAll, smRatioAll, RS_GAll, smRS_G_yhatAll = [], [], [], []
@@ -286,20 +292,20 @@ class AnalysisUtilities:
             RS_G_Y_99p = np.percentile(smRS_G_yhatAll, 99.99)
 
             result = G_S_95p, RS_G_95p, RS_G_Y_99p
-            self.log.success(
-                f"Empirical cutoff calculation completed for {self.current_line_name}"
-            )
+            self.log.success(f"Empirical cutoff calculation completed for {self.current_line_name}")
+            
             return result
+        
         except Exception as e:
-            self.log.fail(
-                f"Error in empirical_cutoff for {self.current_line_name}: {e}"
-            )
+            self.log.fail(f"Error in empirical_cutoff for {self.current_line_name}: {e}")
+            
             return None, None, None        
 
     def sort_save_likely_candidates(self, vcf_df):
         """Identify likely candidates"""
-        output_dir = OUTPUT_DIR
         self.log.attempt('Initialize the identification of likely candidates')
+        self.log.note(f'associated VCF table ulid: {vcf_ulid}')
+
         try:
             # Identify likely candidates using G-stat and smoothed ratio-scaled G-stat
             vcf_df_likely_cands = vcf_df.loc[vcf_df['RS_G_yhat_01p'] == 1]
@@ -310,35 +316,27 @@ class AnalysisUtilities:
             )
 
             # Save DataFrames to CSV files
-            results_table_name =f"{self.current_line_name}_results_table.tsv"
+            results_table_name =f"{self.analysis_out_prefix}_results_table.tsv"
             results_table_path = os.path.join(
-                output_dir, results_table_name
+                self.analysis_out_path, results_table_name
             )
             vcf_df.to_csv(results_table_path, sep='\t', index=False)
 
-            candidates_table_name = f"{self.current_line_name}_candidates_table.tsv"
+            candidates_table_name = f"{self.analysis_out_prefix}_candidates_table.tsv"
             candidates_table_path = os.path.join(
-                output_dir, candidates_table_name
+                self.analysis_out_path, candidates_table_name
             )
             likely_cands_sorted.to_csv(candidates_table_path, sep='\t', index=False)
             
-            self.log.success(
-                f"Results and candidates tables for {self.current_line_name} generated."
-            )
-        except Exception as e:
-            self.log.fail( 
-                f"An error occurred during {self.current_line_name} table generation: {e}"
-            )
+            self.log.success(f"Results and candidates tables for {self.current_line_name} generated.")
 
-class PlotUtilities:
-    def __init__(self, current_line_name, logger):
-        self.current_line_name = current_line_name
-        self.log = logger 
+        except Exception as e:
+            self.log.fail(f"An error occurred during {self.current_line_name} table generation: {e}")
 
     def generate_plots(self, vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff):
-        """Generate and save plots. Plot scenarios are below"""
-        # Plot scenarios format:
-        # ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)
+        """Generate and save plots. Plot scenarios are below
+        Plot scenarios format:
+        ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)"""
         plot_scenarios = [
             ('G_S', 'G-statistic', 'G-statistic', None, False),
             ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', 
@@ -356,25 +354,20 @@ class PlotUtilities:
             ),
         ]
 
-        self.log.attempt(
-            f"Attempting to produce and save plots for {self.current_line_name}..."
-        )
+        self.log.attempt(f"Attempting to produce and save plots for {self.current_line_name}...")
+        
         try:
             for plot_scenario in plot_scenarios:
                 self.plot_data(vcf_df, *plot_scenario)
-            self.log.delimiter(
-                f"Results for {self.current_line_name} generated."
-            )
+            
+            self.log.delimiter(f"Results for {self.current_line_name} generated.")
+
         except Exception as e:
-            self.log.fail( 
-                f"An error occurred while producing and saving plots: {e}"
-            )
+            self.log.fail(f"An error occurred while producing and saving plots: {e}")
         
     def plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
         warnings.filterwarnings("ignore", module="plotnine\..*")
-        self.log.attempt(
-            f"Plot data and save plots for {self.current_line_name}..."
-        )
+        self.log.attempt(f"Plot data and save plots for {self.current_line_name}...")
 
         try:
             mb_conversion_constant = 0.000001
@@ -413,11 +406,9 @@ class PlotUtilities:
                 plot += geom_line(color='blue')
 
             # Save plot
-            output_dir = OUTPUT_DIR 
-            plot_name = f"{self.current_line_name}_{y_column.lower()}.png"
-            file_path_name = os.path.join(
-                output_dir, self.current_line_name, plot_name
-            )
+            OUTPUT_DIR = OUTPUT_DIR 
+            plot_name = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
+            file_path_name = os.path.join(self.analysis_out_path, plot_name)
             plot.save(
                 filename=file_path_name,
                 height=6,
@@ -427,7 +418,6 @@ class PlotUtilities:
             )
 
             self.log.success(f"Plot saved {file_path_name}")
+        
         except Exception as e:
-            self.log.fail(
-                f"Plotting data failed for {self.current_line_name}: {e}"
-            )
+            self.log.fail(f"Plotting data failed for {self.current_line_name}: {e}")

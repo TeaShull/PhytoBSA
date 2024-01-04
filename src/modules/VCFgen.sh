@@ -1,293 +1,193 @@
 #!/usr/bin/env bash
+pwd
+source VCFfunctions.sh
+main() {
+    # Organize variables passed from thale_bsa_utils.vcf_file_generation(args)
+    
+    ## Organize variables passed from vcf_generation function in core.py
+    declare -A passed_variables
+    passed_variables["vcf_ulid"]=${1}
+    passed_variables["current_line_name"]=${2}
+    passed_variables["allele"]=${3}
+    passed_variables["input_dir"]=${4}
+    passed_variables["wt_input"]=${5}
+    passed_variables["mu_input"]=${6}
+    passed_variables["output_dir_path"]=${7}
+    passed_variables["output_prefix"]=${8}
+    passed_variables["vcf_table_path"]=${9}
+    passed_variables["reference_dir"]=${10}
+    passed_variables["reference_genome_name"]=${11}
+    passed_variables["snpEff_species_db"]=${12}
+    passed_variables["reference_genome_source"]=${13}
+    passed_variables["known_snps"]=${14}
+    passed_variables["threads_limit"]=${15}
+    passed_variables["cleanup"]=${16}
 
-# Organize variables passed from thale_bsa_utils.vcf_file_generation(args)
-line_name="${1}"
-pairedness="${2}"
-allele_R_or_D="${3}"
-reference_genome_name="${4}"
-snpEff_db_name="${5}"
-reference_genome_source="${6}"
-threads_limit="${7}"
-threads_halfed="$((threads_limit / 2))"
-cleanup="${8}"
-known_snps="${9}"
-vcf_table_uuid="${10}"
+    ## Printing all assigned variables for logging purposes
+    print_variable_info passed_variables "Variables passed to VCFgen.sh"
+    ## Assigning variables in array to their respective keys
+    assign_values passed_variables
 
-# Initialize path variables
-formatted_timestamp=$(date "+%Y.%m.%d ~%H:%M")
-reference_dir="./references"
-reference_genome_path="$reference_dir/$reference_genome_name.fa"
-reference_chrs_path="$reference_dir/$reference_genome_name.chrs"
-reference_chrs_fa_path="$reference_dir/$reference_genome_name.chrs.fa"
-input_dir="./input"
-input_name_prefix="${input_dir}/${line_name}.${allele_R_or_D}"
-output_dir="./output/${line_name}"
-output_file_prefix="$output_dir/${line_name}"
-snpeff_dir="$output_dir/snpEff"
+    ## Generate other needed variables
+    declare -A generated_variables
+    generated_variables["formatted_timestamp"]=$(date "+%Y.%m.%d ~%H:%M")
+    generated_variables["reference_genome_path"]=${reference_dir}/${reference_genome_name}.fa
+    generated_variables["reference_chrs_path"]=${reference_dir}/${reference_genome_name}.chrs
+    generated_variables["reference_chrs_fa_path"]=${reference_dir}/${reference_genome_name}.chrs.fa
+    generated_variables["snpeff_dir"]=${output_dir_path}/snpEff
 
-echo "$formatted_timestamp Variables initiated."
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+    ## Printing all generated variables for logging purposes
+    print_variable_info generated_variables "Variables generated in VCFgen.sh"
+    ## Assigning variables in array to their respective keys
+    assign_values generated_variables
 
-echo "Line Name: $line_name"
-echo "Pairedness: $pairedness"
-echo "Allele (R or D): $allele_R_or_D"
-echo "Reference Genome: $reference_genome_name"
-echo "SNPEff DB Name: $snpEff_db_name"
-echo "Reference Genome Source: $reference_genome_source"
-echo "Threads Limit: $threads_limit"
-echo "Threads Halved: $threads_halfed"
-echo "Cleanup: $cleanup"
-echo "Known SNPs: $known_snps"
-echo "VCF Table UUID: $vcf_table_uuid"
-echo "Formatted Timestamp: $formatted_timestamp"
-echo "Reference Genome Path: $reference_genome_path"
-echo "Reference Chromosomes Path": $reference_chrs_path
-echo "Reference Chromosomes Fasta Path: $reference_chrs_fa_path"
-echo "Input Directory: $input_dir"
-echo "Input Name Prefix: $input_name_prefix"
-echo "Output Directory: $output_dir"
-echo "Output File Prefix: $output_file_prefix"
-echo "SNPEff Directory: $snpeff_dir"
+    ## Generate final file output names
+    declare -A final_output_names
+    final_output_names["noknownsnps_tablename"]="${output_prefix}.noknownsnps.table"
+    final_output_names["ems_file_name"]="${output_prefix}.ems.table"
 
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "$formatted_timestamp Preparing references and directory structure"
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+    ## Print all generated Final file output names
+    print_variable_info final_output_names "Final output names"
+    ## Assigning variables in array to their respective keys
+    assign_values final_output_names
 
-#Create directory structure if it doesn't exist
-mkdir -p "${output_dir}"
-mkdir -p "${snpeff_dir}"
-mkdir -p "${reference_dir}"
+    ## Prepare references and directory structure
+    print_message "Preparing references and directory structure"
+    create_directories ${output_dir} ${snpeff_dir} ${reference_dir}
+    
+    download_reference_genome "${reference_genome_path}" "${reference_genome_source}"
+    
+    create_chrs_file "${reference_genome_path}" "${reference_chrs_fa_path}"
+    create_fai_and_index ${reference_genome_path} "${reference_chrs_fa_path}"
+    create_sequence_dictionary "${reference_chrs_fa_path}" "${reference_chrs_path}"
 
-# Make reference genome if it doesn't exist
-if ! [ -f "$reference_genome_path" ]; then
-    curl -o "$reference_genome_path.gz" "$reference_genome_source" && \
-        gzip -d "$reference_genome_path.gz"
-fi
+    print_message "Mapping"
+    bwa mem \
+        -t "$threads_halfed" \
+        -M "${reference_chrs_fa_path}" \
+        $wt_input > "${output_prefix}_wt.sam" &
+    
+    bwa mem \
+        -t "$threads_halfed" \
+        -M "${reference_chrs_fa_path}" \
+        $mu_input > "${output_prefix}_mu.sam"
+    wait
 
-# Make .chrs file if it doesn't exist, set reference variable
-if ! [ -f "$reference_chrs_fa_path" ]; then
-    awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' \
-    $reference_genome_path > $reference_chrs_fa_path
-fi
+    print_message "Converting sam to bam"
+    samtools view \
+        -bSh \
+        -@ "$threads_halfed" \
+        "${output_prefix}_mu.sam" > "${output_prefix}_mu.bam" &
+    samtools view \
+        -bSh \
+        -@ "$threads_halfed" \
+        "${output_prefix}_wt.sam" > "${output_prefix}_wt.bam"
+    wait
 
-# creating .fai and index files if they don't exist
-if ! [ -f "${reference_chrs_fa_path}.fai" ]; then
-    samtools faidx "${reference_chrs_fa_path}"
-    bwa index -p "${reference_chrs_fa_path}" -a is "${reference_genome_path}"
-fi
+    # Fix paired-end
+    if [ "${pairedness}" == "paired-end" ]; then
+        samtools fixmate "${output_prefix}_wt.bam" "${output_prefix}_wt.fix.bam" &
+        samtools fixmate "${output_prefix}_mu.bam" "${output_prefix}_mu.fix.bam"
+    fi
+    wait
 
+    print_message "Sorting by coordinate"
+    picard SortSam \
+        I="${output_prefix}_mu.fix.bam" \
+        O="${output_prefix}_mu.sort.bam" \
+        SORT_ORDER=coordinate &
+    picard SortSam \
+        I="${output_prefix}_wt.fix.bam" \
+        O="${output_prefix}_wt.sort.bam" \
+        SORT_ORDER=coordinate
+    wait
 
-# create dictionary for gatk haplotype caller if it doesn't exist
-if [ ! -f "${reference_chrs_path}.dict" ]; then
-    picard CreateSequenceDictionary \
-        -R "${reference_chrs_fa_path}" \
-        -O "${reference_chrs_path}.dict"
-fi
+    print_message "Marking duplicates"
+    picard MarkDuplicates \
+        I="${output_prefix}_mu.sort.bam" \
+        O="${output_prefix}_mu.sort.md.bam" \
+        METRICS_FILE="${output_prefix}_mu.metrics.txt" \
+        ASSUME_SORTED=true &
+    picard MarkDuplicates \
+        I="${output_prefix}_wt.sort.bam" \
+        O="${output_prefix}_wt.sort.md.bam" \
+        METRICS_FILE="${output_prefix}_wt.metrics.txt" \
+        ASSUME_SORTED=true
+    wait
 
-echo "References prepared, preparing VCF for ${line_name}"
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "$formatted_timestamp ${line_name} reads seem to be ${pairedness}"
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "Current Working Directory: $(pwd)"
-# Set input files as paired-end or single-read
-if [ "${pairedness}" == "paired-end" ]; then
-    input_files_wt="${input_name_prefix}_1.wt.fq.gz \
-        ${input_name_prefix}_2.wt.fq.gz"
-    input_files_mu="${input_name_prefix}_1.mu.fq.gz \
-        ${input_name_prefix}_2.mu.fq.gz"
-fi
+    print_message "Adding header for GATK"
+    picard AddOrReplaceReadGroups \
+        I="${output_prefix}_mu.sort.md.bam" \
+        O="${output_prefix}_mu.sort.md.rg.bam" \
+        RGLB="${line_name}_mu" \
+        RGPL=illumina \
+        RGSM="${line_name}_mu" \
+        RGPU=run1 \
+        SORT_ORDER=coordinate &
+    picard AddOrReplaceReadGroups \
+        I="${output_prefix}_wt.sort.md.bam" \
+        O="${output_prefix}_wt.sort.md.rg.bam" \
+        RGLB="${line_name}_wt" \
+        RGPL=illumina \
+        RGSM="${line_name}_wt" \
+        RGPU=run1 \
+        SORT_ORDER=coordinate
+    wait
 
-if [ "${pairedness}" == "single-read" ]; then
-    input_files_wt="${input_name_prefix}.wt.fq.gz"
-    input_files_mu="${input_name_prefix}.mu.fq.gz"
-fi
+    print_message "Building BAM index"
+    # Build BAM index
+    picard BuildBamIndex \
+        INPUT="${output_prefix}_mu.sort.md.rg.bam" \
+        O="${output_prefix}_mu.sort.md.rg.bai" &
+    picard BuildBamIndex \
+        INPUT="${output_prefix}_wt.sort.md.rg.bam" \
+        O="${output_prefix}_wt.sort.md.rg.bai"
+    wait
 
-echo "input files wt: $input_files_wt"
-echo "input files mu: $input_files_mu"
+    print_message "Calling haplotypes. This may take a while..."
+    # GATK HC Variant calling
+    gatk HaplotypeCaller \
+        -R "$reference_chrs_fa_path" \
+        -I "${output_prefix}_mu.sort.md.rg.bam" \
+        -I "${output_prefix}_wt.sort.md.rg.bam" 
+        -O "${output_prefix}.hc.vcf" \
+        -output-mode EMIT_ALL_CONFIDENT_SITES \
+        --native-pair-hmm-threads "$threads_limit"
 
-# Mapping
-bwa mem \
-    -t $threads_halfed \
-    -M "${reference_chrs_fa_path}" \
-    $input_files_wt > "${output_file_prefix}_wt.sam" &
-bwa mem \
-    -t $threads_halfed \
-    -M "${reference_chrs_fa_path}" \
-    $input_files_mu > "${output_file_prefix}_mu.sam"
-wait
+    print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
+    # snpEff, labeling SNPs
+    snpEff "$snpEff_db_name" \
+        -s "${output_dir}/snpEff/${1}_snpEff_summary.html" \
+        "${output_prefix}.hc.vcf" > "${output_prefix}.se.vcf"
 
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "$formatted_timestamp Converting sam to bam"
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+    print_message "Haplotypes called and SNPs labeled. Cleaning data."
+    # Extracting SNPeff data and variant information into a table
 
-samtools view \
-    -bSh \
-    -@ "$threads_halfed" \
-    "${output_file_prefix}_mu.sam" > "${output_file_prefix}_mu.bam" &
-samtools view \
-    -bSh \
-    -@ "$threads_halfed" \
-    "${output_file_prefix}_wt.sam" > "${output_file_prefix}_wt.bam"
-wait
+    extract_fields_snpSift "${line_name}" "${output_prefix}"
 
-# Fix paired-end
-if [ "${pairedness}" == "paired-end" ]; then
-    samtools fixmate "${output_file_prefix}_wt.bam" \
-        "${output_file_prefix}_wt.fix.bam" &
-    samtools fixmate "${output_file_prefix}_mu.bam" \
-        "${output_file_prefix}_mu.fix.bam"
-fi
+    remove_repetitive_nan "${output_prefix}.table.tmp"
+    
+    filter_ems_mutations "${output_prefix}.table.tmp" "${output_prefix}.ems.table.tmp"
+    
+    filter_genotypes "${allele}" "${output_prefix}.ems.table.tmp" "${ems_file_name}"
+    
+    format_ems_file "${ems_file_name}"
+    
+    remove_complex_genotypes "${ems_file_name}"
 
-echo "$formatted_timestamp Sorting by coordinate"
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
+    # Get rid of chloroplastic and mitochondrial polymorphisms.
+    remove_nongenomic_polymorphisms "${ems_file_name}"
+    
+    # Remove known SNPs
+    remove_known_snps "$known_snps" "${output_prefix}.ems.table" "$noknownsnps_tablename"}
+    
+    # Add headers
+    add_headers "$noknownsnps_tablename"
 
-# Coordinate sorting
-picard SortSam \
-    I="${output_file_prefix}_mu.fix.bam" \
-    O="${output_file_prefix}_mu.sort.bam" \
-    SORT_ORDER=coordinate &
-picard SortSam \
-    I="${output_file_prefix}_wt.fix.bam" \
-    O="${output_file_prefix}_wt.sort.bam" \
-    SORT_ORDER=coordinate
-wait
+    # Clean up temporary files
+    cleanup_files
 
-# Mark duplicates. Consider using sambamba for this step.
-picard MarkDuplicates \
-    I="${output_file_prefix}_mu.sort.bam" \
-    O="${output_file_prefix}_mu.sort.md.bam" \
-    METRICS_FILE="${output_file_prefix}_mu.metrics.txt" \
-    ASSUME_SORTED=true &
-picard MarkDuplicates \
-    I="${output_file_prefix}_wt.sort.bam" \
-    O="${output_file_prefix}_wt.sort.md.bam" \
-    METRICS_FILE="${output_file_prefix}_wt.metrics.txt" \
-    ASSUME_SORTED=true
-wait
+}
 
-# Add header for GATK
-picard AddOrReplaceReadGroups \
-    I="${output_file_prefix}_mu.sort.md.bam" \
-    O="${output_file_prefix}_mu.sort.md.rg.bam" \
-    RGLB="${line_name}_mu" \
-    RGPL=illumina RGSM="${line_name}_mu" \
-    RGPU=run1 \
-    SORT_ORDER=coordinate &
-picard AddOrReplaceReadGroups \
-    I="${output_file_prefix}_wt.sort.md.bam" \
-    O="${output_file_prefix}_wt.sort.md.rg.bam" \
-    RGLB="${line_name}_wt" \
-    RGPL=illumina RGSM="${line_name}_wt" \
-    RGPU=run1 \
-    SORT_ORDER=coordinate
-wait
-
-# Build BAM index
-picard BuildBamIndex \
-    INPUT="${output_file_prefix}_mu.sort.md.rg.bam" \
-    O="${output_file_prefix}_mu.sort.md.rg.bai" &
-picard BuildBamIndex \
-    INPUT="${output_file_prefix}_wt.sort.md.rg.bam" \
-    O="${output_file_prefix}_wt.sort.md.rg.bai"
-wait
-
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "$formatted_timestamp Calling haplotypes. This may take awhile..."
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-
-# GATK HC Variant calling
-gatk HaplotypeCaller \
-    -R "$reference_chrs_fa_path" \
-    -I "${output_file_prefix}_mu.sort.md.rg.bam" \
-    -I "${output_file_prefix}_wt.sort.md.rg.bam" \
-    -O "${output_file_prefix}.hc.vcf" \
-    -output-mode EMIT_ALL_CONFIDENT_SITES \
-    --native-pair-hmm-threads "$threads_limit"
-
-# snpEff, labeling snps with annotations and potential impact on gene function
-snpEff "$snpEff_db_name" \
-    -s "${output_dir}/snpEff/${1}_snpEff_summary.html" \
-    "${output_file_prefix}.hc.vcf" > "${output_file_prefix}.se.vcf"
-
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-echo "$formatted_timestamp Haplotypes called and snps labeled. Cleaning data."
-echo ">=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=<"
-
-# Extract snpEFF data and variant information into a table, 
-SnpSift extractFields \
-    -s ":" \
-    -e "NaN" "${output_file_prefix}.se.vcf" \
-    CHROM POS REF ALT "ANN[*].GENE" "ANN[*].EFFECT" "ANN[*].HGVS_P" \
-    "ANN[*].IMPACT" "GEN[*].GT" "GEN[${line_name}_mu].AD" \
-    "GEN[${line_name}_wt].AD" > "${output_file_prefix}.table"
-
-# remove repetitive NaN's, retain EMS point mutations
-
-sed -i 's/NaN://g' "${output_file_prefix}.ems.table.tmp"
-
-grep \
-    -e $'G\tA' \
-    -e $'C\tT' \
-    -e $'A\tG' \
-    -e $'T\tC' \
-    "${output_file_prefix}.table" > "${output_file_prefix}.ems.table.tmp"
-
-
-# [mu:wt] genotypes. Grab appropriate genotypes for analysis. 
-# 0/1:0/1 included in both analyses due to occasional leaky genotyping by GATK HC.
-if [ "${allele_R_or_D}" = 'R' ]; then 
-    grep \
-        -F \
-        -e '1/1:0/1' \
-        -e '0/1:0/0' \
-        -e '0/1:0/1' \
-        "${output_file_prefix}.ems.table.tmp" > "${output_file_prefix}.ems.table"
-else 
-    grep \
-        -F \
-        -e '0/1:0/0' \
-        -e '1/1:0/0' \
-        -e '0/1:0/1' \
-        "${output_file_prefix}.ems.table.tmp" > "${output_file_prefix}.ems.table"
-fi
-
-awk \
-    -i inplace \
-    -F'\t' \
-    -vOFS='\t' \
-    { gsub(",", "\t", $9) ; gsub(",", "\t", ${line_name}0) ; \
-    gsub(",", "\t", ${line_name}1) ; print } "${output_file_prefix}.ems.table"
-
-# Remove complex genotypes
-awk -i inplace -F'\t' 'NF==13' "${output_file_prefix}.ems.table"
-
-# Get rid of chloroplastic and mitochondrial polymorphisms.
-awk \
-    -i inplace \
-    '${line_name} == (${line_name}+0)' ${output_file_prefix}.ems.table
-
-noknownsnps_tablename="${output_file_prefix}.noknownsnps.table"
-# Remove known snps
-awk \
-    'FNR==NR{a[${line_name}${pairedness}];next};!(${line_name}${pairedness} in a) || ${line_name}~/#CHROM/' "$known_snps" "${output_file_prefix}.ems.table" \
-    > "$noknownsnps_tablename"
-
-# Add headers
-sed \
-    -i \
-    '1s/^/'chr'\t'pos'\t'ref'\t'alt'\t'gene'\t'snpEffect'\t'snpVariant'\t'snpImpact'\t'mu:wt_GTpred'\t'mu_ref'\t'mu_alt'\t'wt_ref'\t'wt_alt'\n/' "$noknownsnps_tablename"
-
-#add unique identifiers? 
-
-# Clean up. Change cleanup variable to "False", or comment out to disable.
-if [ "$cleanup" = "True" ]; then
-    rm "$output_dir/${line_name}"/*.tmp
-    rm "$output_dir/${line_name}"/*.bam
-    rm "$output_dir/${line_name}"/*.sam
-    rm "$output_dir/${line_name}"/*.idx
-    rm "$output_dir/${line_name}"/*.bai
-    rm "$output_dir/${line_name}"/*.matrics.txt
-    rm "$output_dir/${line_name}/${1}.table"
-    rm "$output_dir/${line_name}/${1}.ems.table"
-    rm "$output_dir/${line_name}/${1}.hc.vcf"
-fi
+# Execute the main function
+main "${@}"
