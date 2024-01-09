@@ -3,7 +3,7 @@ import os
 import inspect
 from datetime import datetime
 import logging
-import ulid
+import utilities_ulid as ulid
 
 BASE_DIR = os.getcwd()
 SRC_DIR =  os.path.join(BASE_DIR, 'src')
@@ -18,8 +18,6 @@ MODULES_DIR = os.path.join(SRC_DIR,'modules')
 import logging
 import sqlite3
 
-
-
 class LogHandler:
     def __init__(self, name, db_name="thale_bsa_sqldb.db"):
         # Initialize log file parameters
@@ -33,7 +31,8 @@ class LogHandler:
         self.logger = self.setup_logger()
 
         # Initialize log database for storing log parameters between runs
-        self.conn = sqlite3.connect(db_name)
+        self.db_name = db_name
+        self.conn = sqlite3.connect(self.db_name)
         self._create_tables()
 
     def setup_logger(self):
@@ -114,6 +113,7 @@ class LogHandler:
         )
         self.logger.info(log_message)
         print(log_message)
+        quit()
 
     def warning(self, message):
         script_name, function_name = self._obtain_execution_frames()
@@ -148,57 +148,77 @@ class LogHandler:
 
     # Log database functions
     def _create_tables(self):
-        """Create tables for analyses and VCF data"""
-
-        self.conn.execute('''
+        create_core = '''
             CREATE TABLE IF NOT EXISTS core (
-                core_id TEXT PRIMARY KEY,
+                core_ulid TEXT,
                 core_log_path TEXT,
-                init_timestamp TEXT
+                core_timestamp TEXT,
+                PRIMARY KEY(core_ulid)
             )
-        ''')
+        '''
 
-        self.conn.execute('''
+        create_vcf = '''
             CREATE TABLE IF NOT EXISTS vcf (
-                core_id TEXT PRIMARY KEY,
+                vcf_ulid TEXT,
                 line_name TEXT,
-                vcf_id INTEGER,
+                core_ulid TEXT,
                 vcf_log_path TEXT,
-                vcf_time TEXT
+                vcf_timestamp TEXT,
+                PRIMARY KEY (vcf_ulid, line_name)
             )
-        ''')
+        '''
 
-        self.conn.execute('''
+        create_analysis = '''
             CREATE TABLE IF NOT EXISTS analysis (
-                core_id TEXT PRIMARY KEY,
+                analysis_ulid TEXT,
                 line_name TEXT,
-                analysis_id TEXT,
+                core_ulid TEXT,
+                vcf_ulid TEXT,
                 analysis_log_path TEXT,
-                analysis_time TEXT
+                analysis_timestamp TEXT,
+                PRIMARY KEY (analysis_ulid, line_name)
             )
-        ''')
+        '''
 
-        self.conn.commit()
+        try:
+            self.conn.execute(create_core)
+            self.conn.execute(create_vcf)
+            self.conn.execute(create_analysis)
+            self.conn.commit()
+        
+        except Exception as e:
+            print(f'There was an error during table creation: {e}')
 
-    def add_core_record(self):
-        self.conn.execute('''
-            INSERT INTO core (self.uuid, self.log_path, self.init_timestamp)
-            VALUES(?, ?, ?)
-        ''', (core_id, core_log_path, init_timestamp))
-        self.conn.commit()
 
-    def add_vcf_record(self, line_name, core_uuid):
-        """Add a new VCF record to the database"""
-        self.conn.execute('''
-            INSERT INTO vcf (self.uuid, line_name, core_uuid, self.log_path, self.init_timestamp)
-            VALUES (?, ?, ?, ?)
-        ''', (vcf_id, line_name, core_uuid, vcf_log_path, timestamp))
-        self.conn.commit()
+    def add_db_record(self, current_line_name=None, core_ulid=None, vcf_ulid=None):
 
-    def add_analysis_record(self, line_name, core_uuid, vcf_uuid):
-        """Add a new analysis record to the database"""
-        self.conn.execute('''
-            INSERT INTO analysis (self.uuid, line_name, self.log_path, core_uuid, self.init_timestamp)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (analysis_id, line_name, core_log_uuid, analysis_log_path, timestamp))
-        self.conn.commit()
+        try:
+            if self.name == 'core':
+                add = '''
+                    INSERT INTO core (core_ulid, core_log_path, core_timestamp)
+                    VALUES(?, ?, ?)
+                '''
+                values = (self.ulid, self.log_path, self.init_timestamp)
+            
+            elif self.name == f'vcf_{current_line_name}':
+                add = '''
+                    INSERT INTO vcf (vcf_ulid, line_name, core_ulid, vcf_log_path, vcf_timestamp)
+                    VALUES (?, ?, ?, ?, ?)
+                '''
+                values = (self.ulid, current_line_name, core_ulid, self.log_path, self.init_timestamp)
+            
+            elif self.name == f'analysis_{current_line_name}':
+                add = '''
+                    INSERT INTO analysis (analysis_ulid, line_name, core_ulid, vcf_ulid, analysis_log_path, analysis_timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                '''
+                values = (self.ulid, current_line_name, core_ulid, vcf_ulid, self.log_path, self.init_timestamp)
+            
+            else:
+                raise ValueError("Invalid table name")
+
+            self.conn.execute(add, values)
+            self.conn.commit()
+        
+        except Exception as e:
+            print(f'There was an error adding entries to database:{e}')

@@ -9,14 +9,37 @@ import argparse
 modules_dir = os.path.join(os.getcwd(), 'src', 'modules')
 sys.path.append(modules_dir)
 
-from core import ThaleBSAParentFunctions, FileUtilities
+from core import ThaleBSAParentFunctions
+from utilities_file import FileUtilities
 from config import (
     LogHandler, SRC_DIR, INPUT_DIR, LOG_DIR, OUTPUT_DIR, TEMPLATE_DIR, STATIC_DIR
 )
 
-# Initialize core logger
 
+# Initialize core_log instance of LogHandler
+'''
+[NOTE]
+All classes in this program must have a log passed to them upon initialization.
+
+Every log is assigned a unique ID (ulid) upon initialization of the LogHandler class
+ulid's are passed around in the LogHandler class instance.
+the ulid is used to link all file outputs to its relevent log. 
+
+Upon creating a new instance of a class, point the log output to an 
+appropriate logger. 
+If an appropriate logger doesn't exist in the log list, simply initialize one 
+with an a good name, and add it to the list below to keep track. 
+
+Current log list:
+'core' - logs all parent functions, thale_bsa.py and flask front end. 
+'vcf_gen' - logs all messages pertaining to parent_functions.vcf_generation
+'analysis' - logs all messages peratining to parent_functions.bsa_analysis 
+
+'''
 core_log = LogHandler('core')
+core_log.note(f'Core log begin. ulid: {core_log.ulid}')
+core_log.add_db_record()
+
 
 # Argument parsing
 parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')
@@ -26,46 +49,54 @@ parser.add_argument('-cl', '--command_line', action='store_true', help='Run on t
 parser.add_argument('-an', '--analysis', action='store_true', help='Run the analysis.')
 args = parser.parse_args()
 
-# Create instances of ThaleBSAUtilities
+# Create instances of ThaleBSAParentFunctions and FileUtilities. 
 parent_functions = ThaleBSAParentFunctions(core_log)
 file_utils = FileUtilities(core_log)
 
-core_log.note(f'Core log begin. ulid: {core_log.ulid}')
-# Check if user wants to just use the command line and variables.py instead of the Flask app.
+# Check if user wants to the command line and variables.py instead of the Flask app.
+core_log.attempt('Parsing command line arguments...')
 try:
+    # [If -cl arg] detected, attempt to run program in automatic mode. 
     if args.command_line:
-        core_log.note('Command line argument is set to [-cl]. Running on command line.')
+        core_log.note('Command line argument is set to [-cl]. Running automatic command line operations.')
         core_log.attempt("Sourcing variables from variables.py")
+        
         from variables import *
         experiment_dictionary = file_utils.experiment_detector()
+        experiment_dictionary['core_ulid']=core_log.ulid
         experiment_dictionary = parent_functions.vcf_generation(
             experiment_dictionary, reference_genome_name, snpEff_species_db, 
             reference_genome_source, threads_limit, cleanup, known_snps
         )
         parent_functions.bsa_analysis(experiment_dictionary)
         quit()
+    
     else:
         core_log.note("Command line argument is not set.")
 
+    # [if -an arg] accept line name and vcf table to run bsa_analysis 
     if args.analysis:
+        core_log.note('Command line argument to run analysis detected.')
+
+        core_log.attempt(f'Trying to create experiment_dictionary from arguments...')
         try:
-            core_log.note('Command line argument to run analysis detected. Parsing line name and vcf table path..')
             if args.line_name and args.vcf_table:
-                vcf_table_path = os.path.join(INPUT_DIR, args.vcf_table)
-                if os.path.exists(vcf_table_path):
-                    experiment_dictionary = {}
-                    experiment_dictionary[args.line_name] = {
-                        'vcf_table_path': args.vcf_table,
-                        'line_output_dir': setup_output_directory(OUTPUT_DIR, args.line_name),
-                        'vcf_ulid': file_utils.extract_ulid_from_filename()
-                    }
-                    parent_functions.bsa_analysis(experiment_dictionary)
-                else: 
-                    core_log.fail(f'vcf table path [{vcf_table_path}] does not exist.')
-            else:
-                core_log.fail('Either line_name [-n] or vcf_table [-vt] are not set.')
+                experiment_dictionary=file_utils.create_experiment_dictionary(
+                    args.line_name, args.vcf_table
+                )
+                core_log.success(f'experiment_dictionary successfully created')
+            else: 
+                core_log.fail('-ln and -vt not set. Aborting...')
+        
         except Exception as e:
-            core_log.fail(f'There was an error parsing the line name and vcf table path: {e}')
+            core_log.fail('There was a failure trying to create experiment_dictionary from passed arguments:{e}')
+        
+        core_log.attempt(f'Attempting to begin analysis of {args.vcf_table}...')
+        try: 
+            parent_functions.bsa_analysis(experiment_dictionary)
+            quit()
+        except Exception as e:
+            core_log.fail(f'There was an error while trying to start bsa_analysis:{e}')
 
     if not args.command_line and args.analysis:
         core_log.attempt('No command line arguments given. Starting Flask app....')

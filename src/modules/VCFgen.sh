@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-source VCFfunctions.sh
+source utilities_VCFgen.sh
 
 main() {
-    formatted_timestamp=$(date "+%Y.%m.%d ~%H:%M")
-
-    # Organize variables passed from thale_bsa_utils.vcf_file_generation(args)
-    ## Organize variables passed from vcf_generation function in core.py
     declare -A passed_variables
     passed_variables["vcf_ulid"]=${1}
     passed_variables["current_line_name"]=${2}
@@ -13,16 +9,18 @@ main() {
     passed_variables["input_dir"]=${4}
     passed_variables["wt_input"]=${5}
     passed_variables["mu_input"]=${6}
-    passed_variables["output_dir_path"]=${7}
-    passed_variables["output_prefix"]=${8}
-    passed_variables["vcf_table_path"]=${9}
-    passed_variables["reference_dir"]=${10}
-    passed_variables["reference_genome_name"]=${11}
-    passed_variables["snpEff_species_db"]=${12}
-    passed_variables["reference_genome_source"]=${13}
-    passed_variables["known_snps"]=${14}
-    passed_variables["threads_limit"]=${15}
-    passed_variables["cleanup"]=${16}
+    passed_variables["pairedness"]=${7}
+    passed_variables["output_dir_path"]=${8}
+    passed_variables["output_prefix"]=${9}
+    passed_variables["vcf_table_path"]=${10}
+    passed_variables["reference_dir"]=${11}
+    passed_variables["reference_genome_name"]=${12}
+    passed_variables["snpEff_species_db"]=${13}
+    passed_variables["reference_genome_source"]=${14}
+    passed_variables["known_snps"]=${15}
+    passed_variables["threads_limit"]=${16}
+    passed_variables["cleanup"]=${17}
+
 
     ## Printing all assigned variables for logging purposes
     print_variable_info passed_variables "Variables passed to VCFgen.sh"
@@ -86,6 +84,7 @@ main() {
 
     # Fix paired-end
     if [ "${pairedness}" == "paired-end" ]; then
+        print_message "Reads are paired-end. Running samtools fixmate"
         samtools fixmate "${output_prefix}_wt.bam" "${output_prefix}_wt.fix.bam" &
         samtools fixmate "${output_prefix}_mu.bam" "${output_prefix}_mu.fix.bam"
     fi
@@ -119,17 +118,17 @@ main() {
     picard AddOrReplaceReadGroups \
         I="${output_prefix}_mu.sort.md.bam" \
         O="${output_prefix}_mu.sort.md.rg.bam" \
-        RGLB="${line_name}_mu" \
+        RGLB="${current_line_name}_mu" \
         RGPL=illumina \
-        RGSM="${line_name}_mu" \
+        RGSM="${current_line_name}_mu" \
         RGPU=run1 \
         SORT_ORDER=coordinate &
     picard AddOrReplaceReadGroups \
         I="${output_prefix}_wt.sort.md.bam" \
         O="${output_prefix}_wt.sort.md.rg.bam" \
-        RGLB="${line_name}_wt" \
+        RGLB="${current_line_name}_wt" \
         RGPL=illumina \
-        RGSM="${line_name}_wt" \
+        RGSM="${current_line_name}_wt" \
         RGPU=run1 \
         SORT_ORDER=coordinate
     wait
@@ -149,44 +148,44 @@ main() {
     gatk HaplotypeCaller \
         -R "$reference_chrs_fa_path" \
         -I "${output_prefix}_mu.sort.md.rg.bam" \
-        -I "${output_prefix}_wt.sort.md.rg.bam" 
+        -I "${output_prefix}_wt.sort.md.rg.bam" \
         -O "${output_prefix}.hc.vcf" \
         -output-mode EMIT_ALL_CONFIDENT_SITES \
         --native-pair-hmm-threads "$threads_limit"
 
     print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
+    
     # snpEff, labeling SNPs
-    snpEff "$snpEff_db_name" \
-        -s "${output_dir}/snpEff/${1}_snpEff_summary.html" \
+    snpEff "$snpEff_species_db" \
+        -s "${snpeff_out_filename}" \
         "${output_prefix}.hc.vcf" > "${output_prefix}.se.vcf"
-
     print_message "Haplotypes called and SNPs labeled. Cleaning data."
-    # Extracting SNPeff data and variant information into a table
 
-    extract_fields_snpSift "${line_name}" "${output_prefix}"
+    
+    # # Extracting SNPeff data and variant information into a table
+    extract_fields_snpSift \
+        "${output_prefix}.se.vcf" \
+        "${output_prefix}.table.tmp" \
+        "${current_line_name}"
 
+    # Clean up data table
     remove_repetitive_nan "${output_prefix}.table.tmp"
-    
     filter_ems_mutations "${output_prefix}.table.tmp" "${output_prefix}.ems.table.tmp"
-    
     filter_genotypes "${allele}" "${output_prefix}.ems.table.tmp" "${ems_file_name}"
-    
-    format_ems_file "${ems_file_name}"
-    
+    format_ems_file "${ems_file_name}" "${current_line_name}"
     remove_complex_genotypes "${ems_file_name}"
 
     # Get rid of chloroplastic and mitochondrial polymorphisms.
-    remove_nongenomic_polymorphisms "${ems_file_name}"
+    remove_nongenomic_polymorphisms "$current_line_name" "${ems_file_name}"
     
     # Remove known SNPs
-    remove_known_snps "$known_snps" "${output_prefix}.ems.table" "$noknownsnps_tablename"}
+    remove_known_snps "$known_snps" "${output_prefix}.ems.table" "$noknownsnps_tablename"
     
     # Add headers
     add_headers "$noknownsnps_tablename"
 
     # Clean up temporary files
-    cleanup_files
-
+    cleanup_files "${output_dir_path}" "${cleanup}"
 }
 
 # Execute the main function

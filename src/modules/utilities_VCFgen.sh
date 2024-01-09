@@ -112,14 +112,15 @@ remove_known_snps() {
     local output_file="$3"
     
     awk -v line_name="${line_name}" -v pairedness="${pairedness}" \
-        'FNR==NR{a[line_name pairedness];next};!((line_name pairedness) in a) || line_name~/#CHROM/' \
+        'FNR==NR{a[$1$2];next};!(($1$2) in a) || $1~/#CHROM/' \
         "$known_snps_file" "$input_file" > "$output_file"
 }
 
 #remove polymorphisms in mitochondria and chloroplast
 remove_nongenomic_polymorphisms() {
-    local file="$1"
-    awk -i inplace '${line_name} == (${line_name}+0)' "$file"
+    local line_name="$1"
+    local file="$2"
+    awk -i inplace '$1 == ($1+0)' "$file"
 }
 
 
@@ -130,10 +131,11 @@ add_headers() {
 }
 
 extract_fields_snpSift() {
-    local output_prefix="$1"
-    local line_name="$2"
-    local extract_fields="${output_prefix}.se.vcf CHROM POS REF ALT ANN[*].GENE ANN[*].EFFECT ANN[*].HGVS_P ANN[*].IMPACT GEN[*].GT GEN[${line_name}_mu].AD GEN[${line_name}_wt].AD"
-    SnpSift extractFields -s ":" -e "NaN" "${output_prefix}.se.vcf" $extract_fields > "${output_prefix}.table.tmp"
+    local input_file="$1"
+    local output_file="$2"
+    local line_name="$3"
+    local extract_fields="CHROM POS REF ALT ANN[*].GENE ANN[*].EFFECT ANN[*].HGVS_P ANN[*].IMPACT GEN[*].GT GEN[${line_name}_mu].AD GEN[${line_name}_wt].AD"
+    SnpSift extractFields -s ":" -e "NaN" "${input_file}" $extract_fields > "${output_file}"
 }
 
 remove_repetitive_nan() {
@@ -164,7 +166,8 @@ filter_genotypes() {
 # Format fields in the EMS file
 format_ems_file() {
     local file="$1"
-    awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", '${line_name}'0) ; gsub(",", "\t", '${line_name}'1) ; print }' "$file"
+    local line_name="$2"
+    awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", $10) ; gsub(",", "\t", $11) ; print }' "$file"
 }
 
 # Remove complex genotypes from the EMS file
@@ -175,7 +178,9 @@ remove_complex_genotypes() {
 
 # Clean up temporary files
 cleanup_files() {
-    if [ "${cleanup}" == true ]; then
+    local output_dir_path="$1"
+    local cleanup=$2
+    if [ "${cleanup}" == True ]; then
         rm "${output_dir_path}"/*.tmp
         rm "${output_dir_path}"/*.bam
         rm "${output_dir_path}"/*.sam

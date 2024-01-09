@@ -11,9 +11,9 @@ from config import (
     LogHandler, BASE_DIR, SRC_DIR,
     INPUT_DIR, MODULES_DIR, OUTPUT_DIR
 )
+from utilities_file import FileUtilities
 
-class AnalysisUtilities:
-    
+class BSAAnalysisUtilities:
     def __init__(self, current_line_name, vcf_ulid, logger):
         self.current_line_name = current_line_name
         self.log = logger
@@ -23,19 +23,31 @@ class AnalysisUtilities:
         if self.vcf_ulid:
             self.analysis_out_path = os.path.join(
                 OUTPUT_DIR, 
-                f'{self.vcf_ulid}_-{current_line_name}', 
-                {self.analysis_out_prefix}
+                f'{self.vcf_ulid}_-{current_line_name}',
+                self.analysis_out_prefix
             )
         else:
             self.analysis_out_path = os.path.join(
                 OUTPUT_DIR,
-                {self.analysis_out_prefix}
+                self.analysis_out_prefix
             )
+        
+        #Make the analysis_out_path directory if it does not exist
+        file_utils=FileUtilities(self.log)
+        file_utils.setup_directory(self.analysis_out_path)
 
-    def drop_na_and_indels(self, vcf_df):
-        """Drops NA and insertion/deletions from VCF dataframe.
-        Input: VCF dataframe
-        Output: Cleaned VCF dataframe with no NA or indels"""
+    def drop_na_and_indels(self, vcf_df)->pd.DataFrame:
+        """
+        Drops NA and insertion/deletions from VCF dataframe.
+        
+        Args: 
+        vcf_df(pd.DataFrame)
+        VCF dataframe
+        
+        Returns: 
+        Cleaned VCF dataframe with no NA or indels
+        """
+        
         self.log.attempt('Removing NAs and indels')
         
         try:
@@ -53,10 +65,18 @@ class AnalysisUtilities:
             
             return None
 
-    def calculate_delta_snp_and_g_statistic(self, vcf_df):
-        """Calculate delta SNP ratio and G-statistic
-        Input: Cleaned VCF dataframe with no NA and indels.
-        Returns: VCF dataframe with delta-snp and g-stat calculated"""
+    def calculate_delta_snp_and_g_statistic(self, vcf_df)->pd.DataFrame:
+        """
+        Calculate delta SNP ratio and G-statistic
+        
+        Args: 
+        vcf_df 
+        VCF dataframe with no NA and indels.
+        
+        Returns: 
+        VCF dataframe with delta-snp and g-stat calculated
+        """
+        
         self.log.attempt(f"Initialize calculations for delta-SNP ratios and G-statistics")
         try:
             suppress = False
@@ -77,25 +97,40 @@ class AnalysisUtilities:
         except Exception as e:
             self.log.fail( f"An error occurred during calculation: {e}")
 
-    def _delta_snp_array(self, wtr, wta, mur, mua, suppress):
-        '''Calculates delta SNP feature, which quantifies divergence in read depths between the 
-        two bulks.''' 
+    def _delta_snp_array(self, wtr, wta, mur, mua, suppress)->int:
+        '''
+        Calculates delta SNP feature, which quantifies divergence in 
+            read depths between the two bulks.
+
+        Args: 
+            wtr, wta, mur, mua (array)
+            Read depths of wt reference and alt reads
+            and the read depths of mutant reference and alt reads 
+            
+            suppress(boolian)
+            so that the calculate_empirical_cutoffs function does not print 
+            excessively into the log during the 1000x iteration of shuffling.
+
+        Returns: Delta-snp calculation, which is a quantification of 
+            allelic segregation at each polymorphic site.
+        ''' 
+
         if not suppress:
-            self.log.attempt(f"Calculate delta-SNP ratios for {self.current_line_name}..."
-            )
+            self.log.attempt(f"Calculate delta-SNP ratios for {self.current_line_name}...")
+        
         try:
             result = ((wtr) / (wtr + wta)) - ((mur) / (mur + mua))
             if not suppress:
-                self.log.success(f"Delta-SNP calculation successful for {self.current_line_name}"
-                )
+                self.log.success(f"Delta-SNP calculation successful for {self.current_line_name}")
             return result
+        
         except Exception as e:
             self.log.fail(
-                f"Error in delta_snp_array for {self.current_line_name}: {e}"
-            )
+                f"Error in delta_snp_array for {self.current_line_name}: {e}")
+        
             return None
 
-    def _g_statistic_array(self, o1, o3, o2, o4, suppress):
+    def _g_statistic_array(self, o1, o3, o2, o4, suppress)->int:
         '''Calculates g-statistic feature, which is a more statistically driven approach to 
         calculating read-depth divergence from expected values. Chi square ish.''' 
         if not suppress:
@@ -129,11 +164,14 @@ class AnalysisUtilities:
             self.log.fail(f"Error in g_statistic_array for {self.current_line_name}: {e}")
             return None
 
-    def loess_smoothing(self, vcf_df):
+    def loess_smoothing(self, vcf_df)->pd.DataFrame:
         """LOESS smoothing of ratio and G-stat by chromosome
+        
         Input: Cleaned dataframe with delta SNPs and G-stats calculated
+        
         Returns: Dataframe containing LOESS fitted values for ratio, g-stat and 
         ratio-scaled g-stat"""
+        
         lowess_span = 0.3
         smooth_edges_bounds = 15
         self.log.attempt("Initialize LOESS smoothing calculations.")
@@ -149,12 +187,24 @@ class AnalysisUtilities:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
     def _smooth_chr_facets(self, df, lowess_span, smooth_edges_bounds):
+        '''Internal Function for smoothing chromosome facets using LOESS. 
+        Uses function "smooth_single_chr" to interate over chromosomes as facets
+        to generate LOESS smoothed values for g-statistics and delta-SNP feature
+        
+        Input: vcf_df
+        
+        output: vcf_df updated with gs, ratio, and gs-ratio yhat values'''
+        
         self.log.attempt('Smoothing chromosome facets')
         df_list = []
 
         chr_facets = df["chr"].unique()
 
         def smooth_single_chr(df_chr, chr):
+            '''Input: df_chr chunk, extends the data 15 data values in each
+            direction (to mitigate LOESS edge bias), fits smoothed values and 
+            subsequently removes the extended data. 
+            Returns: df with fitted values included.'''
             lowess_function = sm.nonparametric.lowess
 
             self.log.attempt(f"LOESS of chr:{chr} for {self.current_line_name}...")
@@ -215,10 +265,13 @@ class AnalysisUtilities:
 
         return pd.concat(df_list)
 
-    def calculate_empirical_cutoffs(self, vcf_df):
+    def calculate_empirical_cutoffs(self, vcf_df)->tuple:
         """Calculate empirical cutoffs.
+        
         Input: processed VCF dataframe.  
+        
         Returns: vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff as a tuple"""
+        
         iterations = 1000
         lowess_span = 0.3
         self.log.attempt("Initialize calculation of empirical cutoffs")
@@ -253,6 +306,13 @@ class AnalysisUtilities:
             self.log.fail(f"An error occurred during cutoff calculations: {e}")
 
     def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu, shuffle_iterations, lowess_span):
+        '''randomizes the input read_depths, breaking the position/feature link.
+        this allows the generation of a large dataset which has no linkage information, 
+        establishing an empirical distribution of potenial delta-snps and g-statistics.
+        Given the data provided, we can then set reasonable cutoff values for the fitted values
+        
+        There is probably a less computationally intensive statistical framework 
+        for doing this, especially for the g-statistics....'''
         self.log.attempt(f"Calculate empirical cutoff for {self.current_line_name}...")
         
         try:
@@ -270,12 +330,12 @@ class AnalysisUtilities:
                 sm_mu_ref = dfShmu['mu_ref'].to_numpy()
                 sm_mu_alt = dfShmu['mu_alt'].to_numpy()
 
-                smGstat = self.g_statistic_array(
+                smGstat = self._g_statistic_array(
                     sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, suppress
                 )
                 smGstatAll.extend(smGstat)
 
-                smRatio = self.delta_snp_array(
+                smRatio = self._delta_snp_array(
                     sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, suppress
                 )
                 smRatioAll.extend(smRatio)
@@ -304,7 +364,7 @@ class AnalysisUtilities:
     def sort_save_likely_candidates(self, vcf_df):
         """Identify likely candidates"""
         self.log.attempt('Initialize the identification of likely candidates')
-        self.log.note(f'associated VCF table ulid: {vcf_ulid}')
+        self.log.note(f'associated VCF table ulid: {self.vcf_ulid}')
 
         try:
             # Identify likely candidates using G-stat and smoothed ratio-scaled G-stat
@@ -358,14 +418,15 @@ class AnalysisUtilities:
         
         try:
             for plot_scenario in plot_scenarios:
-                self.plot_data(vcf_df, *plot_scenario)
+                self._plot_data(vcf_df, *plot_scenario)
             
             self.log.delimiter(f"Results for {self.current_line_name} generated.")
 
         except Exception as e:
             self.log.fail(f"An error occurred while producing and saving plots: {e}")
         
-    def plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+    def _plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+        '''generate and save plots.'''
         warnings.filterwarnings("ignore", module="plotnine\..*")
         self.log.attempt(f"Plot data and save plots for {self.current_line_name}...")
 
@@ -406,7 +467,6 @@ class AnalysisUtilities:
                 plot += geom_line(color='blue')
 
             # Save plot
-            OUTPUT_DIR = OUTPUT_DIR 
             plot_name = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
             file_path_name = os.path.join(self.analysis_out_path, plot_name)
             plot.save(
