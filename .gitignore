@@ -29,7 +29,7 @@ other_data/
 *.db*
 #ignore sam files
 *.sam
-ignore bam files
+#ignore bam files
 *.bam
-ignore pycache
+#ignore pycache
 **/__pycache__/
