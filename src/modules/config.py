@@ -54,9 +54,19 @@ class LogHandler:
 
         return logger
 
-    def _obtain_execution_frames(self):
-        '''obtains the module and the function in which the logger is called. 
-        making debugging easier (maybe)'''
+    def _obtain_execution_frames(self)->tuple:
+        '''
+        Obtains the execution frames from the script that the self.log(message) 
+        is called. This allows logs to be informative as to what module, and what
+        function a message arises from.  
+
+        Args:
+        None
+
+        Returns:
+        script_name, function_name (tuple)
+        '''
+        
         current_frame = inspect.currentframe()
         caller_frame = inspect.getouterframes(current_frame)[2]
         
@@ -66,7 +76,22 @@ class LogHandler:
         
         return script_name, function_name
 
-    def _construct_message(self, prefix, script_name, function_name, message_in):
+    def _construct_message(
+        self, prefix, script_name, function_name, message_in
+        )->str:
+        '''
+        Constructs the log messages. 
+
+        Args:
+        prefix(str) - What is the prefix of the message? example [WARNING]
+        script_name(str) - what is the script name obtained from obtain_execution_frames? 
+        function_name(str) - what is the function name obtained from obtain_execution_frames? 
+        message_in(str) - what is the log message? 
+            
+        Returns: 
+        message_out(str)
+        '''
+        
         log_handler_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
         if function_name != '<module>':
             message_out = f"{log_handler_timestamp} {prefix} ({script_name}>{function_name}) {message_in}"
@@ -75,6 +100,19 @@ class LogHandler:
         return message_out 
 
     def trigger(self, message):
+        '''
+        log message type. 
+        will log and print message [Flask Trigger] "....exc"
+        
+        all log message types below are similar in function. 
+        Code could be condensed. someday 
+
+        Args:
+        message(str)
+
+        Returns:
+        None. just prints to the log and stdOut
+        '''
         script_name, function_name = self._obtain_execution_frames()
         log_message = self._construct_message(
             '[Flask Trigger]', script_name, function_name, message
@@ -148,6 +186,15 @@ class LogHandler:
 
     # Log database functions
     def _create_tables(self):
+    '''
+    Creates the tables for the log database.
+
+    Args:
+    None
+
+    Returns:
+    None.
+    '''
         create_core = '''
             CREATE TABLE IF NOT EXISTS core (
                 core_ulid TEXT,
@@ -191,6 +238,27 @@ class LogHandler:
 
 
     def add_db_record(self, current_line_name=None, core_ulid=None, vcf_ulid=None):
+        '''
+        Adds records to the log database. 
+
+        Args: 
+        for 'core', 
+            None  
+
+        for 'vcf', 
+            current_line_name(str)
+            core_ulid are necissary(str) 
+
+        for 'analysis', 
+            current_line_name(str)
+            core_ulid(str) 
+            vcf_ulid(str) 
+
+        Returns: 
+            None
+        It just adds logs with the inputted information, along with information
+        gathered from the current instance of the LogHandler class
+        '''
 
         try:
             if self.name == 'core':

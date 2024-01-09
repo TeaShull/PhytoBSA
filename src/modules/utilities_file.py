@@ -8,7 +8,23 @@ class FileUtilities:
     def __init__(self, logger):
         self.log = logger 
 
-    def experiment_detector(self):
+    def experiment_detector(self)->dict:
+        '''
+        Detects potential BSA experiments in the inputs folder if files are 
+        named according to the conventions outlined in the README
+        
+        For paired-end:
+        <line_name>.<R or D>_<read number>.<wt or mu>.fq.gz  
+        
+        For single-read:
+        <line_name>.<R or D>.<wt or mu>.fq.gz
+
+        Args: None
+
+        Returns: experiment_dictionary containing the detected information. If
+        successful, all information needed to generate vcf files and run analysis
+        will have been parsed. 
+        '''
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}...")
         try:
             expt_dict = {}
@@ -76,8 +92,20 @@ class FileUtilities:
             
             return {}
 
-    def load_vcf_table(self, current_line_table_path, current_line_name):
-        """Load VCF table"""
+    def load_vcf_table(
+        self, current_line_table_path, current_line_name
+    )->pd.DataFrame:
+    
+        """
+        Loads VCF table into a pandas dataframe.
+        
+        Args:  
+        current_line_table_path(str) - path to the vcf table to be loaded into df
+        current_line_name(str) - name of the line associated with the vcf table
+
+        Returns: 
+        Pandas dataframe containing the information loaded from current_line_table_path
+        """
         self.log.attempt(f"Attempting to load VCF table for line {current_line_name}")
         
         try:
@@ -95,8 +123,19 @@ class FileUtilities:
             self.log.fail(f"An unexpected error occurred: {e}")
 
     def save_experiment_details(self, experiment_dictionary):
-        self.log.attempt("Attempting to save run information for a quick overview of runconditions")
+        '''
+        Saves experiment_dictionary information into a human-readable file, for
+        easy veiwing. Allows easy access to information without searching through 
+        logs. 
 
+        Args: 
+        experiment_dictionary(dict) - experiment dictionary that contains experiment info. 
+
+        Returns: 
+        Saves a run info .txt file in the current output directory. 
+        '''
+
+        self.log.attempt("Attempting to save run information for a quick overview of runconditions")
         try:
             for key, value in experiment_dictionary.items():
                 info_filename= f"{self.log.ulid}_-{key}_experiment_details.txt"
@@ -114,36 +153,53 @@ class FileUtilities:
                     file.write(f"vcf log path: {value['vcf_log_path']}")
                     file.write(f"analysis log path: {value['analysis_log_path']}")
             self.log.success("Experiment details saved successfully.")
+        
         except Exception as e:
             self.log.fail(f"Error saving experiment details: {e}")
 
-    def setup_directory(self, output_dir):
-        # Create the output directory path
-        self.log.attempt('Checking if output directory exists...')
+    def setup_directory(self, directory):
+        '''
+        Checks if the directory path given exists, and creates it if it doesn't.
+
+        Args:
+        directory(str) - path you wish to create if it doesn't exist
+
+        Returns: 
+        None. Creates directory if it doesn't exist. 
+        '''
+        
+        self.log.attempt('Checking if directory exists...')
         try: 
             # Check if the output directory exists, and create it if necessary
-            if not os.path.exists(output_dir):
+            if not os.path.exists(directory):
                 self.log.attempt(f"Directory does not exist. Creating: {output_dir}")
            
-                os.makedirs(output_dir)
-                self.log.success(f'Directory created: {output_dir}')
+                os.makedirs(directory)
+                self.log.success(f'Directory created: {directory}')
             else:
-                self.log.note(f"Directory already exists: {output_dir}")
+                self.log.note(f"Directory already exists: {directory}")
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
 
     def create_experiment_dictionary(self, line_name, vcf_table)->dict:
         '''
-        Input: line_name and vcf_table.
+
+        Creates an experiment dictionary from line_name and vcf_table input. 
+        Used to create experiment dictionaries when automatic experiment 
+        detection is not initiated. 
+
+        Args:
+        line_name(str) 
+        vcf_table(str)
 
         Returns: 
-        experiment_dictionary:
-            line_name
-            vcf_table
-            vcf_table_path
-            core ulid
-            vcf table ulid (if the file is labeled),
+        experiment_dictionary(dict)-
+            line_name:
+                [line_name][vcf_table]:
+                [line_name][vcf_table_path]:
+                [line_name][core ulid]:
+                [line_name][vcf table ulid]: (if the file is labeled),
         '''
         
         self.log.attempt('Parsing arguments to create experiment_dictionary')

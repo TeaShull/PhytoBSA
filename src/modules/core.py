@@ -39,6 +39,9 @@ class ThaleBSAParentFunctions:
                 # generate log instance, add run info to sql db
                 vcf_log = LogHandler(f'vcf_{current_line_name}')
                 self.log.note(f'Logging for VCF Initialzed. Path: {vcf_log.log_path}')
+
+                vcf_log.note(f'vcf_log initiated.')
+                vcf_log.note(f'vcf_log ulid: {vcf_log.ulid}')
                 experiment_dictionary[current_line_name]['vcf_ulid'] = vcf_log.ulid
                 vcf_log.add_db_record(current_line_name, core_ulid)
 
