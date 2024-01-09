@@ -21,3 +21,13 @@ other_data/
 *.png
 #ignore jupyter notebook changes
 *.ipynb*
+#ignore logs
+*.log*
+#ignore python cache
+*.pyc*
+#ignore sqldb
+*.db*
+#ignore sam files
+*.sam
+ignore bam files
+*.bam

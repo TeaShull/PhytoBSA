@@ -26,18 +26,24 @@ or, if you are attempting to use conda (not recommended, but probably possible)
 `conda activate pyatbsa`
 
 ## Usage
-Put the fq.gz files you want analyzed into the /input folder. You can put multiple experiments in the folder and they will be analyzed. 
-The files must be formatted as follows:
+Put the fq.gz files you want analyzed into the /input folder. You can put 
+multiple experiments in the folder and they will be analyzed. 
 
-  paired-end reads - "line.R/D_1.wt.fq.gz" "line.R/D_2.wt.fq.gz" "line.R/D_1.mu.fq.gz" "line.R/D_2.mu.fq.gz"
-
-  unpaired reads - "line.R/D.wt.fq.gz" "line.R/D.mu.fq.gz" 
-
-  where R/D designates whether the allele in question has a recessive (R) or a dominant (D) segregation pattern. 
-
-  As an example, the line "A1", which has a recessive segregation pattern and paired-end reads would be labeled as follows:
-
-"A1.R_1.wt.fq.gz" "A1.R_2.wt.fq.gz" "A1.R_1.mu.fq.gz" "A1.R_2.mu.fq.gz"
+The files must be formatted as follows:  
+  
+  For paired-end  
+  `<line_name>.<R or D>_<read number>.<wt or mu>.fq.gz`  
+    example experiment:  
+    "line.R_1.wt.fq.gz"  
+    "line.R_2.wt.fq.gz"   
+    "line.R_1.mu.fq.gz"   
+    "line.R_2.mu.fq.gz"   
+  
+  for unpaired  
+  `<line_name>.<R or D>.<wt or mu>.fq.gz`  
+    example experiment:    
+    "line.R.wt.fq.gz"  
+    "line.R.mu.fq.gz"       
 
  ### Variables
  Edit ./code/variables.sh to alter run conditions. The script assumes recessive polymorphisms by default. If your mutation of interest is dominant, change the mutation variable accordingly. 
