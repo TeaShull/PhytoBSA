@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source utilities_VCFgen.sh
+source subprocess_utilities_VCFgen.sh
 
 main() {
     declare -A passed_variables
@@ -21,7 +21,6 @@ main() {
     passed_variables["threads_limit"]=${16}
     passed_variables["cleanup"]=${17}
 
-
     ## Printing all assigned variables for logging purposes
     print_variable_info passed_variables "Variables passed to VCFgen.sh"
     ## Assigning variables in array to their respective keys
@@ -33,6 +32,7 @@ main() {
     generated_variables["reference_chrs_path"]=${reference_dir}/${reference_genome_name}.chrs
     generated_variables["reference_chrs_fa_path"]=${reference_dir}/${reference_genome_name}.chrs.fa
     generated_variables["snpeff_dir"]=${output_dir_path}/snpEff
+    generated_variables["snpeff_out_filename"]=${output_dir_path}/snpEff/${vcf_ulid}-_{current_line_name}
 
     ## Printing all generated variables for logging purposes
     print_variable_info generated_variables "Variables generated in VCFgen.sh"
@@ -59,6 +59,8 @@ main() {
     create_fai_and_index ${reference_genome_path} "${reference_chrs_fa_path}"
     create_sequence_dictionary "${reference_chrs_fa_path}" "${reference_chrs_path}"
 
+    echo "Refrences and directories prepared. Proceeding with mapping...."
+
     print_message "Mapping"
     bwa mem \
         -t "$threads_halfed" \
@@ -80,6 +82,8 @@ main() {
         -bSh \
         -@ "$threads_halfed" \
         "${output_prefix}_wt.sam" > "${output_prefix}_wt.bam"
+    
+    echo "..."
     wait
 
     # Fix paired-end
@@ -88,59 +92,61 @@ main() {
         samtools fixmate "${output_prefix}_wt.bam" "${output_prefix}_wt.fix.bam" &
         samtools fixmate "${output_prefix}_mu.bam" "${output_prefix}_mu.fix.bam"
     fi
+    
+    echo "..."
     wait
 
     print_message "Sorting by coordinate"
     picard SortSam \
-        I="${output_prefix}_mu.fix.bam" \
-        O="${output_prefix}_mu.sort.bam" \
-        SORT_ORDER=coordinate &
+        -I="${output_prefix}_mu.fix.bam" \
+        -O="${output_prefix}_mu.sort.bam" \
+        -SORT_ORDER=coordinate &
     picard SortSam \
-        I="${output_prefix}_wt.fix.bam" \
-        O="${output_prefix}_wt.sort.bam" \
-        SORT_ORDER=coordinate
+        -I="${output_prefix}_wt.fix.bam" \
+        -O="${output_prefix}_wt.sort.bam" \
+        -SORT_ORDER=coordinate
     wait
 
     print_message "Marking duplicates"
     picard MarkDuplicates \
-        I="${output_prefix}_mu.sort.bam" \
-        O="${output_prefix}_mu.sort.md.bam" \
-        METRICS_FILE="${output_prefix}_mu.metrics.txt" \
-        ASSUME_SORTED=true &
+        -I="${output_prefix}_mu.sort.bam" \
+        -O="${output_prefix}_mu.sort.md.bam" \
+        -METRICS_FILE="${output_prefix}_mu.metrics.txt" \
+        -ASSUME_SORTED=true &
     picard MarkDuplicates \
-        I="${output_prefix}_wt.sort.bam" \
-        O="${output_prefix}_wt.sort.md.bam" \
-        METRICS_FILE="${output_prefix}_wt.metrics.txt" \
-        ASSUME_SORTED=true
+        -I="${output_prefix}_wt.sort.bam" \
+        -O="${output_prefix}_wt.sort.md.bam" \
+        -METRICS_FILE="${output_prefix}_wt.metrics.txt" \
+        -ASSUME_SORTED=true
     wait
 
     print_message "Adding header for GATK"
     picard AddOrReplaceReadGroups \
-        I="${output_prefix}_mu.sort.md.bam" \
-        O="${output_prefix}_mu.sort.md.rg.bam" \
-        RGLB="${current_line_name}_mu" \
-        RGPL=illumina \
-        RGSM="${current_line_name}_mu" \
-        RGPU=run1 \
-        SORT_ORDER=coordinate &
+        -I="${output_prefix}_mu.sort.md.bam" \
+        -O="${output_prefix}_mu.sort.md.rg.bam" \
+        -RGLB="${current_line_name}_mu" \
+        -RGPL=illumina \
+        -RGSM="${current_line_name}_mu" \
+        -RGPU=run1 \
+        -SORT_ORDER=coordinate &
     picard AddOrReplaceReadGroups \
-        I="${output_prefix}_wt.sort.md.bam" \
-        O="${output_prefix}_wt.sort.md.rg.bam" \
-        RGLB="${current_line_name}_wt" \
-        RGPL=illumina \
-        RGSM="${current_line_name}_wt" \
-        RGPU=run1 \
-        SORT_ORDER=coordinate
+        -I="${output_prefix}_wt.sort.md.bam" \
+        -O="${output_prefix}_wt.sort.md.rg.bam" \
+        -RGLB="${current_line_name}_wt" \
+        -RGPL=illumina \
+        -RGSM="${current_line_name}_wt" \
+        -RGPU=run1 \
+        -SORT_ORDER=coordinate
     wait
 
     print_message "Building BAM index"
     # Build BAM index
     picard BuildBamIndex \
-        INPUT="${output_prefix}_mu.sort.md.rg.bam" \
-        O="${output_prefix}_mu.sort.md.rg.bai" &
+        -INPUT="${output_prefix}_mu.sort.md.rg.bam" \
+        -O="${output_prefix}_mu.sort.md.rg.bai" &
     picard BuildBamIndex \
-        INPUT="${output_prefix}_wt.sort.md.rg.bam" \
-        O="${output_prefix}_wt.sort.md.rg.bai"
+        -INPUT="${output_prefix}_wt.sort.md.rg.bam" \
+        -O="${output_prefix}_wt.sort.md.rg.bai"
     wait
 
     print_message "Calling haplotypes. This may take a while..."

@@ -10,9 +10,11 @@ modules_dir = os.path.join(os.getcwd(), 'src', 'modules')
 sys.path.append(modules_dir)
 
 from core import ThaleBSAParentFunctions
-from utilities_file import FileUtilities
+from utilities_general import FileUtilities
+from utilities_logging import LogHandler
+
 from config import (
-    LogHandler, SRC_DIR, INPUT_DIR, LOG_DIR, OUTPUT_DIR, TEMPLATE_DIR, STATIC_DIR
+    SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, TEMPLATE_DIR, STATIC_DIR
 )
 
 
@@ -36,168 +38,218 @@ Current log list:
 'analysis' - logs all messages peratining to parent_functions.bsa_analysis 
 
 '''
-core_log = LogHandler('core')
-core_log.note(f'Core log begin. ulid: {core_log.ulid}')
-core_log.add_db_record()
+def main():
+    core_log = LogHandler('core')
+    core_log.note(f'Core log begin. ulid: {core_log.ulid}')
+    core_log.add_db_record()
 
 
-# Argument parsing
-parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')
-parser.add_argument('-vt', '--vcf_table', type=str, help='path to the vcf table you wish to analyze.')
-parser.add_argument('-n', '--line_name', type=str, help='name of the line you wish to analyze. Will be used to name output files.')
-parser.add_argument('-cl', '--command_line', action='store_true', help='Run on the command line.')
-parser.add_argument('-an', '--analysis', action='store_true', help='Run the analysis.')
-args = parser.parse_args()
-
-# Create instances of ThaleBSAParentFunctions and FileUtilities. 
-parent_functions = ThaleBSAParentFunctions(core_log)
-file_utils = FileUtilities(core_log)
-
-# Check if user wants to the command line and variables.py instead of the Flask app.
-core_log.attempt('Parsing command line arguments...')
-try:
-    # [If -cl arg] detected, attempt to run program in automatic mode. 
-    if args.command_line:
-        core_log.note('Command line argument is set to [-cl]. Running automatic command line operations.')
-        core_log.attempt("Sourcing variables from variables.py")
-        
-        from variables import *
-        experiment_dictionary = file_utils.experiment_detector()
-        experiment_dictionary['core_ulid']=core_log.ulid
-        experiment_dictionary = parent_functions.vcf_generation(
-            experiment_dictionary, reference_genome_name, snpEff_species_db, 
-            reference_genome_source, threads_limit, cleanup, known_snps
-        )
-        parent_functions.bsa_analysis(experiment_dictionary)
-        quit()
+    # Argument parsing
+    parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')
+    args = parser.parse_args()
     
-    else:
-        core_log.note("Command line argument is not set.")
+    parser.add_argument('-an', '--analysis', action='store_true', help='Run the analysis.')
+    parser.add_argument('-n', '--line_name', type=str, help='name of the line you wish to analyze. Will be used to name output files.')
+    line_name = args.line_name
+    parser.add_argument('-vt', '--vcf_table', type=str, help='path to the vcf table you wish to analyze.')
+    vcf_table = args.vcf_table
 
-    # [if -an arg] accept line name and vcf table to run bsa_analysis 
-    if args.analysis:
-        core_log.note('Command line argument to run analysis detected.')
+    ## Command line inputs
+    parser.add_argument('-cl', '--command_line', action='store_true', help='Run on the command line.')
 
-        core_log.attempt(f'Trying to create experiment_dictionary from arguments...')
-        try:
-            if args.line_name and args.vcf_table:
-                experiment_dictionary=file_utils.create_experiment_dictionary(
-                    args.line_name, args.vcf_table
+
+    reference_genome_name_help = f"""
+        What is the name of your reference genome? this should be the base name of your fasta file. 
+        example - Arabidopsis_thaliana.fa 
+        reference_genome_name = Arabidopsis_thaliana""" 
+    parser.add_argument('-rgn', '--reference_genome_name', default=None, help=reference_genome_name_help)
+    reference_genome_name = args.reference_genome_name
+    
+    snpEff_species_db_help = f"""
+    What is the name of your snpEff database for your reference genome? you can get the
+    """
+    parser.add_argument('-ssdb', '--snpEff_species_db', default=None)
+    snpEff_species_db = args.snpEff_species_db
+    parser.add_argument('-rgs', '--reference_genome_source', default=None)
+    reference_genome_source = args.reference_genome_source
+    parser.add_argument('-t', '--threads_limit', default=None)
+    threads_limit = args.threads_limit
+    
+    parser.add_argument('-c''--cleanup', default=None)
+    cleanup = args.cleanup
+    
+    parser.add_argument('ks''--known_snps', default=None)
+    known_snps = args.known_snps
+
+    # Create instances of ThaleBSAParentFunctions and FileUtilities. 
+    parent_functions = ThaleBSAParentFunctions(core_log)
+    file_utils = FileUtilities(core_log)
+
+    # Check if user wants to the command line and variables.py instead of the Flask app.
+    core_log.attempt('Parsing command line arguments...')
+    try:
+        # [If -cl arg] detected, attempt to run program in automatic mode. 
+        if args.command_line:
+            core_log.note('Command line argument is set to [-cl]. Running automatic command line operations.')
+            core_log.attempt("Sourcing variables from variables.py")
+            
+            test_variables_bool=file_utils.check_vcfgen_variables(
+                reference_genome_name, 
+                snpEff_species_db, 
+                reference_genome_source, 
+                threads_limit, 
+                cleanup, 
+                known_snps)
+            
+            if not test_variables_bool:            
+                self.log.note('not all variables were passed. Attempting to source default variables from variables.py....')
+                from variables import (
+                    reference_genome_name,
+                    snpEff_species_db,
+                    reference_genome_source,
+                    threads_limit,
+                    cleanup,
+                    known_snps
                 )
-                core_log.success(f'experiment_dictionary successfully created')
-            else: 
-                core_log.fail('-ln and -vt not set. Aborting...')
-        
-        except Exception as e:
-            core_log.fail('There was a failure trying to create experiment_dictionary from passed arguments:{e}')
-        
-        core_log.attempt(f'Attempting to begin analysis of {args.vcf_table}...')
-        try: 
+
+            experiment_dictionary = file_utils.experiment_detector()
+            experiment_dictionary = parent_functions.vcf_generation(
+                experiment_dictionary, reference_genome_name, snpEff_species_db, 
+                reference_genome_source, threads_limit, cleanup, known_snps
+            )
             parent_functions.bsa_analysis(experiment_dictionary)
             quit()
-        except Exception as e:
-            core_log.fail(f'There was an error while trying to start bsa_analysis:{e}')
+        
+        else:
+            core_log.note("Command line argument is not set.")
 
-    if not args.command_line and args.analysis:
-        core_log.attempt('No command line arguments given. Starting Flask app....')
+        # [if -an arg] accept line name and vcf table to run bsa_analysis 
+        if args.analysis:
+            core_log.note('Command line argument to run analysis detected.')
 
-except Exception as e:
-    core_log.fail(f'Starting thaleBSA has failed: {e}')
-    quit()
+            core_log.attempt(f'Trying to create experiment_dictionary from arguments...')
+            try:
+                if line_name and vcf_table:
+                    experiment_dictionary=file_utils.create_experiment_dictionary(
+                        line_name, vcf_table
+                    )
+                    core_log.success(f'experiment_dictionary successfully created')
+                else: 
+                    core_log.fail('-ln and -vt not set. Aborting...')
+            
+            except Exception as e:
+                core_log.fail('There was a failure trying to create experiment_dictionary from passed arguments:{e}')
+            
+            core_log.attempt(f'Attempting to begin analysis of {args.vcf_table}...')
+            try: 
+                parent_functions.bsa_analysis(experiment_dictionary)
+                quit()
+            except Exception as e:
+                core_log.fail(f'There was an error while trying to start bsa_analysis:{e}')
+
+        if not args.command_line and args.analysis:
+            core_log.attempt('No command line arguments given. Starting Flask app....')
+
+    except Exception as e:
+        core_log.fail(f'Starting thaleBSA has failed: {e}')
+        quit()
 
 
-app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
-app.secret_key = '1111'
+    app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
+    app.secret_key = '1111'
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    global reference_genome_name, snpEff_db_name, reference_genome_source 
-    global threads_limit, cleanup, known_snps
-
-
-    if request.method == 'POST':
-        reference_genome_name = request.form['reference_genome_name']
-        snpEff_db_name = request.form['snpEff_db_name']
-        reference_genome_source = request.form['reference_source']
-        threads_limit = int(request.form['threads_limit'])
-        cleanup = 'cleanup' in request.form
-        known_snps = request.form['known_snps']
+    @app.route('/', methods=['GET', 'POST'])
+    def index():
+        global reference_genome_name, snpEff_db_name, reference_genome_source 
+        global threads_limit, cleanup, known_snps
 
 
-        # Check if the selected threads limit is equal to the maximum available threads
-        if threads_limit == available_threads:
-            warning_message = (
-                "Are you sure you want to use all the resources available? "
-                "This may cause performance issues."
-            )
+        if request.method == 'POST':
+            reference_genome_name = request.form['reference_genome_name']
+            snpEff_db_name = request.form['snpEff_db_name']
+            reference_genome_source = request.form['reference_source']
+            threads_limit = int(request.form['threads_limit'])
+            cleanup = 'cleanup' in request.form
+            known_snps = request.form['known_snps']
 
-    return render_template(
-        'index.html',
-        #reference_genome_name=reference_genome_name,
-        reference_genome_source=reference_genome_source,
-        known_snps=known_snps,
-        threads_limit=threads_limit,
-        cleanup=cleanup,
-        available_threads=available_threads
-    )
 
-@app.route('/run_create_experiment_dictionary', methods=['POST'])
-def run_create_experiment_dictionary():
-    core_log.trigger('Create experiment dictionary triggered')
-    try:
-        experiment_dictionary = utils.create_experiment_dictionary()  # Use the class method
-        session['experiment_dictionary'] = experiment_dictionary
+            # Check if the selected threads limit is equal to the maximum available threads
+            if threads_limit == available_threads:
+                warning_message = (
+                    "Are you sure you want to use all the resources available? "
+                    "This may cause performance issues."
+                )
+
         return render_template(
             'index.html',
-            message=experiment_dictionary,
+            #reference_genome_name=reference_genome_name,
+            reference_genome_source=reference_genome_source,
+            known_snps=known_snps,
+            threads_limit=threads_limit,
+            cleanup=cleanup,
             available_threads=available_threads
         )
-    except:
-        return render_template(
-        'index.html',
-        message='Flask trigger for building experiment dictionary seems to have failed.',
-        available_threads=available_threads
+
+    @app.route('/run_create_experiment_dictionary', methods=['POST'])
+    def run_create_experiment_dictionary():
+        core_log.trigger('Create experiment dictionary triggered')
+        try:
+            experiment_dictionary = utils.create_experiment_dictionary() 
+            session['experiment_dictionary'] = experiment_dictionary
+            return render_template(
+                'index.html',
+                message=experiment_dictionary,
+                available_threads=available_threads
+            )
+        except:
+            return render_template(
+            'index.html',
+            message='Flask trigger for building experiment dictionary seems to have failed.',
+            available_threads=available_threads
+            )
+
+    @app.route('/run_vcf_file_generation', methods=['POST'])
+    def run_vcf_file_generation():
+        core_log.trigger('VCF file generation triggered.')
+        #try:
+        experiment_dictionary = session.get('experiment_dictionary', {})
+        utils.vcf_file_generation(experiment_dictionary, reference_genome_name,
+            reference_genome_source, threads_limit, cleanup, known_snps
+        )  # Use the class method
+        return render_template('index.html', 
+            message="VCF file generation started.", 
+            available_threads=available_threads
         )
+        # except:
+        #     return render_template(
+        #         'index.html',
+        #         message='Flask trigger for VCF file generation seems to have failed.',
+        #         available_threads=available_threads
+        #     )
 
-@app.route('/run_vcf_file_generation', methods=['POST'])
-def run_vcf_file_generation():
-    core_log.trigger('VCF file generation triggered.')
-    #try:
-    experiment_dictionary = session.get('experiment_dictionary', {})
-    utils.vcf_file_generation(experiment_dictionary, reference_genome_name,
-        reference_genome_source, threads_limit, cleanup, known_snps
-    )  # Use the class method
-    return render_template('index.html', 
-        message="VCF file generation started.", 
-        available_threads=available_threads
-    )
-    # except:
-    #     return render_template(
-    #         'index.html',
-    #         message='Flask trigger for VCF file generation seems to have failed.',
-    #         available_threads=available_threads
-    #     )
+    @app.route('/run_data_analysis', methods=['POST'])
+    def run_data_analysis():
+        core_log.trigger('Run data analysis triggered')
+        #try:
+        experiment_dictionary = session.get('experiment_dictionary', {})
+        utils.data_analysis(experiment_dictionary)  # Use the class method
+        return render_template('index.html', 
+            message="Data analysis started.", 
+            available_threads=available_threads
+        )
+        # #except Exception as e:
+        #      return render_template('index.html', 
+        #         message="Flask trigger for running analysis seems to have failed.", 
+        #         available_threads=available_threads
+        #     )
 
-@app.route('/run_data_analysis', methods=['POST'])
-def run_data_analysis():
-    core_log.trigger('Run data analysis triggered')
-    #try:
-    experiment_dictionary = session.get('experiment_dictionary', {})
-    utils.data_analysis(experiment_dictionary)  # Use the class method
-    return render_template('index.html', 
-        message="Data analysis started.", 
-        available_threads=available_threads
-    )
-    # #except Exception as e:
-    #      return render_template('index.html', 
-    #         message="Flask trigger for running analysis seems to have failed.", 
-    #         available_threads=available_threads
-    #     )
+    #Initialize Flask App
+    core_log.attempt('Starting ThaleBSA Flask App')
+    try:
+        if __name__ == '__main__':
+            app.run(debug=True)
+    except Exception as e:
+        core_log.fail('Starting flask app has failed: {e}')
 
-#Initialize Flask App
-core_log.attempt('Starting ThaleBSA Flask App')
-try:
-    if __name__ == '__main__':
-        app.run(debug=True)
-except Exception as e:
-    core_log.fail('Starting flask app has failed: {e}')
+if __name__ == '__main__':
+    main()

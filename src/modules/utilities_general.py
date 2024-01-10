@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import re
 import sqlite3
-from config import INPUT_DIR
+from config import ExperimentDictionary, INPUT_DIR
 
 class FileUtilities:
     def __init__(self, logger):
@@ -27,7 +27,7 @@ class FileUtilities:
         '''
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}...")
         try:
-            expt_dict = {}
+            expt_dict = ExperimentDictionary()
 
             # Iterate through the files in the directory
             for filename in os.listdir(INPUT_DIR):
@@ -91,6 +91,28 @@ class FileUtilities:
             self.log.fail(f"Error while detecting experiment details: {e}")
             
             return {}
+
+    def check_vcfgen_variables(self, reference_genome_name, snpEff_species_db, reference_genome_source, threads_limit, cleanup, known_snps)
+        # Check if the user has provided all the necessary variables
+        self.log.attempt('Checking if runtime variables for VCFgen.sh subprocess are assigned...')
+        try:
+            if (
+                reference_genome_name is None or
+                snpEff_species_db is None or
+                reference_genome_source is None or
+                threads_limit is None or
+                cleanup is None or
+                known_snps is None
+            ):
+                # User hasn't provided all the variables, print an error message or handle accordingly
+                self.log.fail("Error: Not all required variables have been provided.")
+                return False
+            else:
+                # All variables are provided, continue with the rest of your code
+                self.log.success("All variables are were provided. Well done! Proceeding...")
+                return True
+        except Exception as e:
+            self.log.fail(f'There was an error while checking if variables for VCFgen.sh have been assigned:{e}')
 
     def load_vcf_table(
         self, current_line_table_path, current_line_name
@@ -224,7 +246,7 @@ class FileUtilities:
         try:
             if os.path.exists(vcf_table_path):
                 self.log.success(f'Path exists: {vcf_table_path}')
-                experiment_dictionary = {}
+                experiment_dictionary = ExperimentDictionary()
                 experiment_dictionary[line_name] = {
                     'vcf_table_path': vcf_table_path,
                     'vcf_ulid': vcf_ulid,
@@ -246,9 +268,8 @@ class FileUtilities:
         else:
             return None
 
-
 class ThaleBSASQLDB:
-    """Handling retrieving from log database.
+    """Handling retrieving and entry from database.
      IN PROGRESS...."""
 
     def __init__(self, logger, db_name="thale_bsa_sqldb.db"):

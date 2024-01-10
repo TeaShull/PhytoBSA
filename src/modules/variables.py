@@ -2,7 +2,9 @@
 
 #Edit these variables for command line only runs.  
 
-#what do you want your reference genome files to be labeled as? 
+# What is the name of your reference genome? this should be the base name of your fasta file. 
+# example - Arabidopsis_thaliana.fa 
+# reference_genome_name = Arabidopsis_thaliana 
 reference_genome_name = 'Arabidopsis_thaliana'
 
 #What is the snpEff database you want to use? (run snpEff databases to see list. 'grep <search> | snpEff databases' to search)
@@ -15,7 +17,7 @@ reference_genome_source = 'ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fa
 threads_limit = '20'
 
 #cleanup intermedia files? 
-cleanup = "False"
+cleanup = "True"
 
 # vcf of known background snps. 
 # Drop the file into the ./references folder. just list the file name here.

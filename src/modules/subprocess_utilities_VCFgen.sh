@@ -47,6 +47,7 @@ assign_values() {
 
 # Print a timestamp and message
 print_message() {
+    print_separator
     echo "$formatted_timestamp $1"
     print_separator
 }

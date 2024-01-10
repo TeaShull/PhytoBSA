@@ -7,11 +7,9 @@ from plotnine import (
     ggplot, aes, geom_point, geom_line, theme_linedraw,
     facet_grid, theme, ggtitle, xlab, ylab, geom_hline
 )
-from config import (
-    LogHandler, BASE_DIR, SRC_DIR,
-    INPUT_DIR, MODULES_DIR, OUTPUT_DIR
-)
-from utilities_file import FileUtilities
+from utilities_general import FileUtilities
+
+from config import (BASE_DIR, SRC_DIR,INPUT_DIR, MODULES_DIR, OUTPUT_DIR)
 
 class BSAAnalysisUtilities:
     def __init__(self, current_line_name, vcf_ulid, logger):
