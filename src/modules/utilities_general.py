@@ -28,23 +28,18 @@ class FileUtilities:
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}...")
         try:
             expt_dict = ExperimentDictionary()
-
             # Iterate through the files in the directory
             for filename in os.listdir(INPUT_DIR):
-
                 # Split the filename into parts based on dots
                 parts = filename.split('.')
                 self.log.attempt(f'Parsing {filename}')
-
                 # Extract relevant information
                 line_name = parts[0]
                 allele = parts[1]
-                
                 if '_1' in allele:
                     allele = allele.rstrip('_1')
                 if '_2' in allele:
                     allele = allele.rstrip('_2')
-
                 segregation_type = parts[-3]
                 pairedness = 'paired-end' if '_1' or '_2' in filename else 'single-read'
 
@@ -56,7 +51,6 @@ class FileUtilities:
                     segregation_type:{segregation_type}
                     pairedness:{pairedness}
                 """)
-
                 # Initialize or update the dictionary entry for the key
                 if key not in expt_dict:
                     expt_dict[key] = {
@@ -65,31 +59,24 @@ class FileUtilities:
                         'mu': [],
                         'pairedness': pairedness
                     }
-
                 # Add the file path to the appropriate list based on segregation_type
                 file_path = os.path.join(INPUT_DIR, filename)
-
                 if 'wt' in segregation_type:
                     wt_list = expt_dict[key]['wt']
                     wt_list.append(file_path)
-
                     # Sort the wt_list to ensure _1 and _2 files are in numeric order
                     expt_dict[key]['wt'] = sorted(wt_list, key=lambda x: int(x.split('_')[-1][0]))
-
                 elif 'mu' in segregation_type:
                     mu_list = expt_dict[key]['mu']
                     mu_list.append(file_path)
-
                     # Sort the mu_list to ensure _1 and _2 files are in numeric order
                     expt_dict[key]['mu'] = sorted(mu_list, key=lambda x: int(x.split('_')[-1][0]))
             
             self.log.success(f'Experiment dictionary generated.')
-            
             return expt_dict
 
         except Exception as e:
             self.log.fail(f"Error while detecting experiment details: {e}")
-            
             return {}
 
     def check_vcfgen_variables(self, reference_genome_name, snpEff_species_db, reference_genome_source, threads_limit, cleanup, known_snps)
@@ -117,7 +104,6 @@ class FileUtilities:
     def load_vcf_table(
         self, current_line_table_path, current_line_name
     )->pd.DataFrame:
-    
         """
         Loads VCF table into a pandas dataframe.
         
@@ -128,8 +114,8 @@ class FileUtilities:
         Returns: 
         Pandas dataframe containing the information loaded from current_line_table_path
         """
+
         self.log.attempt(f"Attempting to load VCF table for line {current_line_name}")
-        
         try:
             vcf_df = pd.read_csv(current_line_table_path, sep="\t")
             self.log.attempt(f"The VCF table for line {current_line_name} was successfully loaded.")
@@ -189,24 +175,22 @@ class FileUtilities:
         Returns: 
         None. Creates directory if it doesn't exist. 
         '''
-        
         self.log.attempt('Checking if directory exists...')
         try: 
             # Check if the output directory exists, and create it if necessary
             if not os.path.exists(directory):
                 self.log.attempt(f"Directory does not exist. Creating: {output_dir}")
-           
                 os.makedirs(directory)
                 self.log.success(f'Directory created: {directory}')
             else:
                 self.log.note(f"Directory already exists: {directory}")
+        
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
 
     def create_experiment_dictionary(self, line_name, vcf_table)->dict:
         '''
-
         Creates an experiment dictionary from line_name and vcf_table input. 
         Used to create experiment dictionaries when automatic experiment 
         detection is not initiated. 
@@ -223,7 +207,6 @@ class FileUtilities:
                 [line_name][core ulid]:
                 [line_name][vcf table ulid]: (if the file is labeled),
         '''
-        
         self.log.attempt('Parsing arguments to create experiment_dictionary')
         try:
             self.log.note(f'line name parsed: {line_name}')
@@ -231,10 +214,10 @@ class FileUtilities:
             
             core_ulid = self.log.ulid
             self.log.note(f'core_ulid:{core_ulid}')
-                    
+            
             vcf_table_path = os.path.join(INPUT_DIR, vcf_table)
             self.log.note(f'vcf table path created: {vcf_table_path}')
-
+            
             vcf_ulid = self._extract_ulid_from_file_path(vcf_table_path)
             self.log.note(f'vcf ulid parsed:{vcf_ulid}')
                 
@@ -269,9 +252,10 @@ class FileUtilities:
             return None
 
 class ThaleBSASQLDB:
-    """Handling retrieving and entry from database.
-     IN PROGRESS...."""
-
+    """
+    Handling retrieving and entry from database.
+     IN PROGRESS....
+     """
     def __init__(self, logger, db_name="thale_bsa_sqldb.db"):
         self.conn = sqlite3.connect(db_name)
         self.log = logger 
