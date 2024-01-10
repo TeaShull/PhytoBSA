@@ -20,22 +20,23 @@ class ThaleBSAParentFunctions:
                    reference_genome_name, snpEff_species_db,
                    reference_genome_source, threads_limit,
                    cleanup, known_snps)->dict:
-        """Input: Experiment dictionary as well as paths and variables needed 
+        """
+        Input: Experiment dictionary as well as paths and variables needed 
         to run VCFgen.sh. Subprocess VCFgen.sh takes raw reads(wild-type(wt) 
         and mutant(mu)), either single or paired end and generates VCF table 
         *.noknownsnps.table.
         
         Returns: updated experiment_dictionary containing the paths to 
-        the noknownsnps.table."""
+        the noknownsnps.table.
+        """
         core_ulid=experiment_dictionary['core_ulid']
-        
+
+        try:
         for key, value in experiment_dictionary.items():
             self.log.attempt(f"Generating VCF file for {key}...")
             self.log.delimiter(f"Shell [sh] VCF generator for {key} beginning...")
         
-            try:
                 current_line_name = key
-
                 # generate log instance, add run info to sql db
                 vcf_log = LogHandler(f'vcf_{current_line_name}')
                 self.log.note(f'Logging for VCF Initialzed. Path: {vcf_log.log_path}')
@@ -74,8 +75,7 @@ class ThaleBSAParentFunctions:
                 mu_input = f'"{mu_input}"'
                 self.log.note(f"mu_input:{mu_input}")
 
-                # Construct args to pass variable and experiment_dictionary to
-                # VCFgen.sh.
+                # Construct args to pass variables to VCFgen.sh.
                 args = (
                     vcf_log.ulid,
                     current_line_name, 
@@ -95,31 +95,27 @@ class ThaleBSAParentFunctions:
                     threads_limit,
                     cleanup
                 )
-
                 # Construct the command for VCFgen.sh, passing the above variables
                 cmd = f"{vcfgen_script_path} {' '.join(map(str, args))}"
-
                 # Run vcfgen shell subprocess.
                 process = subprocess.Popen(
                     cmd, cwd=MODULES_DIR, shell=True, stdout=subprocess.PIPE, 
                     stderr=subprocess.STDOUT, text=True
                 )
-
                 # Iterate over stdout from process andlog
                 for line in process.stdout:
                     vcf_log.bash(line.strip())
                 process.wait()
-                
                 self.log.note(f"VCF file generated for {current_line_name}.") 
                 self.log.note("Log saved to {log_path}")
                 self.log.note(f'VCF table path added to experiments_dictionary: {vcf_table_path}')
             
-            except Exception as e:
-                self.log.fail(f"Error while generating the VCF file for {current_line_name}: {e}")
-
         self.log.success("VCF file generation process complete")
-        
         return experiment_dictionary
+        
+        except Exception as e:
+            self.log.fail(f"Error while generating the VCF file for {current_line_name}: {e}")
+
 
     def bsa_analysis(self, experiment_dictionary):
         '''
