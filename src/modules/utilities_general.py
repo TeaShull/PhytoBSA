@@ -279,7 +279,8 @@ class ThaleBSASQLDB:
     def get_vcf_data(self, analysis_id):
         """Retrieve the VCF data based on the analysis ID"""
         cursor = self.conn.execute('''
-            SELECT line_name, vcf_id, vcf_log_path, analysis_log_path, run_date FROM thale_bsa_sqldb WHERE analysis_id = ?
+            SELECT line_name, vcf_id, vcf_log_path, analysis_log_path, 
+                run_date FROM thale_bsa_sqldb WHERE analysis_id = ?
         ''', (analysis_id,))
         result = cursor.fetchone()
         return result if result else None
