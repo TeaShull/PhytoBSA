@@ -5,12 +5,15 @@ from datetime import datetime
 import pandas as pd
 import re
 from flask import session  # Keeping the imports for later use
-from config import (
-    LogHandler, INPUT_DIR, OUTPUT_DIR, MODULES_DIR, LOG_DIR, REFERENCE_DIR
-)
 
+
+from utilities_general import FileUtilities
+from utilities_logging import LogHandler
 from utilities_bsa_analysis import BSAAnalysisUtilities
-from utilities_file import FileUtilities
+
+from config import (INPUT_DIR, OUTPUT_DIR, MODULES_DIR, 
+    LOG_DIR, REFERENCE_DIR
+)
 
 class ThaleBSAParentFunctions:
     def __init__(self, logger):
@@ -53,39 +56,53 @@ class ThaleBSAParentFunctions:
         the noknownsnps.table and vcf_ulid
 
         """
-
-        core_ulid=experiment_dictionary['core_ulid']
-        for key, value in experiment_dictionary.items():
-            self.log.attempt(f"Generating VCF file for {key}...")
-            self.log.delimiter(f"Shell [sh] VCF generator for {key} beginning...")
         
+        for key, value in experiment_dictionary.items():
+            self.log.delimiter('Experiment Dictionary passed to VCFgen.sh subprocess:')
+            self.log.print(f"Key: {key}")
+            for inner_key, inner_value in value.items():
+                self.log.print(f"{inner_key}: {inner_value}")
+
+        for key, value in experiment_dictionary.items():
+            self.log.delimiter(f"Shell [sh] VCF generator for {key} beginning...")
+            core_ulid=self.log.ulid
             try:
                 current_line_name = key
-
                 # generate log instance, add run info to sql db
                 vcf_log = LogHandler(f'vcf_{current_line_name}')
                 self.log.note(f'Logging for VCF Initialzed. Path: {vcf_log.log_path}')
                 
                 vcf_log.note(f'vcf_log initiated.')
                 vcf_log.note(f'vcf_log ulid: {vcf_log.ulid}')
-                experiment_dictionary[current_line_name]['vcf_ulid'] = vcf_log.ulid
+                
+                experiment_dictionary[current_line_name][
+                'vcf_ulid'] = vcf_log.ulid
+                
                 vcf_log.add_db_record(current_line_name, core_ulid)
 
 
                 # Add output_path to experiment_dictionary. 
                 output_name_prefix = f"{vcf_log.ulid}_-{current_line_name}"
                 output_dir_path = os.path.join(OUTPUT_DIR, output_name_prefix)
-                output_prefix = os.path.join(output_dir_path, output_name_prefix)
-                experiment_dictionary[key]['output_dir_path'] = output_dir_path 
+                
+                output_prefix = os.path.join(
+                    output_dir_path, output_name_prefix
+                )
+                (experiment_dictionary[current_line_name]
+                    ['output_dir_path']) = output_dir_path 
 
                 # Add vcftable_path to experiment_dictionary.
                 vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
                 vcf_table_path = os.path.join(
                     OUTPUT_DIR, current_line_name, vcf_table_name)
-                experiment_dictionary[current_line_name]['vcf_table_path'] = vcf_table_path
+                
+                (experiment_dictionary[current_line_name]
+                    ['vcf_table_path']) = vcf_table_path
                 
                 #Generate VCFgen.sh script path
-                vcfgen_script_path = os.path.join(MODULES_DIR, 'VCFgen.sh')
+                vcfgen_script_path = os.path.join(
+                    MODULES_DIR, 'subprocess_VCFgen.sh'
+                )
                 
                 #Generate the knownSnps .vcf file path
                 known_snps = os.path.join(REFERENCE_DIR, known_snps)
@@ -123,7 +140,7 @@ class ThaleBSAParentFunctions:
                     cleanup
                 )
 
-                # Construct the command for VCFgen.sh, passing the above variables
+                # Construct the command for VCFgen.sh, passing args
                 cmd = f"{vcfgen_script_path} {' '.join(map(str, args))}"
 
                 # Run vcfgen shell subprocess.
@@ -168,35 +185,60 @@ class ThaleBSAParentFunctions:
         
         '''
         self.log.attempt("Attempting to perform data analysis...")
+        
         try:
+            # Print experiment_dictionary information passed to function
             for key, value in experiment_dictionary.items():
-                core_ulid = value['core_ulid']
+                self.log.delimiter('Experiment Dictionary passed to bsa_analysis function')
+                self.log.print(f"Key: {key}")
+                for inner_key, inner_value in value.items():
+                    self.log.print(f"{inner_key}: {inner_value}")
+                self.log.print(' ')
+                core_ulid = self.log.ulid
+            
+            # Run analysis
+            for key, value in experiment_dictionary.items():
                 current_line_name = key
                 vcf_ulid = value['vcf_ulid']
                 vcf_table_path = value['vcf_table_path']
                 # Configure an analysis logger for each line. 
                 analysis_log = LogHandler(f'analysis_{current_line_name}')
                 analysis_log.note('Analysis log initiated.') 
+                value['analysis_ulid'] = analysis_log.ulid 
                 analysis_log.note(f'VCF ulid:{vcf_ulid}')
-                analysis_log.add_db_record(current_line_name, core_ulid, vcf_ulid)
+                
+                analysis_log.add_db_record(
+                    current_line_name, core_ulid, vcf_ulid
+                )
                 
                 #FileUtilites instance that logs to analysis_log
                 file_utils = FileUtilities(analysis_log)
 
                 #Analysis operations. Loading VCF and feature production
-                vcf_df = file_utils.load_vcf_table(vcf_table_path, current_line_name)
+                vcf_df = file_utils.load_vcf_table(
+                    vcf_table_path, current_line_name
+                )
                 
-                bsa_analysis_utils = BSAAnalysisUtilities(current_line_name, vcf_ulid, analysis_log)
-                vcf_df = bsa_analysis_utils.calculate_delta_snp_and_g_statistic(vcf_df)
+                
+                bsa_analysis_utils = BSAAnalysisUtilities(
+                    current_line_name, vcf_ulid, analysis_log
+                )
+                vcf_df = bsa_analysis_utils.calculate_delta_snp_and_g_statistic(
+                    vcf_df
+                )
                 vcf_df = bsa_analysis_utils.drop_na_and_indels(vcf_df) 
                 vcf_df = bsa_analysis_utils.loess_smoothing(vcf_df)
+                
                 vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = (
                     bsa_analysis_utils.calculate_empirical_cutoffs(vcf_df)
                 )
     
                 #Saving and plotting outputs
                 bsa_analysis_utils.sort_save_likely_candidates(vcf_df)
-                bsa_analysis_utils.generate_plots(vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff)
+                
+                bsa_analysis_utils.generate_plots(
+                    vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff
+                )
 
             self.log.success("Data analysis complete")
         
