@@ -5,7 +5,7 @@ from datetime import datetime
 import pandas as pd
 import re
 from flask import session  # Keeping the imports for later use
-from config import (INPUT_DIR, OUTPUT_DIR, MODULES_DIR, LOG_DIR, REFERENCE_DIR)
+from config import INPUT_DIR, MODULES_DIR, LOG_DIR, REFERENCE_DIR
 
 from utilities_bsa_analysis import BSAAnalysisUtilities
 from utilities_general import FileUtilities
@@ -15,62 +15,85 @@ class ThaleBSAParentFunctions:
     def __init__(self, logger):
         self.log = logger 
 
-    def vcf_generation(self, experiment_dictionary,
-                   reference_genome_name, snpEff_species_db,
-                   reference_genome_source, threads_limit,
-                   cleanup, known_snps)->dict:
+    def vcf_generation(self, experiment_dictionary=None,
+                   reference_genome_name=None, snpEff_species_db=None,
+                   reference_genome_source=None, threads_limit=None,
+                   cleanup=None, known_snps=None)->dict:
         """
         Input: Experiment dictionary as well as paths and variables needed 
         to run VCFgen.sh. Subprocess VCFgen.sh takes raw reads(wild-type(wt) 
         and mutant(mu)), either single or paired end and generates VCF table 
         *.noknownsnps.table.
+
+        Nonetypes - if nothing is provided, experiment_dictionary will be 
+        detected automatically from ./input and variables will be sourced from 
+        the variables.py module.
         
         Returns: updated experiment_dictionary containing the paths to 
         the noknownsnps.table.
         """
         core_ulid=self.log.ulid
+        try:    
+            file_utils = FileUtilities(self.log)
+            self.log.attempt('Checking if experiment dictionary exists...')
+            if experiment_dictionary == None:
+                self.log.warning('Experiment details undefined. Auto generating from files in ./input folder')
+                experiment_dictionary = file_utils.experiment_detector()
+            else:
+                self.log.note('Experiment details provided. Continuing to check other variables')
+
+            check_variables=file_utils.check_vcfgen_variables(
+                reference_genome_name, 
+                snpEff_species_db, 
+                reference_genome_source, 
+                threads_limit, 
+                cleanup, 
+                known_snps)
+            
+            if check_variables is not None:
+                (
+                    reference_genome_name, 
+                    snpEff_species_db, 
+                    reference_genome_source, 
+                    threads_limit, 
+                    cleanup, 
+                    known_snps
+                ) = check_variables
+
+        except Exception as e:
+            self.log.fail(f'Parsing variables for subprocess_VCFgen.sh failed:{e}')
+        
         try:
             for key, value in experiment_dictionary.items():
                 self.log.attempt(f"Generating VCF file for {key}...")
                 self.log.delimiter(f"Shell [sh] VCF generator for {key} beginning...")
-            
                 current_line_name = key
-                
+
                 # generate log instance, add run info to sql db
                 vcf_log = LogHandler(f'vcf_{current_line_name}')
-                self.log.note(f'Logging for VCF Initialzed. Path: {vcf_log.log_path}')
-                vcf_log.note(f'vcf_log initiated.')
-                vcf_log.note(f'vcf_log ulid: {vcf_log.ulid}')
+                self.log.note(f'Logging for VCF subprocess Initialized. Path: {vcf_log.log_path}')
                 experiment_dictionary[current_line_name]['vcf_ulid'] = vcf_log.ulid
                 vcf_log.add_db_record(current_line_name, core_ulid)
+                
+                #Generate file paths needed for vcf generation
+                file_utils = FileUtilities(vcf_log)
+                (
+                    output_dir_path,
+                    output_prefix,
+                    vcf_table_path, 
+                    vcfgen_script_path, 
+                    known_snps_path
+                ) = file_utils.generate_vcf_file_paths(current_line_name, vcf_log, known_snps)
                
-                # Add output_path to experiment_dictionary. 
-                output_name_prefix = f"{vcf_log.ulid}_-{current_line_name}"
-                output_dir_path = os.path.join(OUTPUT_DIR, output_name_prefix)
-                output_prefix = os.path.join(output_dir_path, output_name_prefix)
-                experiment_dictionary[key]['output_dir_path'] = output_dir_path 
-                
-                # Add vcftable_path to experiment_dictionary.
-                vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
-                vcf_table_path = os.path.join(
-                    OUTPUT_DIR, vcf_table_name)
-                experiment_dictionary[current_line_name]['vcf_table_path'] = vcf_table_path
-                
-                #Generate VCFgen.sh script path
-                vcfgen_script_path = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')
-                
-                #Generate the knownSnps .vcf file path
-                known_snps = os.path.join(REFERENCE_DIR, known_snps)
-                
                 # Retrieve allele and file input info from experiment_dictionary
-                allele = value['allele']
-                pairedness = value['pairedness']
+                allele = value['allele'] #Recessive or dominant?
+                pairedness = value['pairedness'] #Paired-end or single?
 
                 wt_input = ' '.join(value['wt'])
-                wt_input = f'"{wt_input}"'
+                wt_input = f'"{wt_input}"' #Wild-type bulk input files
                 self.log.note(f"wt_input:{wt_input}")
                 mu_input = ' '.join(value['mu'])
-                mu_input = f'"{mu_input}"'
+                mu_input = f'"{mu_input}"'#Mutant bulk input files
                 self.log.note(f"mu_input:{mu_input}")
 
                 # Construct args to pass variables to VCFgen.sh.
@@ -139,18 +162,18 @@ class ThaleBSAParentFunctions:
             for key, value in experiment_dictionary.items():
                 core_ulid = self.log.ulid
                 current_line_name = key
-                vcf_ulid = value['vcf_ulid']
+                vcf_ulid = value['vcf_ulid'] 
                 vcf_table_path = value['vcf_table_path']
-                # Configure an analysis logger for each line. 
+                
+                # Configure an analysis logger for each line.
                 analysis_log = LogHandler(f'analysis_{current_line_name}')
-                analysis_log.note('Analysis log initiated.') 
-                analysis_log.note(f'VCF ulid:{vcf_ulid}')
+                self.log.note(f'Analysis log initialized. Path: {analysis_log.log_path}')
                 analysis_log.add_db_record(current_line_name, core_ulid, vcf_ulid)
                 
                 #FileUtilites instance that logs to analysis_log
                 file_utils = FileUtilities(analysis_log)
 
-                #Analysis operations. Loading VCF and feature production
+                #Analysis operations. Loading VCF and producing features
                 vcf_df = file_utils.load_vcf_table(vcf_table_path, current_line_name)
                 
                 bsa_analysis_utils = BSAAnalysisUtilities(current_line_name, vcf_ulid, analysis_log)

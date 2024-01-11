@@ -85,31 +85,7 @@ def main():
         # [If -cl arg] detected, attempt to run program in automatic mode. 
         if args.command_line:
             core_log.note('Command line argument is set to [-cl]. Running automatic command line operations.')
-            
-            test_variables_bool=file_utils.check_vcfgen_variables(
-                reference_genome_name, 
-                snpEff_species_db, 
-                reference_genome_source, 
-                threads_limit, 
-                cleanup, 
-                known_snps)
-            
-            if not test_variables_bool:            
-                core_log.note('not all variables were passed. Attempting to source default variables from variables.py....')
-                from variables import (
-                    reference_genome_name,
-                    snpEff_species_db,
-                    reference_genome_source,
-                    threads_limit,
-                    cleanup,
-                    known_snps
-                )
-
-            experiment_dictionary = file_utils.experiment_detector()
-            experiment_dictionary = parent_functions.vcf_generation(
-                experiment_dictionary, reference_genome_name, snpEff_species_db, 
-                reference_genome_source, threads_limit, cleanup, known_snps
-            )
+            experiment_dictionary = parent_functions.vcf_generation()
             parent_functions.bsa_analysis(experiment_dictionary)
             quit()
         

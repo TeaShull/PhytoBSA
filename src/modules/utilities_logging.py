@@ -77,9 +77,16 @@ class LogHandler:
         self.conn = sqlite3.connect(self.db_name)
         self._create_tables()
 
+        #Add some initilization notes at the beginning of every log
+        self.note(f"""{self.name} log initilized.
+            ulid: {self.ulid}
+            log filename: {self.log_filename}
+            log path: {self.log_path}
+            """)
+
     def setup_logger(self):
-        '''Initialize logger, which is designed to be passed to class instances 
-        so that logging can be passed around to new functionalities as the program expands.'''
+        """Initialize logger, which is designed to be passed to class instances 
+        so that logging can be passed around to new functionalities as the program expands."""
         logger = logging.getLogger(self.name)
         logger.setLevel(logging.INFO)  # Set the default level for the logger
 
@@ -97,7 +104,7 @@ class LogHandler:
         return logger
 
     def _obtain_execution_frames(self)->tuple:
-        '''
+        """
         Obtains the execution frames from the script that the self.log(message) 
         is called. This allows logs to be informative as to what module, and what
         function a message arises from.  
@@ -107,7 +114,7 @@ class LogHandler:
 
         Returns:
         script_name, function_name (tuple)
-        '''
+        """
         
         current_frame = inspect.currentframe()
         caller_frame = inspect.getouterframes(current_frame)[2]
@@ -121,7 +128,7 @@ class LogHandler:
     def _construct_message(
         self, prefix, script_name, function_name, message_in
         )->str:
-        '''
+        """
         Constructs the log messages. 
 
         Args:
@@ -132,7 +139,7 @@ class LogHandler:
             
         Returns: 
         message_out(str)
-        '''
+        """
         
         log_handler_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
         if function_name != '<module>':
@@ -141,8 +148,9 @@ class LogHandler:
             message_out = f"{log_handler_timestamp} {prefix} ({script_name}> module) {message_in}"
         return message_out 
 
+    ## MESSAGE TYPES
     def trigger(self, message):
-        '''
+        """
         log message type. 
         will log and print message [Flask Trigger] "....exc"
         
@@ -154,7 +162,7 @@ class LogHandler:
 
         Returns:
         None. just prints to the log and stdOut
-        '''
+        """
         script_name, function_name = self._obtain_execution_frames()
         log_message = self._construct_message(
             '[Flask Trigger]', script_name, function_name, message
@@ -217,7 +225,7 @@ class LogHandler:
 
     def delimiter(self, message):
         delimiter_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
-        log_message = (f'''
+        log_message = (f"""
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
 -. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .-. .-.   .
 ||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /|||\|||\ /||\|||\ /|||\|||\ /||
@@ -226,13 +234,13 @@ class LogHandler:
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
 {delimiter_timestamp} {message}
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
-            ''')
+            """)
         self.logger.info(log_message)
         print(log_message)    
 
     # Log database functions
     def _create_tables(self):
-        '''
+        """
         Creates the tables for the log database.
 
         Args:
@@ -240,7 +248,7 @@ class LogHandler:
 
         Returns:
         None.
-        '''
+        """
         create_core = '''
             CREATE TABLE IF NOT EXISTS core (
                 core_ulid TEXT,
@@ -286,7 +294,7 @@ class LogHandler:
     def add_db_record(
         self, current_line_name=None, core_ulid=None, vcf_ulid=None
     ):
-        '''
+        """
         Adds records to the log database. 
 
         Args: 
@@ -306,7 +314,7 @@ class LogHandler:
             None
         It just adds logs with the inputted information, along with information
         gathered from the current instance of the LogHandler class
-        '''
+        """
 
         try:
             if self.name == 'core':

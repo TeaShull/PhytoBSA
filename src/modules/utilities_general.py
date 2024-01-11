@@ -2,9 +2,13 @@ import os
 import pandas as pd
 import re
 import sqlite3
-from config import INPUT_DIR
+from config import INPUT_DIR, OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR
 
 class FileUtilities:
+    """
+    Utility class for handling file operations and inputs. 
+    
+    """
     def __init__(self, logger):
         self.log = logger 
 
@@ -25,7 +29,7 @@ class FileUtilities:
         successful, all information needed to generate vcf files and run analysis
         will have been parsed. 
         '''
-        self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}...")
+        self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
         try:
             expt_dict = {}
             # Iterate through the files in the directory
@@ -65,12 +69,16 @@ class FileUtilities:
                     wt_list = expt_dict[key]['wt']
                     wt_list.append(file_path)
                     # Sort the wt_list to ensure _1 and _2 files are in numeric order
-                    expt_dict[key]['wt'] = sorted(wt_list, key=lambda x: int(x.split('_')[-1][0]))
+                    expt_dict[key]['wt'] = sorted(
+                        wt_list, key=lambda x: int(x.split('_')[-1][0])
+                    )
                 elif 'mu' in segregation_type:
                     mu_list = expt_dict[key]['mu']
                     mu_list.append(file_path)
                     # Sort the mu_list to ensure _1 and _2 files are in numeric order
-                    expt_dict[key]['mu'] = sorted(mu_list, key=lambda x: int(x.split('_')[-1][0]))
+                    expt_dict[key]['mu'] = sorted(
+                        mu_list, key=lambda x: int(x.split('_')[-1][0])
+                    )
             
             self.log.success(f'Experiment dictionary generated.')
             return expt_dict
@@ -79,33 +87,66 @@ class FileUtilities:
             self.log.fail(f"Error while detecting experiment details: {e}")
             return {}
 
-    def check_vcfgen_variables(self, reference_genome_name, snpEff_species_db, 
-        reference_genome_source, threads_limit, cleanup, known_snps
-    ):
-        # Check if the user has provided all the necessary variables
+    def check_vcfgen_variables(self, reference_genome_name=None, snpEff_species_db=None, reference_genome_source=None, threads_limit=None, cleanup=None, known_snps=None):
+        """
+        Checks if the user has provided all the necessary variables
+
+        args:
+        experiment_dictionary
+        reference_genome_name
+        snpEff_species_db
+        reference_genome_source
+        threads_limit
+        cleanup
+        known_snps
+
+        Returns: 
+        Variables sourced from variables.py module if they are missing
+        True if variables are all accounted for
+        """
         self.log.attempt('Checking if runtime variables for VCFgen.sh subprocess are assigned...')
         try:
-            if (
-                reference_genome_name is None or
-                snpEff_species_db is None or
-                reference_genome_source is None or
-                threads_limit is None or
-                cleanup is None or
-                known_snps is None
-            ):
-                # User hasn't provided all the variables, print an error message or handle accordingly
-                self.log.note("Not all required variables have been provided... will attempt to source from variables.py")
-                return False
-            else:
-                # All variables are provided, continue with the rest of your code
-                self.log.success("All variables are were provided. Well done! Proceeding...")
-                return True
-        except Exception as e:
-            self.log.fail(f'There was an error while checking if variables for VCFgen.sh have been assigned:{e}')
 
-    def load_vcf_table(
-        self, current_line_table_path, current_line_name
-    )->pd.DataFrame:
+            if any(var is None for var in [reference_genome_name, 
+                snpEff_species_db, reference_genome_source, threads_limit, 
+                cleanup, known_snps]
+            ):
+                self.log.warning("Not all required variables are assigned.") 
+                self.log.attempt('attempting to source variables from variables.py...')
+                
+                from variables import (
+                    reference_genome_name,
+                    snpEff_species_db,
+                    reference_genome_source,
+                    threads_limit,
+                    cleanup,
+                    known_snps
+                )
+                
+                if any(var is None for var in [reference_genome_name, 
+                    snpEff_species_db, reference_genome_source, threads_limit, 
+                    cleanup, known_snps]):  
+                    self.log.fail("""
+                        There was a critical failure sourcing variables from user input and variables.py
+                        Check the variables you pass to the command line, or organize them in variables module
+                    """)
+                else:
+                    return (
+                        reference_genome_name,
+                        snpEff_species_db,
+                        reference_genome_source,
+                        threads_limit,
+                        cleanup,
+                        known_snps
+                    )
+            else:
+                self.log.success("All variables were provided. Proceeding...")
+                return None
+            
+        except Exception as e:
+            self.log.fail(f'There was an error while checking if variables for VCFgen.sh have been assigned: {e}')
+
+    def load_vcf_table(self, current_line_table_path, current_line_name)->pd.DataFrame:
         """
         Loads VCF table into a pandas dataframe.
         
@@ -190,7 +231,6 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
-
     def create_experiment_dictionary(self, line_name, vcf_table)->dict:
         '''
         Creates an experiment dictionary from line_name and vcf_table input. 
@@ -252,6 +292,35 @@ class FileUtilities:
             return match.group()
         else:
             return None
+
+    def generate_vcf_file_paths(self, current_line_name, vcf_log, known_snps):
+        """
+        Generate file paths based on the given parameters.
+
+        Args:
+        current_line_name (str): The name used as a key in the experiment_dictionary.
+        vcf_log: Some object with an 'ulid' attribute.
+        known_snps (str): The name of the known_snps file.
+
+        Returns:
+        Tuple containing the generated file paths.
+        """
+        # Add output_path to experiment_dictionary. 
+        output_name_prefix = f"{vcf_log.ulid}_-{current_line_name}"
+        output_dir_path = os.path.join(OUTPUT_DIR, output_name_prefix)
+        output_prefix = os.path.join(output_dir_path, output_name_prefix)
+        
+        # Add vcftable_path to experiment_dictionary.
+        vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
+        vcf_table_path = os.path.join(OUTPUT_DIR, vcf_table_name)
+        
+        # Generate VCFgen.sh script path
+        vcfgen_script_path = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')
+        
+        # Generate the knownSnps .vcf file path
+        known_snps_path = os.path.join(REFERENCE_DIR, known_snps)
+        
+        return output_dir_path, output_prefix, vcf_table_path, vcfgen_script_path, known_snps_path
 
 class ThaleBSASQLDB:
     """
