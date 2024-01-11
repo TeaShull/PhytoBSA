@@ -53,6 +53,8 @@ main() {
     echo "Refrences and directories prepared. Proceeding with mapping...."
 
     print_message "Mapping"
+    # Align reads using BWA. A more modern aligner for this may be implemented 
+    # sometime  
     bwa mem \
         -t "$threads_halfed" \
         -M "${reference_chrs_fa_path}" \
@@ -64,6 +66,7 @@ main() {
         $mu_input > "${output_prefix}_mu.sam"
     wait
 
+    #Create binary alignment map for more effecient processing
     print_message "Converting sam to bam"
     samtools view \
         -bSh \
@@ -78,6 +81,7 @@ main() {
     wait
 
     # Fix paired-end
+    # Ensures that mapping information between read pairs is accurate. 
     if [ "${pairedness}" == "paired-end" ]; then
         print_message "Reads are paired-end. Running samtools fixmate"
         samtools fixmate "${output_prefix}_wt.bam" "${output_prefix}_wt.fix.bam" &
@@ -87,6 +91,10 @@ main() {
     echo "..."
     wait
 
+    #SortSam
+    # Sorting ensures that reads are organized in genomic order. GATK haplotype
+    # caller reassembles variant regions denovo - it needs regions to be ordered. 
+    # Reassembly makes HC slow, but it is pretty accurate. 
     print_message "Sorting by coordinate"
     picard SortSam \
         -I "${output_prefix}_mu.fix.bam" \
@@ -98,6 +106,9 @@ main() {
         -SORT_ORDER coordinate
     wait
 
+    # Mark duplicates. Reads with identical start and stop positions, and are 
+    # formed during PCR amplification. Marking them allows accurate assesment 
+    # of read depth, in that only unique reads at variants are counted.
     print_message "Marking duplicates"
     picard MarkDuplicates \
         -I "${output_prefix}_mu.sort.bam" \
@@ -111,6 +122,7 @@ main() {
         -ASSUME_SORTED true
     wait
 
+    # Format headers so BAMs can be fed through GATK haplotype caller
     print_message "Adding header for GATK"
     picard AddOrReplaceReadGroups \
         -I "${output_prefix}_mu.sort.md.bam" \
@@ -132,6 +144,9 @@ main() {
 
     print_message "Building BAM index"
     # Build BAM index
+    # Needed to run haplotyple caller. Increases the speed of accessing and 
+    # retrieving data within genomic regions during variant calling. Allows GATK HC
+    # to skip directly to the region of interest.  
     picard BuildBamIndex \
         -INPUT "${output_prefix}_mu.sort.md.rg.bam" \
         -O "${output_prefix}_mu.sort.md.rg.bai" &
@@ -142,6 +157,9 @@ main() {
 
     print_message "Calling haplotypes. This may take a while..."
     # GATK HC Variant calling
+    # Haplotype caller looks for regions with varience and locally reconstructs
+    # the region using the available reads, and calls variants for the region. 
+    # Time consuming but accurate
     gatk HaplotypeCaller \
         -R "$reference_chrs_fa_path" \
         -I "${output_prefix}_mu.sort.md.rg.bam" \
@@ -153,13 +171,18 @@ main() {
     print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
     
     # snpEff, labeling SNPs
+    # snpEff labels the variants in haplotype caller with likely impact of variants 
+    # on gene function (early stop/start codons, missense mutations, exc) using
+    # databases assembled from annotated reference files 
+    # (gff, transcriptomes and genomes). 
     snpEff "$snpEff_species_db" \
         -s "${snpeff_out_filename}" \
         "${output_prefix}.hc.vcf" > "${output_prefix}.se.vcf"
     print_message "Haplotypes called and SNPs labeled. Cleaning data."
 
     
-    # # Extracting SNPeff data and variant information into a table
+    # Extracting SNPeff data and variant information into a table
+    # built in data processing of snpEff labels... 
     extract_fields_snpSift \
         "${output_prefix}.se.vcf" \
         "${output_prefix}.table.tmp" \

@@ -14,7 +14,6 @@ TEMPLATE_DIR = os.path.join(SRC_DIR,'templates')
 STATIC_DIR = os.path.join(SRC_DIR,'static')
 MODULES_DIR = os.path.join(SRC_DIR,'modules')
 
-
 ## SUBCLASSES
 # #In progress. 
 # class ExperimentDictionary:

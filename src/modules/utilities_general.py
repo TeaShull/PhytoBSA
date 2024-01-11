@@ -91,8 +91,7 @@ class FileUtilities:
         """
         Checks if the user has provided all the necessary variables
 
-        args:
-        experiment_dictionary
+        Args:
         reference_genome_name
         snpEff_species_db
         reference_genome_source
@@ -100,49 +99,51 @@ class FileUtilities:
         cleanup
         known_snps
 
-        Returns: 
+        Returns:
         Variables sourced from variables.py module if they are missing
         True if variables are all accounted for
         """
         self.log.attempt('Checking if runtime variables for VCFgen.sh subprocess are assigned...')
         try:
-
-            if any(var is None for var in [reference_genome_name, 
-                snpEff_species_db, reference_genome_source, threads_limit, 
-                cleanup, known_snps]
-            ):
-                self.log.warning("Not all required variables are assigned.") 
+            if any(var is None for var in [reference_genome_name,
+                                           snpEff_species_db,
+                                           reference_genome_source,
+                                           threads_limit,
+                                           cleanup,
+                                           known_snps]):
+                self.log.warning("Not all required variables are assigned.")
                 self.log.attempt('attempting to source variables from variables.py...')
-                
-                from variables import (
-                    reference_genome_name,
-                    snpEff_species_db,
-                    reference_genome_source,
-                    threads_limit,
-                    cleanup,
-                    known_snps
-                )
-                
-                if any(var is None for var in [reference_genome_name, 
-                    snpEff_species_db, reference_genome_source, threads_limit, 
-                    cleanup, known_snps]):  
+
+                import variables
+
+                reference_genome_name = reference_genome_name or variables.reference_genome_name
+                snpEff_species_db = snpEff_species_db or variables.snpEff_species_db
+                reference_genome_source = reference_genome_source or variables.reference_genome_source
+                threads_limit = threads_limit or variables.threads_limit
+                cleanup = cleanup or variables.cleanup
+                known_snps = known_snps or variables.known_snps
+
+                if any(var is None for var in [reference_genome_name,
+                                               snpEff_species_db,
+                                               reference_genome_source,
+                                               threads_limit,
+                                               cleanup,
+                                               known_snps]):
                     self.log.fail("""
                         There was a critical failure sourcing variables from user input and variables.py
-                        Check the variables you pass to the command line, or organize them in variables module
+                        Check the variables you pass to the command line or organize them in the variables module
                     """)
                 else:
-                    return (
-                        reference_genome_name,
-                        snpEff_species_db,
-                        reference_genome_source,
-                        threads_limit,
-                        cleanup,
-                        known_snps
-                    )
+                    return (reference_genome_name,
+                            snpEff_species_db,
+                            reference_genome_source,
+                            threads_limit,
+                            cleanup,
+                            known_snps)
             else:
                 self.log.success("All variables were provided. Proceeding...")
                 return None
-            
+
         except Exception as e:
             self.log.fail(f'There was an error while checking if variables for VCFgen.sh have been assigned: {e}')
 

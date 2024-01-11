@@ -125,7 +125,7 @@ class BSAAnalysisUtilities:
             self.log.fail(f"Error in delta_snp_array for {self.current_line_name}: {e}")
             return None
 
-    def _g_statistic_array(self, o1, o3, o2, o4, suppress)->np.ndarray:
+    def _g_statistic_array(self, wtr, wta, mur, mua, suppress)->np.ndarray:
         """
         Calculates g-statistic feature, which is a more statistically driven 
         approach to calculating read-depth divergence from expected values. 
@@ -136,18 +136,18 @@ class BSAAnalysisUtilities:
         try:
             np.seterr(all='ignore')
 
-            zero_mask = o1 + o2 + o3 + o4 != 0
-            denominator = o1 + o2 + o3 + o4
+            zero_mask = wtr + mur + wta + mua != 0
+            denominator = wtr + mur + wta + mua
 
-            e1 = np.where(zero_mask, (o1 + o2) * (o1 + o3) / (denominator), 0)
-            e2 = np.where(zero_mask, (o1 + o2) * (o2 + o4) / (denominator), 0)
-            e3 = np.where(zero_mask, (o3 + o4) * (o1 + o3) / (denominator), 0)
-            e4 = np.where(zero_mask, (o3 + o4) * (o2 + o4) / (denominator), 0)
+            e1 = np.where(zero_mask, (wtr + mur) * (wtr + wta) / (denominator), 0)
+            e2 = np.where(zero_mask, (wtr + mur) * (mur + mua) / (denominator), 0)
+            e3 = np.where(zero_mask, (wta + mua) * (wtr + wta) / (denominator), 0)
+            e4 = np.where(zero_mask, (wta + mua) * (mur + mua) / (denominator), 0)
 
-            llr1 = np.where(o1 / e1 > 0, 2 * o1 * np.log(o1 / e1), 0.0)
-            llr2 = np.where(o2 / e2 > 0, 2 * o2 * np.log(o2 / e2), 0.0)
-            llr3 = np.where(o3 / e3 > 0, 2 * o3 * np.log(o3 / e3), 0.0)
-            llr4 = np.where(o4 / e4 > 0, 2 * o4 * np.log(o4 / e4), 0.0)
+            llr1 = np.where(wtr / e1 > 0, 2 * wtr * np.log(wtr / e1), 0.0)
+            llr2 = np.where(mur / e2 > 0, 2 * mur * np.log(mur / e2), 0.0)
+            llr3 = np.where(wta / e3 > 0, 2 * wta * np.log(wta / e3), 0.0)
+            llr4 = np.where(mua / e4 > 0, 2 * mua * np.log(mua / e4), 0.0)
 
             result = np.where(
                 e1 * e2 * e3 * e4 == 0, 0.0, llr1 + llr2 + llr3 + llr4
@@ -173,7 +173,7 @@ class BSAAnalysisUtilities:
         lowess_span = 0.3
         smooth_edges_bounds = 15
         self.log.attempt("Initialize LOESS smoothing calculations.")
-        self.log.attempt("span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
+        self.log.attempt(f"span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
         try:
 
             vcf_df = self._smooth_chr_facets(
@@ -347,26 +347,23 @@ class BSAAnalysisUtilities:
                     sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, suppress
                 )
                 smRatioAll.extend(smRatio)
-
+                
                 smRS_G = smRatio * smGstat
                 RS_GAll.extend(smRS_G)
 
                 smRS_G_yhatAll.extend(lowess(
                     smRS_G, smPos, frac=lowess_span)[:, 1]
                 )
-
             G_S_95p = np.percentile(smGstatAll, 95)
             RS_G_95p = np.percentile(RS_GAll, 95)
             RS_G_Y_99p = np.percentile(smRS_G_yhatAll, 99.99)
-
             result = G_S_95p, RS_G_95p, RS_G_Y_99p
+
             self.log.success(f"Empirical cutoff calculation completed for {self.current_line_name}")
-            
             return result
         
         except Exception as e:
             self.log.fail(f"Error in empirical_cutoff for {self.current_line_name}: {e}")
-            
             return None, None, None        
 
     def sort_save_likely_candidates(self, vcf_df):
@@ -384,7 +381,6 @@ class BSAAnalysisUtilities:
                 ascending=[False, False],
                 na_position='first'
             )
-
             # Save DataFrames to CSV files
             results_table_name =f"{self.analysis_out_prefix}_results_table.tsv"
             results_table_path = os.path.join(

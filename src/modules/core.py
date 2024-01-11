@@ -34,13 +34,13 @@ class ThaleBSAParentFunctions:
         """
         core_ulid=self.log.ulid
         try:    
-            file_utils = FileUtilities(self.log)
             self.log.attempt('Checking if experiment dictionary exists...')
             if experiment_dictionary == None:
                 self.log.warning('Experiment details undefined. Auto generating from files in ./input folder')
+                file_utils = FileUtilities(self.log)
                 experiment_dictionary = file_utils.experiment_detector()
             else:
-                self.log.note('Experiment details provided. Continuing to check other variables')
+                self.log.note('Experiment details provided. Checking other variables...')
 
             check_variables=file_utils.check_vcfgen_variables(
                 reference_genome_name, 
@@ -48,8 +48,8 @@ class ThaleBSAParentFunctions:
                 reference_genome_source, 
                 threads_limit, 
                 cleanup, 
-                known_snps)
-            
+                known_snps
+            ) 
             if check_variables is not None:
                 (
                     reference_genome_name, 
@@ -63,6 +63,7 @@ class ThaleBSAParentFunctions:
         except Exception as e:
             self.log.fail(f'Parsing variables for subprocess_VCFgen.sh failed:{e}')
         
+        self.log.note('Beginning VCF generation process for experiment_dictionary')
         try:
             for key, value in experiment_dictionary.items():
                 self.log.attempt(f"Generating VCF file for {key}...")

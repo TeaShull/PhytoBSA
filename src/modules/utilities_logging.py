@@ -79,8 +79,8 @@ class LogHandler:
 
         #Add some initilization notes at the beginning of every log
         self.print(f"""ulid: {self.ulid}
-log filename: {self.log_filename}
-log path: {self.log_path}
+        log filename: {self.log_filename}
+        log path: {self.log_path}
 
             """)
 
@@ -125,9 +125,7 @@ log path: {self.log_path}
         
         return script_name, function_name
 
-    def _construct_message(
-        self, prefix, script_name, function_name, message_in
-        )->str:
+    def _construct_message(self, prefix, script_name, function_name, message_in)->str:
         """
         Constructs the log messages. 
 

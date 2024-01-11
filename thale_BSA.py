@@ -17,7 +17,6 @@ from config import (
     SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, TEMPLATE_DIR, STATIC_DIR
 )
 
-
 # Initialize core_log instance of LogHandler
 '''
 [NOTE]
@@ -51,14 +50,17 @@ def main():
 
     ## Command line inputs
     parser.add_argument('-cl', '--command_line', action='store_true', help='Run on the command line.')
+    
     reference_genome_name_help = f"""
         What is the name of your reference genome? this should be the base name of your fasta file. 
         example - Arabidopsis_thaliana.fa 
         reference_genome_name = Arabidopsis_thaliana""" 
     parser.add_argument('-rgn', '--reference_genome_name', default=None,
                         type=str, help=reference_genome_name_help)
+    
     snpEff_species_db_help = ("What is the name of your snpEff database for your reference genome?")
     parser.add_argument('-ssdb', '--snpEff_species_db', default=None, type=str)
+    
     parser.add_argument('-rgs', '--reference_genome_source', default=None, type=str)
     parser.add_argument('-t', '--threads_limit', default=None, type=str)
     parser.add_argument('-c','--cleanup', default=None, type=str)
