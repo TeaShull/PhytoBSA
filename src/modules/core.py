@@ -5,12 +5,11 @@ from datetime import datetime
 import pandas as pd
 import re
 from flask import session  # Keeping the imports for later use
-from config import (
-    LogHandler, INPUT_DIR, OUTPUT_DIR, MODULES_DIR, LOG_DIR, REFERENCE_DIR
-)
+from config import (INPUT_DIR, OUTPUT_DIR, MODULES_DIR, LOG_DIR, REFERENCE_DIR)
 
 from utilities_bsa_analysis import BSAAnalysisUtilities
-from utilities_file import FileUtilities
+from utilities_general import FileUtilities
+from utilities_logging import LogHandler
 
 class ThaleBSAParentFunctions:
     def __init__(self, logger):
@@ -29,13 +28,12 @@ class ThaleBSAParentFunctions:
         Returns: updated experiment_dictionary containing the paths to 
         the noknownsnps.table.
         """
-        core_ulid=experiment_dictionary['core_ulid']
-
+        core_ulid=self.log.ulid
         try:
-        for key, value in experiment_dictionary.items():
-            self.log.attempt(f"Generating VCF file for {key}...")
-            self.log.delimiter(f"Shell [sh] VCF generator for {key} beginning...")
-        
+            for key, value in experiment_dictionary.items():
+                self.log.attempt(f"Generating VCF file for {key}...")
+                self.log.delimiter(f"Shell [sh] VCF generator for {key} beginning...")
+            
                 current_line_name = key
                 # generate log instance, add run info to sql db
                 vcf_log = LogHandler(f'vcf_{current_line_name}')
@@ -55,11 +53,11 @@ class ThaleBSAParentFunctions:
                 # Add vcftable_path to experiment_dictionary.
                 vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
                 vcf_table_path = os.path.join(
-                    OUTPUT_DIR, current_line_name, vcf_table_name)
+                    OUTPUT_DIR, vcf_table_name)
                 experiment_dictionary[current_line_name]['vcf_table_path'] = vcf_table_path
                 
                 #Generate VCFgen.sh script path
-                vcfgen_script_path = os.path.join(MODULES_DIR, 'VCFgen.sh')
+                vcfgen_script_path = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')
                 
                 #Generate the knownSnps .vcf file path
                 known_snps = os.path.join(REFERENCE_DIR, known_snps)
@@ -109,10 +107,10 @@ class ThaleBSAParentFunctions:
                 self.log.note(f"VCF file generated for {current_line_name}.") 
                 self.log.note("Log saved to {log_path}")
                 self.log.note(f'VCF table path added to experiments_dictionary: {vcf_table_path}')
-            
-        self.log.success("VCF file generation process complete")
-        return experiment_dictionary
-        
+                
+            self.log.success("VCF file generation process complete")
+            return experiment_dictionary
+
         except Exception as e:
             self.log.fail(f"Error while generating the VCF file for {current_line_name}: {e}")
 

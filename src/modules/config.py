@@ -17,8 +17,8 @@ MODULES_DIR = os.path.join(SRC_DIR,'modules')
 ## SUBCLASSES 
 class ExperimentDictionary(dict):
     required_keys = {
-        'wt', 'mu', 'allele', 'pairedness', 'vcf_ulid', 'analysis_ulid', 
-        'vcf_table_path','output_dir_path', 'analysis_ulid'
+        'key':['wt', 'mu', 'allele', 'pairedness', 'vcf_ulid', 'analysis_ulid', 
+        'vcf_table_path','output_dir_path', 'analysis_ulid']
     }
 
     def __setitem__(self, key, value):

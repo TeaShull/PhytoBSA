@@ -6,8 +6,9 @@ import codecs
 import inspect
 from datetime import datetime
 import logging
-import utilities_ulid as ulid
 import sqlite3
+
+from config import LOG_DIR
 
 
 class ULID:

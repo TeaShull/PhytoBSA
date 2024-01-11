@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import re
 import sqlite3
-from config import ExperimentDictionary, INPUT_DIR
+from config import INPUT_DIR
 
 class FileUtilities:
     def __init__(self, logger):
@@ -27,7 +27,7 @@ class FileUtilities:
         '''
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}...")
         try:
-            expt_dict = ExperimentDictionary()
+            expt_dict = {}
             # Iterate through the files in the directory
             for filename in os.listdir(INPUT_DIR):
                 # Split the filename into parts based on dots
@@ -79,7 +79,9 @@ class FileUtilities:
             self.log.fail(f"Error while detecting experiment details: {e}")
             return {}
 
-    def check_vcfgen_variables(self, reference_genome_name, snpEff_species_db, reference_genome_source, threads_limit, cleanup, known_snps)
+    def check_vcfgen_variables(self, reference_genome_name, snpEff_species_db, 
+        reference_genome_source, threads_limit, cleanup, known_snps
+    ):
         # Check if the user has provided all the necessary variables
         self.log.attempt('Checking if runtime variables for VCFgen.sh subprocess are assigned...')
         try:
@@ -92,7 +94,7 @@ class FileUtilities:
                 known_snps is None
             ):
                 # User hasn't provided all the variables, print an error message or handle accordingly
-                self.log.fail("Error: Not all required variables have been provided.")
+                self.log.note("Not all required variables have been provided... will attempt to source from variables.py")
                 return False
             else:
                 # All variables are provided, continue with the rest of your code

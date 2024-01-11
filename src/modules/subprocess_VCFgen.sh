@@ -33,21 +33,12 @@ main() {
     generated_variables["reference_chrs_fa_path"]=${reference_dir}/${reference_genome_name}.chrs.fa
     generated_variables["snpeff_dir"]=${output_dir_path}/snpEff
     generated_variables["snpeff_out_filename"]=${output_dir_path}/snpEff/${vcf_ulid}-_{current_line_name}
+    generated_variables["ems_file_name"]="${output_prefix}.ems.table"
 
     ## Printing all generated variables for logging purposes
     print_variable_info generated_variables "Variables generated in VCFgen.sh"
     ## Assigning variables in array to their respective keys
     assign_values generated_variables
-
-    ## Generate final file output names
-    declare -A final_output_names
-    final_output_names["noknownsnps_tablename"]="${output_prefix}.noknownsnps.table"
-    final_output_names["ems_file_name"]="${output_prefix}.ems.table"
-
-    ## Print all generated Final file output names
-    print_variable_info final_output_names "Final output names"
-    ## Assigning variables in array to their respective keys
-    assign_values final_output_names
 
     ## Prepare references and directory structure
     print_message "Preparing references and directory structure"
@@ -185,10 +176,10 @@ main() {
     remove_nongenomic_polymorphisms "$current_line_name" "${ems_file_name}"
     
     # Remove known SNPs
-    remove_known_snps "$known_snps" "${output_prefix}.ems.table" "$noknownsnps_tablename"
+    remove_known_snps "$known_snps" "${output_prefix}.ems.table" "$vcf_table_path"
     
     # Add headers
-    add_headers "$noknownsnps_tablename"
+    add_headers "$vcf_table_path"
 
     # Clean up temporary files
     cleanup_files "${output_dir_path}" "${cleanup}"

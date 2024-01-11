@@ -43,44 +43,38 @@ def main():
     core_log.note(f'Core log begin. ulid: {core_log.ulid}')
     core_log.add_db_record()
 
-
     # Argument parsing
     parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')
-    args = parser.parse_args()
-    
     parser.add_argument('-an', '--analysis', action='store_true', help='Run the analysis.')
     parser.add_argument('-n', '--line_name', type=str, help='name of the line you wish to analyze. Will be used to name output files.')
-    line_name = args.line_name
     parser.add_argument('-vt', '--vcf_table', type=str, help='path to the vcf table you wish to analyze.')
-    vcf_table = args.vcf_table
 
     ## Command line inputs
     parser.add_argument('-cl', '--command_line', action='store_true', help='Run on the command line.')
-
-
     reference_genome_name_help = f"""
         What is the name of your reference genome? this should be the base name of your fasta file. 
         example - Arabidopsis_thaliana.fa 
         reference_genome_name = Arabidopsis_thaliana""" 
-    parser.add_argument('-rgn', '--reference_genome_name', default=None, help=reference_genome_name_help)
-    reference_genome_name = args.reference_genome_name
-    
-    snpEff_species_db_help = f"""
-    What is the name of your snpEff database for your reference genome? you can get the
-    """
-    parser.add_argument('-ssdb', '--snpEff_species_db', default=None)
-    snpEff_species_db = args.snpEff_species_db
-    parser.add_argument('-rgs', '--reference_genome_source', default=None)
-    reference_genome_source = args.reference_genome_source
-    parser.add_argument('-t', '--threads_limit', default=None)
-    threads_limit = args.threads_limit
-    
-    parser.add_argument('-c''--cleanup', default=None)
-    cleanup = args.cleanup
-    
-    parser.add_argument('ks''--known_snps', default=None)
-    known_snps = args.known_snps
+    parser.add_argument('-rgn', '--reference_genome_name', default=None,
+                        type=str, help=reference_genome_name_help)
+    snpEff_species_db_help = ("What is the name of your snpEff database for your reference genome?")
+    parser.add_argument('-ssdb', '--snpEff_species_db', default=None, type=str)
+    parser.add_argument('-rgs', '--reference_genome_source', default=None, type=str)
+    parser.add_argument('-t', '--threads_limit', default=None, type=str)
+    parser.add_argument('-c','--cleanup', default=None, type=str)
+    parser.add_argument('-ks','--known_snps', default=None, type=str)
 
+
+    args = parser.parse_args()
+    line_name = args.line_name
+    vcf_table = args.vcf_table
+    reference_genome_name = args.reference_genome_name
+    snpEff_species_db = args.snpEff_species_db
+    reference_genome_source = args.reference_genome_source
+    threads_limit = args.threads_limit
+    cleanup = args.cleanup
+    known_snps = args.known_snps
+    
     # Create instances of ThaleBSAParentFunctions and FileUtilities. 
     parent_functions = ThaleBSAParentFunctions(core_log)
     file_utils = FileUtilities(core_log)
@@ -91,7 +85,6 @@ def main():
         # [If -cl arg] detected, attempt to run program in automatic mode. 
         if args.command_line:
             core_log.note('Command line argument is set to [-cl]. Running automatic command line operations.')
-            core_log.attempt("Sourcing variables from variables.py")
             
             test_variables_bool=file_utils.check_vcfgen_variables(
                 reference_genome_name, 
@@ -102,7 +95,7 @@ def main():
                 known_snps)
             
             if not test_variables_bool:            
-                self.log.note('not all variables were passed. Attempting to source default variables from variables.py....')
+                core_log.note('not all variables were passed. Attempting to source default variables from variables.py....')
                 from variables import (
                     reference_genome_name,
                     snpEff_species_db,
