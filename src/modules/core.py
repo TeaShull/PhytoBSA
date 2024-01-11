@@ -35,21 +35,21 @@ class ThaleBSAParentFunctions:
                 self.log.delimiter(f"Shell [sh] VCF generator for {key} beginning...")
             
                 current_line_name = key
+                
                 # generate log instance, add run info to sql db
                 vcf_log = LogHandler(f'vcf_{current_line_name}')
                 self.log.note(f'Logging for VCF Initialzed. Path: {vcf_log.log_path}')
-
                 vcf_log.note(f'vcf_log initiated.')
                 vcf_log.note(f'vcf_log ulid: {vcf_log.ulid}')
                 experiment_dictionary[current_line_name]['vcf_ulid'] = vcf_log.ulid
                 vcf_log.add_db_record(current_line_name, core_ulid)
-
+               
                 # Add output_path to experiment_dictionary. 
                 output_name_prefix = f"{vcf_log.ulid}_-{current_line_name}"
                 output_dir_path = os.path.join(OUTPUT_DIR, output_name_prefix)
                 output_prefix = os.path.join(output_dir_path, output_name_prefix)
                 experiment_dictionary[key]['output_dir_path'] = output_dir_path 
-
+                
                 # Add vcftable_path to experiment_dictionary.
                 vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
                 vcf_table_path = os.path.join(
@@ -61,6 +61,7 @@ class ThaleBSAParentFunctions:
                 
                 #Generate the knownSnps .vcf file path
                 known_snps = os.path.join(REFERENCE_DIR, known_snps)
+                
                 # Retrieve allele and file input info from experiment_dictionary
                 allele = value['allele']
                 pairedness = value['pairedness']
@@ -68,7 +69,6 @@ class ThaleBSAParentFunctions:
                 wt_input = ' '.join(value['wt'])
                 wt_input = f'"{wt_input}"'
                 self.log.note(f"wt_input:{wt_input}")
-
                 mu_input = ' '.join(value['mu'])
                 mu_input = f'"{mu_input}"'
                 self.log.note(f"mu_input:{mu_input}")
@@ -137,7 +137,7 @@ class ThaleBSAParentFunctions:
         self.log.attempt("Attempting to perform data analysis...")
         try:
             for key, value in experiment_dictionary.items():
-                core_ulid = value['core_ulid']
+                core_ulid = self.log.ulid
                 current_line_name = key
                 vcf_ulid = value['vcf_ulid']
                 vcf_table_path = value['vcf_table_path']
@@ -169,5 +169,3 @@ class ThaleBSAParentFunctions:
         
         except Exception as e:
             self.log.fail(f"Error during data analysis: {e}")
-
-

@@ -14,21 +14,30 @@ TEMPLATE_DIR = os.path.join(SRC_DIR,'templates')
 STATIC_DIR = os.path.join(SRC_DIR,'static')
 MODULES_DIR = os.path.join(SRC_DIR,'modules')
 
-## SUBCLASSES 
-class ExperimentDictionary(dict):
-    required_keys = {
-        'key':['wt', 'mu', 'allele', 'pairedness', 'vcf_ulid', 'analysis_ulid', 
-        'vcf_table_path','output_dir_path', 'analysis_ulid']
-    }
 
-    def __setitem__(self, key, value):
-        if key not in self.required_keys:
-            raise ValueError("Invalid key!")
+## SUBCLASSES
+# #In progress. 
+# class ExperimentDictionary:
+#     def __init__(self):
+#         self.data = 
+#             'key': {
+#                 'required_keys': ['wt', 'mu', 'allele', 'pairedness', 'vcf_ulid', 'analysis_ulid', 
+#                                   'vcf_table_path', 'output_dir_path', 'analysis_ulid'],
+#                 'values': {}
+#             }
 
-        if (key == 'wt' or key == 'mu') and not isinstance(value, (list, str)):
-            raise ValueError(f"{key} must be a list or a string!")
+#     def set_value(self, key, item_key, value):
 
-        if not isinstance(value, str):
-            raise ValueError(f"{key} must be a string!")
+#         if item_key not in self.data[key]['required_keys']:
+#             raise ValueError(f"Invalid item key for {key}!")
 
-        super().__setitem__(key, value)
+#         self.data[key]['values'][item_key] = value
+
+#     def get_value(self, key, item_key):
+#         if key not in self.data:
+#             raise ValueError("Invalid key!")
+
+#         if item_key not in self.data[key]['values']:
+#             raise ValueError(f"Item key not found for {key}!")
+
+#         return self.data[key]['values'][item_key]
