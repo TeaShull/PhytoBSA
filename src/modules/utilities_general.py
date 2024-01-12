@@ -232,59 +232,84 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
-    def create_experiment_dictionary(self, line_name, vcf_table)->dict:
+    def create_experiment_dictionary(self, line_name, vcf_table=None, allele=None, wt=None, mu=None, pairedness=None) -> dict:
         '''
-        Creates an experiment dictionary from line_name and vcf_table input. 
+        Creates an experiment dictionary from provided parameters. 
         Used to create experiment dictionaries when automatic experiment 
         detection is not initiated. 
 
         Args:
-        line_name(str) 
-        vcf_table(str)
+        line_name (str): Line name.
+        vcf_table (str): VCF table.
+        allele (str): Allele information.
+        wt (list): List of wild-type files.
+        mu (list): List of mutant files.
+        pairedness (str): Pairedness information.
 
         Returns: 
-        experiment_dictionary(dict)-
-            line_name:
-                [line_name][vcf_table]:
-                [line_name][vcf_table_path]:
-                [line_name][core ulid]:
-                [line_name][vcf table ulid]: (if the file is labeled),
+        experiment_dictionary (dict): Experiment dictionary with provided parameters.
         '''
-        self.log.attempt('Parsing arguments to create experiment_dictionary')
+        self.log.attempt('attempting to create experiment_dictionary from arguments')
         try:
-            self.log.note(f'line name parsed: {line_name}')
-            self.log.note(f'vcf table parsed: {vcf_table}')
-            
-            core_ulid = self.log.ulid
-            self.log.note(f'core_ulid:{core_ulid}')
-            
-            vcf_table_path = os.path.join(INPUT_DIR, vcf_table)
-            self.log.note(f'vcf table path created: {vcf_table_path}')
-            
-            vcf_ulid = self._extract_ulid_from_file_path(vcf_table_path)
-            self.log.note(f'vcf ulid parsed:{vcf_ulid}')
-                
-        except Exception as e:
-            self.log.fail(f'There was an error parsing the line name and vcf table path: {e}')
-            quit()
-
+            # Add optional parameters to the dictionary
         self.log.attempt(f'Checking if {vcf_table_path} exists...')
-        try:
-            if os.path.exists(vcf_table_path):
-                self.log.success(f'Path exists: {vcf_table_path}')
-                experiment_dictionary = ExperimentDictionary()
-                experiment_dictionary[line_name] = {
-                    'vcf_table_path': vcf_table_path,
-                    'vcf_ulid': vcf_ulid,
-                    'core_ulid' : core_ulid
-                }
-                return experiment_dictionary 
-            else: 
-                self.log.fail(f'vcf table path [{vcf_table_path}] does not exist.')
-                quit()
+            if vcf_table is not None:
+                vcf_table_path = self.check_input_file_path('vcf table path', vcf_table)
+                expt_dict[line_name]['vcf_table_path'] = vcf_table_path
+            
+            if allele is not None:
+                if allele in ['R','D']: 
+                    expt_dict[line_name]['allele'] = allele
+                    self.log.note(f'allele: {allele}')
+                else: 
+                    self.log.fail(f'Invalid allele type:{allele}. Only R (recessive) or D (dominant)')
+            
+            if wt is not None:
+                if isinstance(wt, list):
+                    wt_list = []
+                    for i in wt:
+                        self.log.note(f'checking wild-type bulk file: {i}')
+                        file=self.check_input_file_path('wild-type bulk file', i)
+                        wt_list.append(file)
+                    expt_dict[line_name]['wt'] = wt_list
+                else:
+                    self.log.note(f'wild-type bulk file: {wt}')
+                    file = self.check_input_file_path(wilt-type bulk file, wt)
+                    expt_dict[line_name]['wt'] = file
+
+            if mu is not None:
+                if isinstance(mu, list):
+                    mu_list = []
+                    for i in mu:
+                        self.log.note(f'Checking mutant bulk file: {i}')
+                        file=self.check_input_file_path('mutant bulk file, 'i)
+                        mu_list.append(file)
+                    expt_dict[line_name]['mu'] = mu_list
+                else:
+                    self.log.note(f'mutant bulk file: {mu}')
+                    file = self.check_input_file_path(mutant bulk file, mu)
+                    expt_dict[line_name]['mu'] = file
+            
+            if pairedness is not None:
+                self.log.note(f'Pairedness: {pairedness}')
+                expt_dict[line_name]['pairedness'] = pairedness
+            
+            return expt_dict
         
         except Exception as e:
             self.log.fail(f'There was an error during experiment_dictionary creation:{e}')
+        
+    def check_input_file_path(self, file_label, table_path)->str:
+        if os.path.exists(file_path):
+            self.log.note(f'{file_label} found: {table_path}')
+        else:
+            self.log.note(f'{file_label} not found. Checking input directory for {file_path}')
+            file_path = os.path.join(INPUT_DIR, file_path)
+            if os.path.exists(file_path):
+                self.log.note(f'{file_label} found in inputs. path created: {file_path}')
+            else:   
+                self.log.fail(f'({file_path}) not found as coded path or in ./inputs.')
+        return file_path
 
     def _extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')

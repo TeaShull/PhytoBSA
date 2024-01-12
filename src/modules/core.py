@@ -11,7 +11,8 @@ class ThaleBSAParentFunctions:
     def vcf_generation(self, experiment_dictionary=None,
                    reference_genome_name=None, snpEff_species_db=None,
                    reference_genome_source=None, threads_limit=None,
-                   cleanup=None, known_snps=None)->dict:
+                   cleanup=None, known_snps=None
+    )->dict:
         """
         Input: Experiment dictionary as well as paths and variables needed 
         to run VCFgen.sh. Subprocess VCFgen.sh takes raw reads(wild-type(wt) 

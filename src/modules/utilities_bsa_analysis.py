@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from pygam import LinearGAM
 import warnings
 from plotnine import (
     ggplot, aes, geom_point, geom_line, theme_linedraw,
@@ -15,9 +16,8 @@ Module for the bsa_analysis parent function. Save for a few file utilities used
 in the parent function, the core of the read-depth analysis between the 
 wild-type and mutant bulks are stored here.
 """
-
 class BSAAnalysisUtilities:
-    def __init__(self, current_line_name, vcf_ulid, logger):
+    def __init__(self, current_line_name, vcf_ulid, fitting_type', loess_span, fit_edges_bounds, shuffle_iterations, logger):
         self.current_line_name = current_line_name
         self.log = logger
         self.vcf_ulid = vcf_ulid
@@ -37,6 +37,16 @@ class BSAAnalysisUtilities:
         #Make the analysis_out_path directory if it does not exist
         file_utils=FileUtilities(self.log)
         file_utils.setup_directory(self.analysis_out_path)
+
+        #Assign class variables for loess / gam fitting operations
+        self.loess = sm.nonparametric.loess
+        self.fitting_type=fitting_type
+        self.loess_span = loess_span 
+        self.fit_edges_bounds = fit_edges_bounds # how many datapoints to use for edge correction
+        self.log.note(f'Fitting type: {self.fitting_type}')
+        if self.fitting_type == 'loess':
+            self.log.note(f'loess span: {loess_span}')
+            self.log.note(f'Edge correcetion bounds: {fit_edges_bounds}')
 
     def drop_na_and_indels(self, vcf_df)->pd.DataFrame:
         """
@@ -161,126 +171,126 @@ class BSAAnalysisUtilities:
             self.log.fail(f"Error in g_statistic_array for {self.current_line_name}: {e}")
             return None
 
-    def loess_smoothing(self, vcf_df)->pd.DataFrame:
+    def fitting(self, vcf_df) -> pd.DataFrame:
         """
-        LOESS smoothing of ratio and G-stat by chromosome
-        
+        Smoothing of ratio and G-stat by chromosome using either LOESS or GAM
+
         Input: Cleaned dataframe with delta SNPs and G-stats calculated
-        
-        Returns: Dataframe containing LOESS fitted values for ratio, g-stat and 
+               fitting_type: "loess" for LOESS fitting or "gam" for GAM fitting
+
+        Returns: Dataframe containing smoothed values for ratio, g-stat, and 
         ratio-scaled g-stat
         """
-        lowess_span = 0.3
-        smooth_edges_bounds = 15
-        self.log.attempt("Initialize LOESS smoothing calculations.")
-        self.log.attempt(f"span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
-        try:
 
-            vcf_df = self._smooth_chr_facets(
-                vcf_df, lowess_span, smooth_edges_bounds
-            )
-            self.log.success("LOESS smoothing calculations successful.")
+        self.log.attempt(f"Initialize {self.fitting_type.lower().capitalize()} fitting calculations.")
+        self.log.attempt(f"span: {self.loess_span}, Edge bias correction: {fit_edges_bounds}")
+
+        try:
+            if self.fitting_type.lower() not in ["loess", "gam"]:
+                raise ValueError(f"Invalid fitting_type argument: {self.fitting_type}. Choose 'loess' or 'gam'.")
+            
+            vcf_df = self._fit_chr_facets(vcf_df)
+            
+            self.log.success(f"{self.fitting_type.upper()} fitting calculations successful.")
             return vcf_df
-        
         except Exception as e:
-            self.log.fail( f"An error occurred during LOESS smoothing: {e}")
-    
-    def _smooth_chr_facets(self, df, lowess_span, smooth_edges_bounds):
+            self.log.fail(f"An error occurred during {self.fitting_type.lower()} fitting: {e}")
+
+    def _fit_chr_facets(self, df):
         """
-        Internal Function for smoothing chromosome facets using LOESS. 
-        Uses function "smooth_single_chr" to interate over chromosomes as facets
-        to generate LOESS smoothed values for g-statistics and delta-SNP feature
-        
-        Input: vcf_df
-        
-        output: vcf_df updated with gs, ratio, and gs-ratio yhat values
-        """        
+        Internal Function for fitting chromosome facets using LOESS or GAM.
+
+        Input: df
+
+        output: df updated with loess or gam fitted values
+        """
         df_list = []
         chr_facets = df["chr"].unique()
 
-        def smooth_single_chr(df_chr, chr):
-            """
-            Input: df_chr chunk, extends the data 15 data values in each
-            direction (to mitigate LOESS edge bias), fits smoothed values and 
-            subsequently removes the extended data. 
-            Returns: df with fitted values included.
-            """
-            lowess_function = sm.nonparametric.lowess
-
-            self.log.attempt(f"LOESS of chr:{chr} for {self.current_line_name}...")
-
-            positions = df_chr['pos'].to_numpy()
-            
-            deltas = ([pos - positions[i - 1]
-                       if i > 0 else pos for i, pos in enumerate(positions)]
-                      )
-            deltas_pos_inv = deltas[::-1][-smooth_edges_bounds:-1]
-            deltas_neg_inv = deltas[::-1][1:smooth_edges_bounds]
-            deltas_mirrored_ends = deltas_pos_inv + deltas + deltas_neg_inv
-
-            psuedo_pos = []
-            for i, pos in enumerate(deltas_mirrored_ends):
-                if i == 0:
-                    psuedo_pos.append(0)
-                if i > 0:
-                    psuedo_pos.append(pos + psuedo_pos[i - 1])
-
-            df_chr_inv_neg = df_chr[::-1].iloc[-smooth_edges_bounds:-1]
-            df_chr_inv_pos = df_chr[::-1].iloc[1:smooth_edges_bounds]
-            df_chr_smooth_list = [df_chr_inv_neg, df_chr, df_chr_inv_pos]
-            df_chr = pd.concat(df_chr_smooth_list, ignore_index=False)
-
-            df_chr['pseudo_pos'] = psuedo_pos
-            X = df_chr['pseudo_pos'].values
-
-            ratio_Y = df_chr['ratio'].values
-            df_chr['ratio_yhat'] = (
-                lowess_function(ratio_Y, X, frac=lowess_span)[:, 1]
-            )
-
-            G_S_Y = df_chr['G_S'].values
-            df_chr['GS_yhat'] = (
-                lowess_function(G_S_Y, X, frac=lowess_span)[:, 1]
-            )
-
-            df_chr['RS_G'] = df_chr['G_S'] * df_chr['ratio']
-            RS_G_Y = df_chr['RS_G'].values
-            df_chr['RS_G_yhat'] = (
-                lowess_function(RS_G_Y, X, frac=lowess_span)[:, 1]
-            )
-
-            df_chr = df_chr[smooth_edges_bounds:-smooth_edges_bounds].drop(
-                columns='pseudo_pos'
-            )
-
-            self.log.success(f"LOESS of chr:{chr} for {self.current_line_name} complete"
-            )
-            return df_chr
-
-        self.log.attempt('Smoothing chromosome facets')
+        self.log.attempt(f'Smoothing chromosome facets using {self.fitting_type.upper()}')
         try:
             for i in chr_facets:
                 df_chr = df[df['chr'] == i]
-                result = smooth_single_chr(df_chr, i)
+                result = _fit_single_chr(df_chr, i)
                 if result is not None:
                     df_list.append(result)
-            self.log.success('Chromosome facets LOESS smoothed')
+            self.log.success(f'Chromosome facets smoothed using {self.fitting_type.upper()}')
             return pd.concat(df_list)
         except Exception as e:
-            self.log.fail(f'There was an error during LOESS smoothing of chromosome facets:{e}')
+            self.log.fail(f'There was an error during {self.fitting_type.upper()} fitting of chromosome facets: {e}')
+        
+        def __fit_single_chr(df_chr, chr):
+            """
+            Input: df_chr chunk, extends the data 15 data values in each
+            direction (to mitigate edge bias), fits smoothed values, and 
+            subsequently removes the extended data. 
+            Returns: df with loess or gam fitted values included.
+            """
+            self.log.attempt(f"{self.fitting_type.upper()} fitting of chr:{chr} for {self.current_line_name}...")
 
-    def calculate_empirical_cutoffs(self, vcf_df)->tuple:
+            Y_variables = ['ratio', 'G_S', 'RS_G'] #Updatable if new features are added
+            for Y in Y_variables:
+                Y_values = df_chr[Y].values
+                if self.fitting_type.lower() == "loess":
+                    df_chr = self.__edge_bias_reduction_data_generator(df_chr)
+                    model = self.loess(
+                        Y_values, X, frac=self.loess_span, return_sorted=False
+                    )
+                    df_chr[f'{Y}_yhat'] = model
+                    df_chr = df_chr[fit_edges_bounds:-fit_edges_bounds].drop(columns='pseudo_pos')
+                elif self.fitting_type.lower() == "gam":
+                    model = LinearGAM().fit(X, Y_values).predict(X)
+                    df_chr[f'{Y}_yhat'] = model
+
+            self.log.success(f"{self.fitting_type.upper()} fitting of chr:{chr} for {self.current_line_name} complete")
+            return df_chr
+
+        def __edge_bias_reduction_data_generator(self, df_chr):
+            """
+            Produce data points to correct LOESS edge bias by mirroring data at chromosome edges.
+
+            Input: df_chr
+
+            Output: df_chr with mirrored data and additional pseudo_pos column
+            """
+            self.log.attempt(f'Producing data points to correct LOESS edge bias. Mirroring {self.fit_edges_bounds} data points at chromosome edges...')
+            
+            try: 
+                positions = df_chr['pos'].to_numpy()
+                deltas = [pos - positions[i - 1] if i > 0 else pos for i, pos in enumerate(positions)]
+
+                deltas_pos_inv = deltas[::-1][-self.fit_edges_bounds:-1]
+                deltas_neg_inv = deltas[::-1][1:self.fit_edges_bounds]
+                deltas_mirrored_ends = deltas_pos_inv + deltas + deltas_neg_inv
+
+                psuedo_pos = [0]  # Preserving the initial condition
+                for i, pos in enumerate(deltas_mirrored_ends):
+                    if i > 0:
+                        psuedo_pos.append(pos + psuedo_pos[i - 1])
+
+                df_chr_inv_neg = df_chr[::-1].iloc[-self.fit_edges_bounds:-1]
+                df_chr_inv_pos = df_chr[::-1].iloc[1:self.fit_edges_bounds]
+                df_chr = pd.concat([df_chr_inv_neg, df_chr, df_chr_inv_pos], ignore_index=False)
+
+                df_chr['pseudo_pos'] = psuedo_pos
+                X = df_chr['pseudo_pos'].values
+
+                return df_chr
+
+            except Exception as e:
+                self.log.fail(f'There was an error producing edge bias correction datapoints for LOESS: {e}')
+
+    def calculate_empirical_cutoffs(self, vcf_df) -> tuple:
         """
         Calculate empirical cutoffs.
         
-        Input: processed VCF dataframe.  
-        
+        Input: processed VCF dataframe.
+               fitting_type: "loess" for LOESS fitting or "gam" for GAM fitting
+
         Returns: vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff as a tuple
         """
-        iterations = 1000
-        lowess_span = 0.3
         self.log.attempt("Initialize calculation of empirical cutoffs")
-        self.log.note(f"breaking geno/pheno association. iterations:{iterations}, LOESS span:{lowess_span}")
+        self.log.note(f"breaking geno/pheno association. iterations:{iterations}, LOESS span:{loess_span}")
         
         try:
             vcf_df_position = vcf_df[['pos']].copy()
@@ -288,7 +298,7 @@ class BSAAnalysisUtilities:
             vcf_df_mu = vcf_df[['mu_ref', 'mu_alt']].copy()
 
             gs_cutoff, rsg_cutoff, rsg_y_cutoff = self._empirical_cutoff(
-                vcf_df_position, vcf_df_wt, vcf_df_mu, iterations, lowess_span
+                vcf_df_position, vcf_df_wt, vcf_df_mu,
             )
 
             vcf_df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) 
@@ -310,7 +320,7 @@ class BSAAnalysisUtilities:
         except Exception as e:
             self.log.fail(f"An error occurred during cutoff calculations: {e}")
 
-    def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu, shuffle_iterations, lowess_span):
+    def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu):
         """
         randomizes the input read_depths, breaking the position/feature link.
         this allows the generation of a large dataset which has no linkage 
@@ -324,10 +334,9 @@ class BSAAnalysisUtilities:
         self.log.attempt(f"Calculate empirical cutoff for {self.current_line_name}...")
         
         try:
-            lowess = sm.nonparametric.lowess
             smGstatAll, smRatioAll, RS_GAll, smRS_G_yhatAll = [], [], [], []
             suppress = True
-            for _ in range(shuffle_iterations):
+            for _ in range(self.shuffle_iterations):
                 dfShPos = vcf_df_position.sample(frac=1)
                 dfShwt = vcf_df_wt.sample(frac=1)
                 dfShmu = vcf_df_mu.sample(frac=1)
@@ -351,9 +360,13 @@ class BSAAnalysisUtilities:
                 smRS_G = smRatio * smGstat
                 RS_GAll.extend(smRS_G)
 
-                smRS_G_yhatAll.extend(lowess(
-                    smRS_G, smPos, frac=lowess_span)[:, 1]
-                )
+                if self.fitting_type.lower() == "loess":
+                    model = self.loess(smRS_G, smPos, frac=loess_span, return_sorted=False)
+                elif self.fitting_type.lower() == "gam":
+                    model = LinearGAM().fit(smPos, smRS_G).predict(smPos)
+
+                smRS_G_yhatAll.extend(model)
+
             G_S_95p = np.percentile(smGstatAll, 95)
             RS_G_95p = np.percentile(RS_GAll, 95)
             RS_G_Y_99p = np.percentile(smRS_G_yhatAll, 99.99)
@@ -364,8 +377,8 @@ class BSAAnalysisUtilities:
         
         except Exception as e:
             self.log.fail(f"Error in empirical_cutoff for {self.current_line_name}: {e}")
-            return None, None, None        
-
+            return None, None, None
+   
     def sort_save_likely_candidates(self, vcf_df):
         """
         Identify likely candidates
@@ -407,7 +420,7 @@ class BSAAnalysisUtilities:
         """
         plot_scenarios = [
             ('G_S', 'G-statistic', 'G-statistic', None, False),
-            ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', 
+            ('GS_yhat', 'Fitted G-statistic', 'Fitted G-statistic', 
                 gs_cutoff, True
             ),
             ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic',
@@ -417,7 +430,7 @@ class BSAAnalysisUtilities:
             ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio',
                 None, True
              ),
-            ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 
+            ('RS_G_yhat', 'Fitted ratio-scaled G statistic', 
                 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True
             ),
         ]

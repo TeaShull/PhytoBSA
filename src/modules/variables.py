@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-
-#Edit these variables for command line only runs.  
-
+'''
+This file can be used to manually feed the variables for subprocess.VCFgen.sh
+Default values are for Arabidopsis_thaliana
+'''  
 # What is the name of your reference genome? this should be the base name of your fasta file. 
 # example - Arabidopsis_thaliana.fa 
 # reference_genome_name = Arabidopsis_thaliana 
