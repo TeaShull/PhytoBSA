@@ -3,7 +3,6 @@ import os
 import sys
 import multiprocessing
 from datetime import datetime
-from flask import Flask
 import argparse
 
 modules_dir = os.path.join(os.getcwd(), 'src', 'modules')
