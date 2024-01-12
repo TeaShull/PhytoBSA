@@ -16,7 +16,6 @@ from utilities_logging import LogHandler
 from config import (
     SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, TEMPLATE_DIR, STATIC_DIR
 )
-
 # Initialize core_log instance of LogHandler
 '''
 [NOTE]
@@ -35,9 +34,7 @@ Current log list:
 'core' - logs all parent functions, thale_bsa.py and flask front end. 
 'vcf_gen' - logs all messages pertaining to parent_functions.vcf_generation
 'analysis' - logs all messages peratining to parent_functions.bsa_analysis 
-
 '''
-
 def parse_command_line_arguments():
     # Argument parsing
     parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')

@@ -299,17 +299,21 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'There was an error during experiment_dictionary creation:{e}')
         
-    def check_input_file_path(self, file_label, table_path)->str:
-        if os.path.exists(file_path):
-            self.log.note(f'{file_label} found: {table_path}')
-        else:
-            self.log.note(f'{file_label} not found. Checking input directory for {file_path}')
-            file_path = os.path.join(INPUT_DIR, file_path)
+    def check_input_file_path(self, file_label, file_path)->str:
+        self.log.attempt(f'Checking if {file_label} path: {file_path} exists')
+        try:
             if os.path.exists(file_path):
-                self.log.note(f'{file_label} found in inputs. path created: {file_path}')
-            else:   
-                self.log.fail(f'({file_path}) not found as coded path or in ./inputs.')
-        return file_path
+                self.log.note(f'{file_label} found: {file_path}')
+            else:
+                self.log.note(f'{file_label} not found. Assuming the path is not hard-coded. Checking input directory for {file_path}')
+                file_path = os.path.join(INPUT_DIR, file_path)
+                if os.path.exists(file_path):
+                    self.log.note(f'{file_label} found in {INPUT_DIR}. path created: {file_path}')
+                else:   
+                    self.log.fail(f'Aborting. ({file_path}) not found as a hard-coded path is it inside {INPUT_DIR}.')
+            return file_path
+        except Exception as e:
+            self.log.fail(f'There was an error checking if {file_label} path: {file_path} exists:{e}')
 
     def _extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')

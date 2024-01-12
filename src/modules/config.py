@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import os
-
-# This file is for configuring paths AND subclasses.  
-
+'''
+This file is for configuring paths and subclasses.  
+'''
 ## PATHS
 BASE_DIR = os.getcwd()
 SRC_DIR =  os.path.join(BASE_DIR, 'src')

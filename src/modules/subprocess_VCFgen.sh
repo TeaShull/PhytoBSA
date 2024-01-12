@@ -66,7 +66,7 @@ main() {
         $mu_input > "${output_prefix}_mu.sam"
     wait
 
-    #Create binary alignment map for more effecient processing
+    # Create binary alignment map for more effecient processing
     print_message "Converting sam to bam"
     samtools view \
         -bSh \
@@ -91,7 +91,7 @@ main() {
     echo "..."
     wait
 
-    #SortSam
+    # SortSam
     # Sorting ensures that reads are organized in genomic order. GATK haplotype
     # caller reassembles variant regions denovo - it needs regions to be ordered. 
     # Reassembly makes HC slow, but it is pretty accurate. 

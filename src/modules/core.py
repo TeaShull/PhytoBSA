@@ -135,7 +135,7 @@ class ThaleBSAParentFunctions:
             self.log.fail(f"Error while generating the VCF file for {current_line_name}: {e}")
 
 
-    def bsa_analysis(self, experiment_dictionary):
+    def bsa_analysis(self, experiment_dictionary, fitting_type='loess', loess_span=0.3, fit_edges_bounds=15, shuffle_iterations=1000):
         '''
         Parent function for running BSA analysis. Given an experiment_dictionary
         containing the vcf_table_path and line_name, will output a list of 
@@ -148,7 +148,9 @@ class ThaleBSAParentFunctions:
         [value] vcf_table_path, core_ulid, 
 
         optional
-        [value] vcf_ulid
+        [value] vcf_ulid (Created during VCF generation, or extracted from file
+        names during create_experiment_dictionary function) This is unfortunitly 
+        somewhat buried in the current code configuration
         
         vcf_table_path must be the path to a vcf table produced from VCFgen.sh. 
         support for VCF tables which are configured differently is on the roadmap. 
@@ -172,8 +174,7 @@ class ThaleBSAParentFunctions:
 
                 #Analysis operations. Loading VCF and producing features
                 vcf_df = file_utils.load_vcf_table(vcf_table_path, current_line_name)
-                
-                bsa_analysis_utils = BSAAnalysisUtilities(current_line_name, vcf_ulid, analysis_log)
+                bsa_analysis_utils = BSAAnalysisUtilities(current_line_name, vcf_ulid, fitting_type, loess_span, fit_edges_bounds, shuffle_iterations analysis_log)
                 vcf_df = bsa_analysis_utils.calculate_delta_snp_and_g_statistic(vcf_df)
                 vcf_df = bsa_analysis_utils.drop_na_and_indels(vcf_df) 
                 vcf_df = bsa_analysis_utils.loess_smoothing(vcf_df)
