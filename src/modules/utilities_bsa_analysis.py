@@ -7,11 +7,14 @@ from plotnine import (
     ggplot, aes, geom_point, geom_line, theme_linedraw,
     facet_grid, theme, ggtitle, xlab, ylab, geom_hline
 )
-from config import (
-    LogHandler, BASE_DIR, SRC_DIR,
-    INPUT_DIR, MODULES_DIR, OUTPUT_DIR
-)
-from utilities_file import FileUtilities
+from utilities_general import FileUtilities
+
+from config import (BASE_DIR, SRC_DIR,INPUT_DIR, MODULES_DIR, OUTPUT_DIR)
+"""
+Module for the bsa_analysis parent function. Save for a few file utilities used 
+in the parent function, the core of the read-depth analysis between the 
+wild-type and mutant bulks are stored here.
+"""
 
 class BSAAnalysisUtilities:
     def __init__(self, current_line_name, vcf_ulid, logger):
@@ -30,8 +33,7 @@ class BSAAnalysisUtilities:
             self.analysis_out_path = os.path.join(
                 OUTPUT_DIR,
                 self.analysis_out_prefix
-            )
-        
+            )        
         #Make the analysis_out_path directory if it does not exist
         file_utils=FileUtilities(self.log)
         file_utils.setup_directory(self.analysis_out_path)
@@ -49,7 +51,6 @@ class BSAAnalysisUtilities:
         """
         
         self.log.attempt('Removing NAs and indels')
-        
         try:
             # Use .loc for assignment to avoid the warning
             apply_args = (lambda x: x if len(x) == 1 else np.nan)
@@ -57,12 +58,10 @@ class BSAAnalysisUtilities:
             vcf_df.loc[:, "alt"] = vcf_df["alt"].apply(apply_args)
             vcf_df.dropna(axis=0, how='any', subset=["ratio"], inplace=True)
             self.log.success(f'Indels dropped, and NaN values for {self.current_line_name} cleaned successfully.')
-            
             return vcf_df
         
         except Exception as e:
             self.log.fail(f"An error occurred during data processing: {e}")
-            
             return None
 
     def calculate_delta_snp_and_g_statistic(self, vcf_df)->pd.DataFrame:
@@ -90,15 +89,14 @@ class BSAAnalysisUtilities:
                 vcf_df['mu_ref'], vcf_df['mu_alt'],
                 suppress
             )
-
             vcf_df['RS_G'] = vcf_df['ratio'] * vcf_df['G_S']
-            return vcf_df
             self.log.success("Calculation of delta-SNP ratios and G-statistics were successful.")
+            return vcf_df
         except Exception as e:
             self.log.fail( f"An error occurred during calculation: {e}")
 
-    def _delta_snp_array(self, wtr, wta, mur, mua, suppress)->int:
-        '''
+    def _delta_snp_array(self, wtr, wta, mur, mua, suppress)->np.ndarray:
+        """
         Calculates delta SNP feature, which quantifies divergence in 
             read depths between the two bulks.
 
@@ -113,11 +111,10 @@ class BSAAnalysisUtilities:
 
         Returns: Delta-snp calculation, which is a quantification of 
             allelic segregation at each polymorphic site.
-        ''' 
+        """ 
 
         if not suppress:
             self.log.attempt(f"Calculate delta-SNP ratios for {self.current_line_name}...")
-        
         try:
             result = ((wtr) / (wtr + wta)) - ((mur) / (mur + mua))
             if not suppress:
@@ -125,32 +122,32 @@ class BSAAnalysisUtilities:
             return result
         
         except Exception as e:
-            self.log.fail(
-                f"Error in delta_snp_array for {self.current_line_name}: {e}")
-        
+            self.log.fail(f"Error in delta_snp_array for {self.current_line_name}: {e}")
             return None
 
-    def _g_statistic_array(self, o1, o3, o2, o4, suppress)->int:
-        '''Calculates g-statistic feature, which is a more statistically driven approach to 
-        calculating read-depth divergence from expected values. Chi square ish.''' 
+    def _g_statistic_array(self, wtr, wta, mur, mua, suppress)->np.ndarray:
+        """
+        Calculates g-statistic feature, which is a more statistically driven 
+        approach to calculating read-depth divergence from expected values. 
+        Chi square ish.
+        """ 
         if not suppress:
             self.log.attempt(f"Calculate G-statistics for {self.current_line_name}....")
-        
         try:
             np.seterr(all='ignore')
 
-            zero_mask = o1 + o2 + o3 + o4 != 0
-            denominator = o1 + o2 + o3 + o4
+            zero_mask = wtr + mur + wta + mua != 0
+            denominator = wtr + mur + wta + mua
 
-            e1 = np.where(zero_mask, (o1 + o2) * (o1 + o3) / (denominator), 0)
-            e2 = np.where(zero_mask, (o1 + o2) * (o2 + o4) / (denominator), 0)
-            e3 = np.where(zero_mask, (o3 + o4) * (o1 + o3) / (denominator), 0)
-            e4 = np.where(zero_mask, (o3 + o4) * (o2 + o4) / (denominator), 0)
+            e1 = np.where(zero_mask, (wtr + mur) * (wtr + wta) / (denominator), 0)
+            e2 = np.where(zero_mask, (wtr + mur) * (mur + mua) / (denominator), 0)
+            e3 = np.where(zero_mask, (wta + mua) * (wtr + wta) / (denominator), 0)
+            e4 = np.where(zero_mask, (wta + mua) * (mur + mua) / (denominator), 0)
 
-            llr1 = np.where(o1 / e1 > 0, 2 * o1 * np.log(o1 / e1), 0.0)
-            llr2 = np.where(o2 / e2 > 0, 2 * o2 * np.log(o2 / e2), 0.0)
-            llr3 = np.where(o3 / e3 > 0, 2 * o3 * np.log(o3 / e3), 0.0)
-            llr4 = np.where(o4 / e4 > 0, 2 * o4 * np.log(o4 / e4), 0.0)
+            llr1 = np.where(wtr / e1 > 0, 2 * wtr * np.log(wtr / e1), 0.0)
+            llr2 = np.where(mur / e2 > 0, 2 * mur * np.log(mur / e2), 0.0)
+            llr3 = np.where(wta / e3 > 0, 2 * wta * np.log(wta / e3), 0.0)
+            llr4 = np.where(mua / e4 > 0, 2 * mua * np.log(mua / e4), 0.0)
 
             result = np.where(
                 e1 * e2 * e3 * e4 == 0, 0.0, llr1 + llr2 + llr3 + llr4
@@ -165,17 +162,18 @@ class BSAAnalysisUtilities:
             return None
 
     def loess_smoothing(self, vcf_df)->pd.DataFrame:
-        """LOESS smoothing of ratio and G-stat by chromosome
+        """
+        LOESS smoothing of ratio and G-stat by chromosome
         
         Input: Cleaned dataframe with delta SNPs and G-stats calculated
         
         Returns: Dataframe containing LOESS fitted values for ratio, g-stat and 
-        ratio-scaled g-stat"""
-        
+        ratio-scaled g-stat
+        """
         lowess_span = 0.3
         smooth_edges_bounds = 15
         self.log.attempt("Initialize LOESS smoothing calculations.")
-        self.log.attempt("span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
+        self.log.attempt(f"span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
         try:
 
             vcf_df = self._smooth_chr_facets(
@@ -183,28 +181,30 @@ class BSAAnalysisUtilities:
             )
             self.log.success("LOESS smoothing calculations successful.")
             return vcf_df
+        
         except Exception as e:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
     def _smooth_chr_facets(self, df, lowess_span, smooth_edges_bounds):
-        '''Internal Function for smoothing chromosome facets using LOESS. 
+        """
+        Internal Function for smoothing chromosome facets using LOESS. 
         Uses function "smooth_single_chr" to interate over chromosomes as facets
         to generate LOESS smoothed values for g-statistics and delta-SNP feature
         
         Input: vcf_df
         
-        output: vcf_df updated with gs, ratio, and gs-ratio yhat values'''
-        
-        self.log.attempt('Smoothing chromosome facets')
+        output: vcf_df updated with gs, ratio, and gs-ratio yhat values
+        """        
         df_list = []
-
         chr_facets = df["chr"].unique()
 
         def smooth_single_chr(df_chr, chr):
-            '''Input: df_chr chunk, extends the data 15 data values in each
+            """
+            Input: df_chr chunk, extends the data 15 data values in each
             direction (to mitigate LOESS edge bias), fits smoothed values and 
             subsequently removes the extended data. 
-            Returns: df with fitted values included.'''
+            Returns: df with fitted values included.
+            """
             lowess_function = sm.nonparametric.lowess
 
             self.log.attempt(f"LOESS of chr:{chr} for {self.current_line_name}...")
@@ -257,21 +257,26 @@ class BSAAnalysisUtilities:
             )
             return df_chr
 
-        for i in chr_facets:
-            df_chr = df[df['chr'] == i]
-            result = smooth_single_chr(df_chr, i)
-            if result is not None:
-                df_list.append(result)
-
-        return pd.concat(df_list)
+        self.log.attempt('Smoothing chromosome facets')
+        try:
+            for i in chr_facets:
+                df_chr = df[df['chr'] == i]
+                result = smooth_single_chr(df_chr, i)
+                if result is not None:
+                    df_list.append(result)
+            self.log.success('Chromosome facets LOESS smoothed')
+            return pd.concat(df_list)
+        except Exception as e:
+            self.log.fail(f'There was an error during LOESS smoothing of chromosome facets:{e}')
 
     def calculate_empirical_cutoffs(self, vcf_df)->tuple:
-        """Calculate empirical cutoffs.
+        """
+        Calculate empirical cutoffs.
         
         Input: processed VCF dataframe.  
         
-        Returns: vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff as a tuple"""
-        
+        Returns: vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff as a tuple
+        """
         iterations = 1000
         lowess_span = 0.3
         self.log.attempt("Initialize calculation of empirical cutoffs")
@@ -306,13 +311,16 @@ class BSAAnalysisUtilities:
             self.log.fail(f"An error occurred during cutoff calculations: {e}")
 
     def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu, shuffle_iterations, lowess_span):
-        '''randomizes the input read_depths, breaking the position/feature link.
-        this allows the generation of a large dataset which has no linkage information, 
-        establishing an empirical distribution of potenial delta-snps and g-statistics.
-        Given the data provided, we can then set reasonable cutoff values for the fitted values
+        """
+        randomizes the input read_depths, breaking the position/feature link.
+        this allows the generation of a large dataset which has no linkage 
+        information, establishing an empirical distribution of potenial 
+        delta-snps and g-statistics. Given the data provided, we can then set 
+        reasonable cutoff values for the fitted values
         
         There is probably a less computationally intensive statistical framework 
-        for doing this, especially for the g-statistics....'''
+        for doing this, especially for the g-statistics....
+        """
         self.log.attempt(f"Calculate empirical cutoff for {self.current_line_name}...")
         
         try:
@@ -339,30 +347,29 @@ class BSAAnalysisUtilities:
                     sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, suppress
                 )
                 smRatioAll.extend(smRatio)
-
+                
                 smRS_G = smRatio * smGstat
                 RS_GAll.extend(smRS_G)
 
                 smRS_G_yhatAll.extend(lowess(
                     smRS_G, smPos, frac=lowess_span)[:, 1]
                 )
-
             G_S_95p = np.percentile(smGstatAll, 95)
             RS_G_95p = np.percentile(RS_GAll, 95)
             RS_G_Y_99p = np.percentile(smRS_G_yhatAll, 99.99)
-
             result = G_S_95p, RS_G_95p, RS_G_Y_99p
+
             self.log.success(f"Empirical cutoff calculation completed for {self.current_line_name}")
-            
             return result
         
         except Exception as e:
             self.log.fail(f"Error in empirical_cutoff for {self.current_line_name}: {e}")
-            
             return None, None, None        
 
     def sort_save_likely_candidates(self, vcf_df):
-        """Identify likely candidates"""
+        """
+        Identify likely candidates
+        """
         self.log.attempt('Initialize the identification of likely candidates')
         self.log.note(f'associated VCF table ulid: {self.vcf_ulid}')
 
@@ -374,7 +381,6 @@ class BSAAnalysisUtilities:
                 ascending=[False, False],
                 na_position='first'
             )
-
             # Save DataFrames to CSV files
             results_table_name =f"{self.analysis_out_prefix}_results_table.tsv"
             results_table_path = os.path.join(
@@ -394,9 +400,11 @@ class BSAAnalysisUtilities:
             self.log.fail(f"An error occurred during {self.current_line_name} table generation: {e}")
 
     def generate_plots(self, vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff):
-        """Generate and save plots. Plot scenarios are below
+        """
+        Generate and save plots. Plot scenarios are below
         Plot scenarios format:
-        ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)"""
+        ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)
+        """
         plot_scenarios = [
             ('G_S', 'G-statistic', 'G-statistic', None, False),
             ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', 
@@ -426,10 +434,12 @@ class BSAAnalysisUtilities:
             self.log.fail(f"An error occurred while producing and saving plots: {e}")
         
     def _plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
-        '''generate and save plots.'''
+        """
+        Generate and save plots.
+        """
         warnings.filterwarnings("ignore", module="plotnine\..*")
-        self.log.attempt(f"Plot data and save plots for {self.current_line_name}...")
 
+        self.log.attempt(f"Plot data and save plots for {self.current_line_name}...")
         try:
             mb_conversion_constant = 0.000001
             df['pos_mb'] = df['pos'] * mb_conversion_constant
@@ -462,10 +472,8 @@ class BSAAnalysisUtilities:
                         + axis_y
                         + theme(panel_spacing=0.025)
                         )
-
             if lines:
                 plot += geom_line(color='blue')
-
             # Save plot
             plot_name = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
             file_path_name = os.path.join(self.analysis_out_path, plot_name)
@@ -476,7 +484,6 @@ class BSAAnalysisUtilities:
                 units='in',
                 dpi=500
             )
-
             self.log.success(f"Plot saved {file_path_name}")
         
         except Exception as e:
