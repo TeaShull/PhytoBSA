@@ -62,11 +62,32 @@ def parse_command_line_arguments():
     args = parser.parse_args()
     return args
 
+def activate_pyatbsa_environment():
+    """
+    Activate the 'pyatbsa' Conda/Mamba environment.
+    """
+    environment_name = 'pyatbsa'  # Replace with the actual name of your Conda/Mamba environment
+
+    try:
+        # Use Conda to activate the environment
+        subprocess.run(['conda', 'activate', environment_name], shell=True, check=True)
+        print(f"{environment_name} environment activated.")
+    except subprocess.CalledProcessError:
+        try:
+            # Use Mamba if Conda activation fails (assuming Mamba is installed)
+            subprocess.run(['mamba', 'activate', environment_name], shell=True, check=True)
+            print(f"{environment_name} environment activated using Mamba.")
+        except subprocess.CalledProcessError:
+            print(f"Error activating {environment_name} environment.")
+
 def main():
     # initialize core log
     core_log = LogHandler('core')
     core_log.note(f'Core log begin. ulid: {core_log.ulid}')
     core_log.add_db_record()
+    
+    # Activate pyatbsa environment
+    activate_pyatbsa_environment()
     
     # parse command line arguments
     args = parse_command_line_arguments()
