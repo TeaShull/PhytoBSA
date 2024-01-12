@@ -32,7 +32,7 @@ other_data/
 #ignore bam files
 *.bam
 #ignore pycache
-*/__pycache__/
+*/__pycache__/*
 #ignore testfiles
 *_test.py
 
