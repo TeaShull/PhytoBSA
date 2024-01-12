@@ -1,12 +1,5 @@
-import os
+from config import INPUT_DIR, REFERENCE_DIR, MODULES_DIR
 import subprocess
-import fnmatch
-from datetime import datetime
-import pandas as pd
-import re
-from flask import session  # Keeping the imports for later use
-from config import INPUT_DIR, MODULES_DIR, LOG_DIR, REFERENCE_DIR
-
 from utilities_bsa_analysis import BSAAnalysisUtilities
 from utilities_general import FileUtilities
 from utilities_logging import LogHandler
@@ -35,7 +28,7 @@ class ThaleBSAParentFunctions:
         core_ulid=self.log.ulid
         try:    
             self.log.attempt('Checking if experiment dictionary exists...')
-            if experiment_dictionary == None:
+            if not experiment_dictionary:
                 self.log.warning('Experiment details undefined. Auto generating from files in ./input folder')
                 file_utils = FileUtilities(self.log)
                 experiment_dictionary = file_utils.experiment_detector()
@@ -86,10 +79,12 @@ class ThaleBSAParentFunctions:
                     known_snps_path
                 ) = file_utils.generate_vcf_file_paths(current_line_name, vcf_log, known_snps)
                
+                #save vcf_table_path to the experiment dictionary for downstream use
+                value['vcf_table_path'] = vcf_table_path
                 # Retrieve allele and file input info from experiment_dictionary
                 allele = value['allele'] #Recessive or dominant?
                 pairedness = value['pairedness'] #Paired-end or single?
-
+                # Pull input files from dictionary
                 wt_input = ' '.join(value['wt'])
                 wt_input = f'"{wt_input}"' #Wild-type bulk input files
                 self.log.note(f"wt_input:{wt_input}")
@@ -113,7 +108,7 @@ class ThaleBSAParentFunctions:
                     reference_genome_name, 
                     snpEff_species_db,
                     reference_genome_source, 
-                    known_snps,
+                    known_snps_path,
                     threads_limit,
                     cleanup
                 )
@@ -129,7 +124,7 @@ class ThaleBSAParentFunctions:
                     vcf_log.bash(line.strip())
                 process.wait()
                 self.log.note(f"VCF file generated for {current_line_name}.") 
-                self.log.note("Log saved to {log_path}")
+                self.log.note(f"Log saved to {log_path}")
                 self.log.note(f'VCF table path added to experiments_dictionary: {vcf_table_path}')
                 
             self.log.success("VCF file generation process complete")

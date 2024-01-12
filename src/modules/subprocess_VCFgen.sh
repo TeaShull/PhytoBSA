@@ -17,7 +17,7 @@ main() {
     passed_variables["reference_genome_name"]=${12}
     passed_variables["snpEff_species_db"]=${13}
     passed_variables["reference_genome_source"]=${14}
-    passed_variables["known_snps"]=${15}
+    passed_variables["known_snps_path"]=${15}
     passed_variables["threads_limit"]=${16}
     passed_variables["cleanup"]=${17}
 
@@ -178,6 +178,7 @@ main() {
     snpEff "$snpEff_species_db" \
         -s "${snpeff_out_filename}" \
         "${output_prefix}.hc.vcf" > "${output_prefix}.se.vcf"
+    wait
     print_message "Haplotypes called and SNPs labeled. Cleaning data."
 
     
@@ -199,7 +200,7 @@ main() {
     remove_nongenomic_polymorphisms "$current_line_name" "${ems_file_name}"
     
     # Remove known SNPs
-    remove_known_snps "$known_snps" "${output_prefix}.ems.table" "$vcf_table_path"
+    remove_known_snps "$known_snps_path" "${output_prefix}.ems.table" "$vcf_table_path"
     
     # Add headers
     add_headers "$vcf_table_path"

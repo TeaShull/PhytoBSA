@@ -37,11 +37,8 @@ Current log list:
 'analysis' - logs all messages peratining to parent_functions.bsa_analysis 
 
 '''
-def main():
-    core_log = LogHandler('core')
-    core_log.note(f'Core log begin. ulid: {core_log.ulid}')
-    core_log.add_db_record()
 
+def parse_command_line_arguments():
     # Argument parsing
     parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')
     parser.add_argument('-an', '--analysis', action='store_true', help='Run the analysis.')
@@ -65,9 +62,17 @@ def main():
     parser.add_argument('-t', '--threads_limit', default=None, type=str)
     parser.add_argument('-c','--cleanup', default=None, type=str)
     parser.add_argument('-ks','--known_snps', default=None, type=str)
-
-
     args = parser.parse_args()
+    return args
+
+def main():
+    # initialize core log
+    core_log = LogHandler('core')
+    core_log.note(f'Core log begin. ulid: {core_log.ulid}')
+    core_log.add_db_record()
+    
+    # parse command line arguments
+    args = parse_command_line_arguments()
     line_name = args.line_name
     vcf_table = args.vcf_table
     reference_genome_name = args.reference_genome_name

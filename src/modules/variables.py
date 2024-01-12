@@ -17,7 +17,7 @@ reference_genome_source = 'ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fa
 threads_limit = '20'
 
 #cleanup intermedia files? 
-cleanup = "True"
+cleanup = "False"
 
 # vcf of known background snps. 
 # Drop the file into the ./references folder. just list the file name here.

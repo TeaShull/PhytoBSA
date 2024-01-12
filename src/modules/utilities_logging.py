@@ -78,11 +78,13 @@ class LogHandler:
         self._create_tables()
 
         #Add some initilization notes at the beginning of every log
-        self.print(f"""ulid: {self.ulid}
-        log filename: {self.log_filename}
-        log path: {self.log_path}
+        self.print(
+        f"""
+ulid: {self.ulid}
+log filename: {self.log_filename}
+log path: {self.log_path}
+        """)
 
-            """)
 
     def setup_logger(self):
         """Initialize logger, which is designed to be passed to class instances 
