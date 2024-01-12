@@ -13,6 +13,7 @@ My aim is to consolidate multiple techniques for identifiying causal EMS-induced
   - A SNP mask generation script in order to help users mask background SNPs (Can be found in VCFsnpmask.sh). This script will eventually be incorperated into the main  program, such that if a user supplies multiple lines in the same background, the script will automatically generate a SNP mask out of the common snps between the generated VCFs. For now, users must manually produce their own SNP masks.
 
 ## Installation
+### Environment installation
 Install and activate the conda environment from the pyatbsa_env.yml file. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda's environment solver is comparitivly very inefficient (conda sometimes freezes trying to resolve this environment).
 
 `mamba env update --name pyatbsa --file env_thale_BSA.yml`
@@ -24,6 +25,10 @@ or, if you are attempting to use conda (not recommended, but probably possible)
 `conda env update --name pyatbsa --file env_thale_BSA.yml`
 
 `conda activate pyatbsa`
+
+### Setup directories
+run:  
+`./setup.py`
 
 ## Usage
 Put the fq.gz files you want analyzed into the /input folder. You can put 
