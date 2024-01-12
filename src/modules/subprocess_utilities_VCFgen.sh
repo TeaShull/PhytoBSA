@@ -71,7 +71,7 @@ download_reference_genome() {
     local reference_genome_source="$2"
 
     if [ ! -f "${reference_genome_path}" ]; then
-        curl -o "${reference_genome_path}" "${reference_genome_source}" && gzip -d "${reference_genome_path}"
+        curl -o "${reference_genome_path}.gz" "${reference_genome_source}" && gzip -d "${reference_genome_path}.gz"
     fi
 }
 
