@@ -127,3 +127,6 @@ def main():
     except Exception as e:
         core_log.fail(f'Starting thaleBSA has failed: {e}')
         quit()
+
+if __name__ == "__main__":
+    main()
