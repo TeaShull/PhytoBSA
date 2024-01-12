@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import os
+import sys
 import subprocess
+from setuptools import setup
 
 modules_dir = os.path.join(os.getcwd(), 'src', 'modules')
 sys.path.append(modules_dir)
-
 from config import (SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, REFERENCE_DIR)
 
 def install_environment():
@@ -46,7 +47,7 @@ def create_directories(directories):
 
 required_directories = (SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, REFERENCE_DIR)
 create_directories(required_directories)
-install_dependencies()
+install_environment()
 
 setup(
     name="thale_bsa",
