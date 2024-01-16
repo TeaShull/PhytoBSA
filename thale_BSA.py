@@ -8,6 +8,8 @@ import argparse
 modules_dir = os.path.join(os.getcwd(), 'src', 'modules')
 sys.path.append(modules_dir)
 
+config_dir = os.path.join(os.getcwd(), 'src', 'modules', 'config.py')
+
 from core import ThaleBSAParentFunctions
 from utilities_general import FileUtilities
 from utilities_logging import LogHandler
@@ -35,8 +37,7 @@ Current log list:
 'vcf_gen' - logs all messages pertaining to parent_functions.vcf_generation
 'analysis' - logs all messages peratining to parent_functions.bsa_analysis 
 '''
-
-def parse_command_line_arguments():
+def parse_program_arguments():
     # Argument parsing
     parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')
     ## Command line inputs
@@ -71,7 +72,7 @@ def main():
     core_log.add_db_record()
     
     # parse command line arguments
-    args = parse_command_line_arguments()
+    args = parse_program_arguments()
     line_name = args.line_name
     vcf_table = args.vcf_table
     reference_genome_name = args.reference_genome_name
