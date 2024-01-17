@@ -11,10 +11,6 @@ import argparse
 from modules.core import ThaleBSAParentFunctions
 from modules.utilities_general import FileUtilities
 from modules.utilities_logging import LogHandler
-<<<<<<< HEAD
-=======
-
->>>>>>> f27469d (major updates to file structure and naming)
 
 # Initialize core_log instance of LogHandler
 '''
