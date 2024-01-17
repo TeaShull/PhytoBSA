@@ -1,9 +1,10 @@
-from config import INPUT_DIR, REFERENCE_DIR, MODULES_DIR
+from settings.config import INPUT_DIR, REFERENCE_DIR, MODULES_DIR
+
 import subprocess
 
-from utilities_bsa_analysis import BSAAnalysisUtilities
-from utilities_general import FileUtilities
-from utilities_logging import LogHandler
+from modules.utilities_bsa_analysis import BSAAnalysisUtilities
+from modules.utilities_general import FileUtilities
+from modules.utilities_logging import LogHandler
 
 class ThaleBSAParentFunctions:
     def __init__(self, logger):
@@ -116,7 +117,7 @@ class ThaleBSAParentFunctions:
                     cleanup
                 )
                 # Construct the command for VCFgen.sh, passing the above variables
-
+                print(vcfgen_script_path)
                 cmd = f"{vcfgen_script_path} {' '.join(map(str, args))}"
                 # Run vcfgen shell subprocess.
                 process = subprocess.Popen(

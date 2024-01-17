@@ -1,8 +1,9 @@
+from settings.config import INPUT_DIR, OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR
+
 import os
 import pandas as pd
 import re
 import sqlite3
-from config import INPUT_DIR, OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR
 
 class FileUtilities:
     """
@@ -114,7 +115,7 @@ class FileUtilities:
                 self.log.warning("Not all required variables are assigned.")
                 self.log.attempt('attempting to source variables from variables.py...')
 
-                import variables
+                import settings.vcf_gen_variables as variables
 
                 reference_genome_name = reference_genome_name or variables.reference_genome_name
                 snpEff_species_db = snpEff_species_db or variables.snpEff_species_db
@@ -359,5 +360,6 @@ class ThaleBSASQLDB:
             print(f"VCF Log Path: {vcf_log_path}")
         else:
             print(f"No record found for Analysis ID '{analysis_id}'")
+
 
 

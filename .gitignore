@@ -1,18 +1,18 @@
 #ignore output
-output/
+*data/output/*
 #ignore input
-input/
+*data/input/*
 #ignore gffutils tair relational database
 *tair*
 #ignore fastq and zipped files
 *.fq
 *.gz
 #ignore vcfs
-vcfs/
+*data/vcfs/
 #ignore references
-references/
+*data/references/*
 #ignore other_data
-other_data/
+*other_data/
 #ignore tsvs
 *.tsv
 #ignore csvs
@@ -22,6 +22,7 @@ other_data/
 #ignore jupyter notebook changes
 *.ipynb*
 #ignore logs
+*logs/*
 *.log*
 #ignore python cache
 *.pyc*

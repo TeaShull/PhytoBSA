@@ -1,3 +1,5 @@
+from settings.config import (BASE_DIR, INPUT_DIR, MODULES_DIR, OUTPUT_DIR)
+
 import os
 import numpy as np
 import pandas as pd
@@ -7,9 +9,8 @@ from plotnine import (
     ggplot, aes, geom_point, geom_line, theme_linedraw,
     facet_grid, theme, ggtitle, xlab, ylab, geom_hline
 )
-from utilities_general import FileUtilities
+from modules.utilities_general import FileUtilities
 
-from config import (BASE_DIR, SRC_DIR,INPUT_DIR, MODULES_DIR, OUTPUT_DIR)
 """
 Module for the bsa_analysis parent function. Save for a few file utilities used 
 in the parent function, the core of the read-depth analysis between the 
@@ -37,6 +38,12 @@ class BSAAnalysisUtilities:
         #Make the analysis_out_path directory if it does not exist
         file_utils=FileUtilities(self.log)
         file_utils.setup_directory(self.analysis_out_path)
+
+        #Initialize loess function parameters
+        self.loess_function = sm.nonparametric.lowess
+        self.loess_span = 0.3
+        self.smooth_edges_bounds = 15
+        self.shuffle_iterations = 1000
 
     def drop_na_and_indels(self, vcf_df)->pd.DataFrame:
         """
@@ -170,22 +177,18 @@ class BSAAnalysisUtilities:
         Returns: Dataframe containing LOESS fitted values for ratio, g-stat and 
         ratio-scaled g-stat
         """
-        lowess_span = 0.3
-        smooth_edges_bounds = 15
         self.log.attempt("Initialize LOESS smoothing calculations.")
-        self.log.attempt(f"span: {lowess_span}, Edge bias correction: {smooth_edges_bounds}") 
+        self.log.attempt(f"span: {self.loess_span}, Edge bias correction: {self.smooth_edges_bounds}") 
         try:
 
-            vcf_df = self._smooth_chr_facets(
-                vcf_df, lowess_span, smooth_edges_bounds
-            )
+            vcf_df = self._smooth_chr_facets(vcf_df)
             self.log.success("LOESS smoothing calculations successful.")
             return vcf_df
         
         except Exception as e:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
-    def _smooth_chr_facets(self, df, lowess_span, smooth_edges_bounds):
+    def _smooth_chr_facets(self, df)->pd.DataFrame:
         """
         Internal Function for smoothing chromosome facets using LOESS. 
         Uses function "smooth_single_chr" to interate over chromosomes as facets
@@ -205,8 +208,6 @@ class BSAAnalysisUtilities:
             subsequently removes the extended data. 
             Returns: df with fitted values included.
             """
-            lowess_function = sm.nonparametric.lowess
-
             self.log.attempt(f"LOESS of chr:{chr} for {self.current_line_name}...")
 
             positions = df_chr['pos'].to_numpy()
@@ -214,8 +215,8 @@ class BSAAnalysisUtilities:
             deltas = ([pos - positions[i - 1]
                        if i > 0 else pos for i, pos in enumerate(positions)]
                       )
-            deltas_pos_inv = deltas[::-1][-smooth_edges_bounds:-1]
-            deltas_neg_inv = deltas[::-1][1:smooth_edges_bounds]
+            deltas_pos_inv = deltas[::-1][-self.smooth_edges_bounds:-1]
+            deltas_neg_inv = deltas[::-1][1:self.smooth_edges_bounds]
             deltas_mirrored_ends = deltas_pos_inv + deltas + deltas_neg_inv
 
             psuedo_pos = []
@@ -225,8 +226,8 @@ class BSAAnalysisUtilities:
                 if i > 0:
                     psuedo_pos.append(pos + psuedo_pos[i - 1])
 
-            df_chr_inv_neg = df_chr[::-1].iloc[-smooth_edges_bounds:-1]
-            df_chr_inv_pos = df_chr[::-1].iloc[1:smooth_edges_bounds]
+            df_chr_inv_neg = df_chr[::-1].iloc[-self.smooth_edges_bounds:-1]
+            df_chr_inv_pos = df_chr[::-1].iloc[1:self.smooth_edges_bounds]
             df_chr_smooth_list = [df_chr_inv_neg, df_chr, df_chr_inv_pos]
             df_chr = pd.concat(df_chr_smooth_list, ignore_index=False)
 
@@ -235,21 +236,21 @@ class BSAAnalysisUtilities:
 
             ratio_Y = df_chr['ratio'].values
             df_chr['ratio_yhat'] = (
-                lowess_function(ratio_Y, X, frac=lowess_span)[:, 1]
+                self.loess_function(ratio_Y, X, frac=self.loess_span)[:, 1]
             )
 
             G_S_Y = df_chr['G_S'].values
             df_chr['GS_yhat'] = (
-                lowess_function(G_S_Y, X, frac=lowess_span)[:, 1]
+                self.loess_function(G_S_Y, X, frac=self.loess_span)[:, 1]
             )
 
             df_chr['RS_G'] = df_chr['G_S'] * df_chr['ratio']
             RS_G_Y = df_chr['RS_G'].values
             df_chr['RS_G_yhat'] = (
-                lowess_function(RS_G_Y, X, frac=lowess_span)[:, 1]
+                self.loess_function(RS_G_Y, X, frac=self.loess_span)[:, 1]
             )
 
-            df_chr = df_chr[smooth_edges_bounds:-smooth_edges_bounds].drop(
+            df_chr = df_chr[self.smooth_edges_bounds:-self.smooth_edges_bounds].drop(
                 columns='pseudo_pos'
             )
 
@@ -277,10 +278,8 @@ class BSAAnalysisUtilities:
         
         Returns: vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff as a tuple
         """
-        iterations = 1000
-        lowess_span = 0.3
         self.log.attempt("Initialize calculation of empirical cutoffs")
-        self.log.note(f"breaking geno/pheno association. iterations:{iterations}, LOESS span:{lowess_span}")
+        self.log.note(f"breaking geno/pheno association. iterations:{self.shuffle_iterations}, LOESS span:{self.loess_span}")
         
         try:
             vcf_df_position = vcf_df[['pos']].copy()
@@ -288,7 +287,7 @@ class BSAAnalysisUtilities:
             vcf_df_mu = vcf_df[['mu_ref', 'mu_alt']].copy()
 
             gs_cutoff, rsg_cutoff, rsg_y_cutoff = self._empirical_cutoff(
-                vcf_df_position, vcf_df_wt, vcf_df_mu, iterations, lowess_span
+                vcf_df_position, vcf_df_wt, vcf_df_mu 
             )
 
             vcf_df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) 
@@ -310,7 +309,7 @@ class BSAAnalysisUtilities:
         except Exception as e:
             self.log.fail(f"An error occurred during cutoff calculations: {e}")
 
-    def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu, shuffle_iterations, lowess_span):
+    def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu):
         """
         randomizes the input read_depths, breaking the position/feature link.
         this allows the generation of a large dataset which has no linkage 
@@ -320,6 +319,15 @@ class BSAAnalysisUtilities:
         
         There is probably a less computationally intensive statistical framework 
         for doing this, especially for the g-statistics....
+        
+        input: various arrays pulled from vcf_df. 
+            vcf_df_position(array) - genome positions
+            vcf_df_wt(array) - wt read depth
+            vcf_df_mu(array) - mu read depth
+
+            shuffle_iterations(int) - how many iterations to perform. 
+                [More = More consistancy, more compute 
+                Less = less consistancy, less compute]
         """
         self.log.attempt(f"Calculate empirical cutoff for {self.current_line_name}...")
         
@@ -327,10 +335,10 @@ class BSAAnalysisUtilities:
             lowess = sm.nonparametric.lowess
             smGstatAll, smRatioAll, RS_GAll, smRS_G_yhatAll = [], [], [], []
             suppress = True
-            for _ in range(shuffle_iterations):
-                dfShPos = vcf_df_position.sample(frac=1)
-                dfShwt = vcf_df_wt.sample(frac=1)
-                dfShmu = vcf_df_mu.sample(frac=1)
+            for _ in range(self.shuffle_iterations):
+                dfShPos = vcf_df_position.sample(frac=self.loess_span1)
+                dfShwt = vcf_df_wt.sample(frac=self.loess_span1)
+                dfShmu = vcf_df_mu.sample(frac=self.loess_span1)
 
                 smPos = dfShPos['pos'].to_numpy()
                 sm_wt_ref = dfShwt['wt_ref'].to_numpy()
@@ -352,7 +360,7 @@ class BSAAnalysisUtilities:
                 RS_GAll.extend(smRS_G)
 
                 smRS_G_yhatAll.extend(lowess(
-                    smRS_G, smPos, frac=lowess_span)[:, 1]
+                    smRS_G, smPos, frac=self.loess_span)[:, 1]
                 )
             G_S_95p = np.percentile(smGstatAll, 95)
             RS_G_95p = np.percentile(RS_GAll, 95)
@@ -488,3 +496,4 @@ class BSAAnalysisUtilities:
         
         except Exception as e:
             self.log.fail(f"Plotting data failed for {self.current_line_name}: {e}")
+

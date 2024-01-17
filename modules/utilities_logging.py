@@ -1,14 +1,14 @@
+from settings.config import LOG_DIR
+
 import os
 import sys
 import time
 import codecs
-
 import inspect
 from datetime import datetime
 import logging
 import sqlite3
 
-from config import LOG_DIR
 
 
 class ULID:

@@ -1,13 +1,18 @@
 #!/usr/bin/env python
+from settings.config import (
+    INPUT_DIR, OUTPUT_DIR, LOG_DIR, TEMPLATE_DIR, STATIC_DIR
+)
 import os
 import sys
 import multiprocessing
 from datetime import datetime
 import argparse
 
-modules_dir = os.path.join(os.getcwd(), 'src', 'modules')
-sys.path.append(modules_dir)
+from modules.core import ThaleBSAParentFunctions
+from modules.utilities_general import FileUtilities
+from modules.utilities_logging import LogHandler
 
+<<<<<<< HEAD:thale_BSA.py
 config_dir = os.path.join(os.getcwd(), 'src', 'modules', 'config.py')
 
 from core import ThaleBSAParentFunctions
@@ -17,6 +22,8 @@ from utilities_logging import LogHandler
 from config import (
     SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, TEMPLATE_DIR, STATIC_DIR
 )
+=======
+>>>>>>> f27469d (major updates to file structure and naming):phytobsa.py
 
 # Initialize core_log instance of LogHandler
 '''
@@ -129,5 +136,5 @@ def main():
         core_log.fail(f'Starting thaleBSA has failed: {e}')
         quit()
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    sys.exit(main())
