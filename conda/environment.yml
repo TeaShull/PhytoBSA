@@ -275,7 +275,3 @@ dependencies:
   - zipp=3.15.0=pyhd8ed1ab_0
   - zlib=1.2.13=hd590300_5
   - zstd=1.5.5=hfc55251_0
-<<<<<<< HEAD
-prefix: /opt/mambaforge/envs/pyatbsa
-=======
->>>>>>> f27469d (major updates to file structure and naming)

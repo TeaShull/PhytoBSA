@@ -12,19 +12,6 @@ from modules.core import ThaleBSAParentFunctions
 from modules.utilities_general import FileUtilities
 from modules.utilities_logging import LogHandler
 
-<<<<<<< HEAD:thale_BSA.py
-config_dir = os.path.join(os.getcwd(), 'src', 'modules', 'config.py')
-
-from core import ThaleBSAParentFunctions
-from utilities_general import FileUtilities
-from utilities_logging import LogHandler
-
-from config import (
-    SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, TEMPLATE_DIR, STATIC_DIR
-)
-=======
->>>>>>> f27469d (major updates to file structure and naming):phytobsa.py
-
 # Initialize core_log instance of LogHandler
 '''
 [NOTE]
