@@ -1,4 +1,4 @@
-# PyAtBSA
+# PhytoBSA
 
 This python program analyzes and visualizes bulk segregant analysis (BSA) data. It takes sequenced segrigant bulks as an input and outputs a list of likely casual polymorphisms underlying the phenotypic segrigation of the two bulks. Likely causal polymorphisms are identified using g-statistics and a comparison of the ratio of reference to non-reference reads in each bulk. Currently, this script is optimized for running Arabidopsis BSA experiments, but can handle other organisms with some tinkering.
 
@@ -12,24 +12,24 @@ This pipeline uses:
 
 ## Installation
 ### Environment installation
-Install and activate the conda environment from the pyatbsa_env.yml file. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda's environment solver is comparitivly very inefficient (conda sometimes freezes trying to resolve this environment).
+Install and activate the conda environment from the environment.yml file in the ./conda folder. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda's environment solver is comparitivly very inefficient (conda sometimes freezes trying to resolve this environment).
 
-`mamba env update --name pyatbsa --file environment.yml`
+`mamba env create --f ./conda/environment.yml`
 
 `mamba activate pyatbsa`
 
 or, if you are attempting to use conda (not recommended, but probably possible)
 
-`conda env update --name pyatbsa --file environment.yml`
+`conda env create -f ./conda/environment.yml`
 
-`conda activate pyatbsa`
+`conda activate phytobsa`
 
 ### Setup directories
 run:  
 `./setup.py`
 
 ## Usage
-Put the fq.gz files you want analyzed into the /input folder. You can put 
+Put the fq.gz files you want analyzed into the data/input folder. You can put 
 multiple experiments in the folder and they will be analyzed. 
 
 The files must be formatted as follows:  
@@ -49,15 +49,13 @@ The files must be formatted as follows:
     "line.R.mu.fq.gz"       
 
  ### Variables
- Edit ./code/variables.sh to alter run conditions. The script assumes recessive polymorphisms by default. If your mutation of interest is dominant, change the mutation variable accordingly. 
-
- Alter the threads variable to half the number of threads available on your machine. 
+ Edit ./settings/vcf_gen_variables.sh to alter the variables for VCF file generation. The script assumes recessive polymorphisms by default. If your mutation of interest is dominant, change the mutation variable accordingly. 
 
  If you are analyzing an organism different than Arabidopsis, this is the place to put your reference genome and background SNPs link. In order for SNPeff to run properly, your organism needs to be named as it is in the SNPeff database. This is currently clunky to configure. Easier support for other organisms is on the roadmap. 
 
 ### Running
  
- `./thale_BSA.py -cl` 
+ `./phytobsa.py -cl` 
 
 
 ## Output
