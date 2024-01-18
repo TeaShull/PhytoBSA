@@ -164,7 +164,7 @@ remove_repetitive_nan() {
 }
 
 # Format fields in the EMS file
-format_ems_file() {
+format_feilds() {
     local file="$1"
     local line_name="$2"
     awk -i inplace -F'\t' -vOFS='\t' '{ gsub(",", "\t", $9) ; gsub(",", "\t", $10) ; gsub(",", "\t", $11) ; print }' "$file"
