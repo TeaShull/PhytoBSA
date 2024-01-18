@@ -18,8 +18,7 @@ def create_directories(directories):
                 print(f"Directory created: {directory}")
             except OSError as e:
                 print(f"Error creating directory {directory}: {e}")
-
-
+                
 def main():
     required_directories = (SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, REFERENCE_DIR)
     create_directories(required_directories)

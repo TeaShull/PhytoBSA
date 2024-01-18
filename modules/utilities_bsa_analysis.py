@@ -359,7 +359,7 @@ class BSAAnalysisUtilities:
         except Exception as e:
             self.log.fail(f"An error occurred during cutoff calculations: {e}")
 
-    def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu):
+    def _empirical_cutoff(self, vcf_df_position: np.ndarray, vcf_df_wt: np.ndarray, vcf_df_mu: np.ndarray) -> tuple:
         """
         randomizes the input read_depths, breaking the position/feature link.
         this allows the generation of a large dataset which has no linkage 

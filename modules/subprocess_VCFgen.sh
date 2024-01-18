@@ -18,10 +18,11 @@ main() {
     passed_variables["reference_genome_source"]=${13}
     passed_variables["known_snps_path"]=${14}
     passed_variables["threads_limit"]=${15}
-    passed_variables["cleanup"]=${16}
-    
+    passed_variables["call_variants_in_parallel"]=${16}
+    passed_variables["cleanup"]=${17}
+
     ## Printing all assigned variables for logging purposes
-    print_variable_info passed_variables "Variables passed to VCFgen.sh"
+    print_variable_info passed_variables "Variables passed to subprocess_VCFgen.sh"
     ## Assigning variables in array to their respective keys
     assign_values passed_variables
 
@@ -35,7 +36,7 @@ main() {
     generated_variables["tmp_table_file_name"]="${output_prefix}.table.tmp"
 
     ## Printing all generated variables for logging purposes
-    print_variable_info generated_variables "Variables generated in VCFgen.sh"
+    print_variable_info generated_variables "Variables generated in subprocess_VCFgen.sh"
     ## Assigning variables in array to their respective keys
     assign_values generated_variables
 
@@ -155,17 +156,23 @@ main() {
     wait
 
     print_message "Calling haplotypes. This may take a while..."
+
+
     # GATK HC Variant calling
     # Haplotype caller looks for regions with varience and locally reconstructs
     # the region using the available reads, and calls variants for the region. 
     # Time consuming but accurate
-    gatk HaplotypeCaller \
-        -R "$reference_chrs_fa_path" \
-        -I "${output_prefix}_mu.sort.md.rg.bam" \
-        -I "${output_prefix}_wt.sort.md.rg.bam" \
-        -O "${output_prefix}.hc.vcf" \
-        -output-mode EMIT_ALL_CONFIDENT_SITES \
-        --native-pair-hmm-threads "$threads_limit"
+    
+    if [ $call_variants_in_parallel = True ]; do
+        split_and_call_haplotype $output_prefix $output_dir_path $reference_chrs_fa_path $threads_limit
+    else;    
+        gatk HaplotypeCaller \
+            -R "$reference_chrs_fa_path" \
+            -I "${output_prefix}_mu.sort.md.rg.bam" \
+            -I "${output_prefix}_wt.sort.md.rg.bam" \
+            -O "${output_prefix}.hc.vcf" \
+            -output-mode EMIT_ALL_CONFIDENT_SITES \
+            --native-pair-hmm-threads "$threads_limit"
 
     print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
     
@@ -190,7 +197,7 @@ main() {
     
     # Clean up data table
     remove_repetitive_nan "$snpsift_{tmp_table_file_name}" "tmp_table_file_name"
-    format_ems_file "${tmp_table_file_name}" "${current_line_name}"
+    format_feilds "${tmp_table_file_name}" "${current_line_name}"
     remove_complex_genotypes "${tmp_table_file_name}"
     
     # Remove known SNPs
