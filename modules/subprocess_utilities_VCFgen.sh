@@ -140,28 +140,9 @@ extract_fields_snpSift() {
 }
 
 remove_repetitive_nan() {
-    local file="$1"
-    sed -i 's/NaN://g' "$file"
-}
-
-# Grab mutations likely to be from ems for analysis
-filter_ems_mutations() {
-    local input_file="$1"
-    local output_file="$2"
-    grep -e $'G\tA' -e $'C\tT' -e $'A\tG' -e $'T\tC' "$input_file" > "$output_file"
-}
-
-# Filter [mu:wt] genotypes based on the allele
-filter_genotypes() {
-    local allele="$1"
-    local input_file="$2"
-    local output_file="$3"
-    
-    if [ "$allele" = 'R' ]; then
-        grep -F -e '1/1:0/1' -e '0/1:0/0' -e '0/1:0/1' "$input_file" > "$output_file"
-    else
-        grep -F -e '0/1:0/0' -e '1/1:0/0' -e '0/1:0/1' "$input_file" > "$output_file"
-    fi
+    local input="$1"
+    local output="$2"
+    sed 's/NaN://g' "$input" > "$output"
 }
 
 # Format fields in the EMS file

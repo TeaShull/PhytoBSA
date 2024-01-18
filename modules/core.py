@@ -100,7 +100,6 @@ class ThaleBSAParentFunctions:
                 args = (
                     vcf_log.ulid,
                     current_line_name, 
-                    allele,
                     INPUT_DIR,
                     wt_input,
                     mu_input,
@@ -150,6 +149,7 @@ class ThaleBSAParentFunctions:
         required 
         [key]: line_name
         [value] vcf_table_path, core_ulid, 
+        [value] allele (what segrigation pattern? R or D?)
 
         optional
         [value] vcf_ulid
@@ -159,7 +159,6 @@ class ThaleBSAParentFunctions:
         
         '''
         self.log.attempt("Attempting to perform data analysis...")
-        
         try:
             # Print experiment_dictionary information passed to function
             for key, value in experiment_dictionary.items():
@@ -178,39 +177,49 @@ class ThaleBSAParentFunctions:
                 current_line_name = key
                 vcf_ulid = value['vcf_ulid'] 
                 vcf_table_path = value['vcf_table_path']
+                allele = value['allele']
                 
                 # Configure an analysis logger for each line.
                 analysis_log = LogHandler(f'analysis_{current_line_name}')
 
                 self.log.note(f'Analysis log initialized. Path: {analysis_log.log_path}')
-                analysis_log.add_db_record(current_line_name, core_ulid, vcf_ulid)
+                analysis_log.add_db_record(
+                    current_line_name, core_ulid, vcf_ulid
+                )
                 
-                #FileUtilites instance that logs to analysis_log
+                # FileUtilites instance that logs to analysis_log
                 file_utils = FileUtilities(analysis_log)
 
-                #Analysis operations. Loading VCF and producing features
-                vcf_df = file_utils.load_vcf_table(vcf_table_path, current_line_name)
-                
+                # Analysis operations. Loading VCF and producing features
+                vcf_df = file_utils.load_vcf_table(
+                    vcf_table_path, current_line_name
+                )
                 bsa_analysis_utils = BSAAnalysisUtilities(
                     current_line_name, vcf_ulid, analysis_log
                 )
+                ## Filter genotypes based on segrigation pattern
+                vcf_df = bsa_analysis_utils.filter_genotypes(allele, vcf_df)
+                
+                ## data cleaning and orginization
+                vcf_df = bsa_analysis_utils.filter_ems_mutations(vcf_df)
+                vcf_df = bsa_analysis_utils.drop_indels(vcf_df)
+                
+                ## Feature production
                 vcf_df = bsa_analysis_utils.calculate_delta_snp_and_g_statistic(
                     vcf_df
                 )
-                vcf_df = bsa_analysis_utils.drop_na_and_indels(vcf_df) 
+                vcf_df = bsa_analysis_utils.drop_na(vcf_df)
                 vcf_df = bsa_analysis_utils.loess_smoothing(vcf_df)
-                
+
                 vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff = (
                     bsa_analysis_utils.calculate_empirical_cutoffs(vcf_df)
                 )
-    
-                #Saving and plotting outputs
+                ## Saving and plotting outputs
                 bsa_analysis_utils.sort_save_likely_candidates(vcf_df)
                 
                 bsa_analysis_utils.generate_plots(
                     vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff
                 )
-
             self.log.success("Data analysis complete")
         
         except Exception as e:

@@ -5,22 +5,21 @@ main() {
     declare -A passed_variables
     passed_variables["vcf_ulid"]=${1}
     passed_variables["current_line_name"]=${2}
-    passed_variables["allele"]=${3}
-    passed_variables["input_dir"]=${4}
-    passed_variables["wt_input"]=${5}
-    passed_variables["mu_input"]=${6}
-    passed_variables["pairedness"]=${7}
-    passed_variables["output_dir_path"]=${8}
-    passed_variables["output_prefix"]=${9}
-    passed_variables["vcf_table_path"]=${10}
-    passed_variables["reference_dir"]=${11}
-    passed_variables["reference_genome_name"]=${12}
-    passed_variables["snpEff_species_db"]=${13}
-    passed_variables["reference_genome_source"]=${14}
-    passed_variables["known_snps_path"]=${15}
-    passed_variables["threads_limit"]=${16}
-    passed_variables["cleanup"]=${17}
-
+    passed_variables["input_dir"]=${3}
+    passed_variables["wt_input"]=${4}
+    passed_variables["mu_input"]=${5}
+    passed_variables["pairedness"]=${6}
+    passed_variables["output_dir_path"]=${7}
+    passed_variables["output_prefix"]=${8}
+    passed_variables["vcf_table_path"]=${9}
+    passed_variables["reference_dir"]=${10}
+    passed_variables["reference_genome_name"]=${11}
+    passed_variables["snpEff_species_db"]=${12}
+    passed_variables["reference_genome_source"]=${13}
+    passed_variables["known_snps_path"]=${14}
+    passed_variables["threads_limit"]=${15}
+    passed_variables["cleanup"]=${16}
+    
     ## Printing all assigned variables for logging purposes
     print_variable_info passed_variables "Variables passed to VCFgen.sh"
     ## Assigning variables in array to their respective keys
@@ -33,7 +32,7 @@ main() {
     generated_variables["reference_chrs_fa_path"]=${reference_dir}/${reference_genome_name}.chrs.fa
     generated_variables["snpeff_dir"]=${output_dir_path}/snpEff
     generated_variables["snpeff_out_filename"]=${output_dir_path}/snpEff/${vcf_ulid}-_${current_line_name}
-    generated_variables["ems_file_name"]="${output_prefix}.ems.table"
+    generated_variables["tmp_table_file_name"]="${output_prefix}.table.tmp"
 
     ## Printing all generated variables for logging purposes
     print_variable_info generated_variables "Variables generated in VCFgen.sh"
@@ -186,21 +185,16 @@ main() {
     # built in data processing of snpEff labels... 
     extract_fields_snpSift \
         "${output_prefix}.se.vcf" \
-        "${output_prefix}.table.tmp" \
+        "$snpsift_{tmp_table_file_name}" \
         "${current_line_name}"
-
+    
     # Clean up data table
-    remove_repetitive_nan "${output_prefix}.table.tmp"
-    filter_ems_mutations "${output_prefix}.table.tmp" "${output_prefix}.ems.table.tmp"
-    filter_genotypes "${allele}" "${output_prefix}.ems.table.tmp" "${ems_file_name}"
-    format_ems_file "${ems_file_name}" "${current_line_name}"
-    remove_complex_genotypes "${ems_file_name}"
-
-    # Get rid of chloroplastic and mitochondrial polymorphisms.
-    remove_nongenomic_polymorphisms "$current_line_name" "${ems_file_name}"
+    remove_repetitive_nan "$snpsift_{tmp_table_file_name}" "tmp_table_file_name"
+    format_ems_file "${tmp_table_file_name}" "${current_line_name}"
+    remove_complex_genotypes "${tmp_table_file_name}"
     
     # Remove known SNPs
-    remove_known_snps "$known_snps_path" "${output_prefix}.ems.table" "$vcf_table_path"
+    remove_known_snps "$known_snps_path" "${tmp_table_file_name}" "$vcf_table_path"
     
     # Add headers
     add_headers "$vcf_table_path"

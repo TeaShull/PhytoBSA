@@ -45,42 +45,92 @@ class BSAAnalysisUtilities:
         self.smooth_edges_bounds = 15
         self.shuffle_iterations = 1000
 
-    def drop_na_and_indels(self, vcf_df)->pd.DataFrame:
+    def drop_indels(self, vcf_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Drops NA and insertion/deletions from VCF dataframe.
+        Drops insertion/deletions from VCF dataframe.
         
         Args: 
         vcf_df(pd.DataFrame)
         VCF dataframe
         
         Returns: 
-        Cleaned VCF dataframe with no NA or indels
+        VCF dataframe with no indels
         """
+        filtered_vcf_df = (
+            vcf_df.loc[~(vcf_df["ref"].str.len() > 1) 
+            & ~(vcf_df["alt"].str.len() > 1)]
+        )
+        return filtered_vcf_df
+
+
+    def drop_na(self, vcf_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Drops rows with NaN values from VCF dataframe.
         
-        self.log.attempt('Removing NAs and indels')
+        Args: 
+        vcf_df(pd.DataFrame)
+        VCF dataframe
+        
+        Returns: 
+        VCF dataframe with no NaN values
+        """
+        return vcf_df.dropna(axis=0, how='any', subset=["ratio"])
+
+    def filter_genotypes(self, allele: str, vcf_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Filter genotypes in the 'mu:wt_GTpred' column of a DataFrame based on 
+        the specified allele.
+        Args:
+            allele (str): The allele value to filter the genotypes. Filters: 
+                          R = Recessive seg '1/1:0/1', '0/1:0/0', '0/1:0/1'.
+                          D = Dominant seg '0/1:0/0', '1/1:0/0', '0/1:0/1'.
+            df (pd.DataFrame): The input DataFrame containing the genotypes.
+
+        Returns:
+            pandas.DataFrame: A filtered DataFrame containing only the rows with matching genotypes.
+        """
+        self.log.attempt('Attempting to filter genotypes based on segrigation pattern...')
         try:
-            # Use .loc for assignment to avoid the warning
-            apply_args = (lambda x: x if len(x) == 1 else np.nan)
-            vcf_df.loc[:, "ref"] = vcf_df["ref"].apply(apply_args)
-            vcf_df.loc[:, "alt"] = vcf_df["alt"].apply(apply_args)
-            vcf_df.dropna(axis=0, how='any', subset=["ratio"], inplace=True)
-            self.log.success(f'Indels dropped, and NaN values for {self.current_line_name} cleaned successfully.')
-            return vcf_df
+            if allele == 'R':
+                self.log.note('Filtering genotypes based an a recessive segrigation pattern')
+                seg_filter = ['1/1:0/1', '0/1:0/0', '0/1:0/1']
+            elif allele == 'D':
+                self.log.note('Filtering genotypes based an a dominant segrigation pattern')
+                seg_filter = ['0/1:0/0', '1/1:0/0', '0/1:0/1']
+            else: 
+                self.log.fail(f'Allele type:{allele} is not a valid selection! Aborting.')
+            
+            filtered_vcf_df = vcf_df[vcf_df['mu:wt_GTpred'].isin(seg_filter)]
+            
+            self.log.success('Genotypes filtured based on segrigation pattern')
+            return filtered_vcf_df
         
         except Exception as e:
-            self.log.fail(f"An error occurred during data processing: {e}")
-            return None
+            self.log.fail(f'There was an error while filtering genotypes:{e}')        
 
-    def calculate_delta_snp_and_g_statistic(self, vcf_df)->pd.DataFrame:
+    def filter_ems_mutations(self, vcf_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Filter mutations likely to be from EMS for analysis and return a filtered DataFrame.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame containing the mutations.
+
+        Returns:
+            pd.DataFrame: A filtered DataFrame containing the mutations.
+        """
+        filtered_vcf_df = vcf_df[(vcf_df['ref'].isin(['G', 'C', 'A', 'T'])) & (vcf_df['alt'].isin(['A', 'T', 'G', 'C']))]
+        return filtered_vcf_df
+
+    def calculate_delta_snp_and_g_statistic(self, vcf_df: pd.DataFrame)->pd.DataFrame:
         """
         Calculate delta SNP ratio and G-statistic
         
         Args: 
         vcf_df 
-        VCF dataframe with no NA and indels.
+        pd.DataFrame VCF with no NA and indels.
         
         Returns: 
-        VCF dataframe with delta-snp and g-stat calculated
+        pd.DataFrame VCF with delta-snp and g-stat calculated
         """
         
         self.log.attempt(f"Initialize calculations for delta-SNP ratios and G-statistics")
@@ -102,13 +152,13 @@ class BSAAnalysisUtilities:
         except Exception as e:
             self.log.fail( f"An error occurred during calculation: {e}")
 
-    def _delta_snp_array(self, wtr, wta, mur, mua, suppress)->np.ndarray:
+    def _delta_snp_array(self, wtr: np.ndarray, wta: np.ndarray, mur: np.ndarray, mua: np.ndarray, suppress: bool)-> np.ndarray:
         """
         Calculates delta SNP feature, which quantifies divergence in 
             read depths between the two bulks.
 
         Args: 
-            wtr, wta, mur, mua (array)
+            wtr, wta, mur, mua (numpy array)
             Read depths of wt reference and alt reads
             and the read depths of mutant reference and alt reads 
             
