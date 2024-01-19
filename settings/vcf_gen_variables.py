@@ -22,7 +22,7 @@ cleanup = "False"
 # vcf of known background snps. 
 # Drop the file into the ./references folder. just list the file name here.
 # Makes your final data much more compact and clean. 
-known_snps = 'Arabidopsis_thaliana.vcf'
+known_snps_path = 'Arabidopsis_thaliana.vcf'
 
 # Run gatk haplotype caller on each chromosome in parallel? The will generally run
 # faster, but is a beta feature and could be buggy

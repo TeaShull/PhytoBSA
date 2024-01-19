@@ -33,12 +33,9 @@ class FileUtilities:
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
         try:
             expt_dict = {}
-            # Iterate through the files in the directory
             for filename in os.listdir(INPUT_DIR):
-                # Split the filename into parts based on dots
                 parts = filename.split('.')
                 self.log.attempt(f'Parsing {filename}')
-                # Extract relevant information
                 line_name = parts[0]
                 allele = parts[1]
                 if '_1' in allele:
@@ -48,45 +45,38 @@ class FileUtilities:
                 segregation_type = parts[-3]
                 pairedness = 'paired-end' if '_1' or '_2' in filename else 'single-read'
 
-                # Use line_name as key for the dictionary
                 key = line_name
                 self.log.success(f"""{filename} parsed. 
-                    key:{key}
-                    allele:{allele}
-                    segregation_type:{segregation_type}
-                    pairedness:{pairedness}
-                """)
-                # Initialize or update the dictionary entry for the key
+                key:{key}
+                allele:{allele}
+                segregation_type:{segregation_type}
+                pairedness:{pairedness}
+            """)
                 if key not in expt_dict:
                     expt_dict[key] = {
                         'allele': allele,
-                        'wt': [],
-                        'mu': [],
+                        'wt_input': [],
+                        'mu_input': [],
                         'pairedness': pairedness
                     }
-                # Add the file path to the appropriate list based on segregation_type
                 file_path = os.path.join(INPUT_DIR, filename)
-                if 'wt' in segregation_type:
-                    wt_list = expt_dict[key]['wt']
-                    wt_list.append(file_path)
-                    # Sort the wt_list to ensure _1 and _2 files are in numeric order
-                    expt_dict[key]['wt'] = sorted(
-                        wt_list, key=lambda x: int(x.split('_')[-1][0])
+
+                if 'wt' in segregation_type or 'mu' in segregation_type:
+                    bulk_list = expt_dict[key].get(segregation_type, [])
+                    bulk_list.append(file_path)
+                    expt_dict[key][segregation_type + "_input"] = sorted(
+                        bulk_list, key=lambda x: int(x.split('_')[-1][0])
                     )
-                elif 'mu' in segregation_type:
-                    mu_list = expt_dict[key]['mu']
-                    mu_list.append(file_path)
-                    # Sort the mu_list to ensure _1 and _2 files are in numeric order
-                    expt_dict[key]['mu'] = sorted(
-                        mu_list, key=lambda x: int(x.split('_')[-1][0])
-                    )
-            
+                    input_files = ' '.join(expt_dict[key][segregation_type + "_input"])
+                    expt_dict[key][segregation_type + "_input"] = f'"{input_files}"'
+                    del expt_dict[key][segregation_type]
+
             self.log.success(f'Experiment dictionary generated.')
             return expt_dict
 
-        except Exception as e:
-            self.log.fail(f"Error while detecting experiment details: {e}")
-            return {}
+            except Exception as e:
+                self.log.fail(f"Error while detecting experiment details: {e}")
+                return {}
 
     def check_vcf_gen_variables(self, experiment_dict: dict)-> dict:
         """
@@ -137,7 +127,6 @@ class FileUtilities:
         Returns: 
         Pandas dataframe containing the information loaded from current_line_table_path
         """
-
         self.log.attempt(f"Attempting to load VCF table for line {current_line_name}")
         try:
             vcf_df = pd.read_csv(current_line_table_path, sep="\t")
@@ -211,59 +200,21 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
-    
-    def create_experiment_dictionary(self, line, **kwargs):
-        approved_inputs = [
-            'allele',
-            'pairedness',
-            'reference_genome_name',
-            'reference_genome_source',
-            'cleanup',
-            'vcf_table_path',
-            'threads_limit',
-            'wt_input',
-            'mu_input',
-            'known_snps_path',
-            'call_variants_in_parallel',
-            'snpEff_species_db',
-            'core_ulid',
-            'vcf_ulid',
-            'analysis_ulid'
-        ]
+    def process_path(self, directory: str, path: str) -> str:
+        if os.path.exists(path):
+            self.log.note(f'Path found and assigned: {path}')
+            return path
+        else:
+            self.log.note(f"path:{path} does not exist. Checking for it in {directory}..")
+            dir_path = os.path.join(directory, path)
+            if os.path.exists(input_path):
+                self.log.note(f" path:{dir_path} found! Assigning path value.")
+                return dir_path
+            else:
+                self.log.fail(f'path not found as {dir_path} or the hard coded ({path}). Aborting')
+                return None
 
-        path_variables =[
-            'vcf_table_path',
-            'known_snps_path'
-        ]
-        
-        details = {}
-
-        if not line:
-            self.log.fail(f'line name can not be empty - it is required to create an experiment dictionary! Aborting')
-
-        for key, value in kwargs.items():
-            if key in approved_inputs and path_variables:
-                if os.path.exists(value):
-                    details[key] = value  # Key-value pair in the subdictionary
-                else:
-                    self.log.note(f"path:{value} does not exist. Checking for it in {INPUT_DIR}..")
-                    input_path = os.path.join(INPUT_DIR, value)
-                    if os.path.exists(input_path):
-                        self.log.note(f" path:{input_path} found! Assigning path value to dictionary")
-                    else: 
-                        self.log.fail(f'{value} not found in {INPUT_DIR} or as a hard coded path. Aborting')
-            elif key in approved_inputs:
-                details[key] = value
-            else: 
-                self.log.fail(f"{key} is not in the approved_inputs for experiment dictionary creation. Dictionary or arguments may need updating.")
-
-        experiment_dict = {
-            line : details
-        }
-
-    return experiment_dict
-
-    def _extract_ulid_from_file_path(self, file_path):
+    def extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')
         match = ulid_pattern.search(file_path)
         if match:
@@ -271,7 +222,7 @@ class FileUtilities:
         else:
             return None
 
-    def generate_vcf_file_paths(self, current_line_name, vcf_log, known_snps):
+    def generate_output_file_paths(self, experiment_dictionary):
         """
         Generate file paths based on the given parameters.
 
@@ -284,21 +235,19 @@ class FileUtilities:
         Tuple containing the generated file paths.
         """
         # Add output_path to experiment_dictionary. 
-        output_name_prefix = f"{vcf_log.ulid}_-{current_line_name}"
-        output_dir_path = os.path.join(OUTPUT_DIR, output_name_prefix)
-        output_prefix = os.path.join(output_dir_path, output_name_prefix)
+        for line, value in experiment_dictionary:
+            output_name_prefix = f"{self.log.ulid}_-{line}"
+            output_dir_path = self.process_path(OUTPUT_DIR, output_name_prefix)
+            output_prefix = os.path.join(output_dir_path, output_name_prefix)
+            value['output_dir_path'] = output_dir_path
+            value['output_prefix'] = output_prefix
         
         # Add vcftable_path to experiment_dictionary.
-        vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
-        vcf_table_path = os.path.join(OUTPUT_DIR, vcf_table_name)
-        
-        # Generate VCFgen.sh script path
-        vcfgen_script_path = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')
-        
-        # Generate the knownSnps .vcf file path
-        known_snps_path = os.path.join(REFERENCE_DIR, known_snps)
-        
-        return output_dir_path, output_prefix, vcf_table_path, vcfgen_script_path, known_snps_path
+        if value['vcf_table_path'] is None:
+            vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
+            value['vcf_table_path'] = self.process_path(OUTPUT_DIR, vcf_table_name)
+       
+        return experiment_dictionary
 
 class ThaleBSASQLDB:
     """

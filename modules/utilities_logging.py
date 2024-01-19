@@ -80,6 +80,7 @@ class LogHandler:
         #Add some initilization notes at the beginning of every log
         self.print(
         f"""
+log name: {name}
 ulid: {self.ulid}
 log filename: {self.log_filename}
 log path: {self.log_path}
