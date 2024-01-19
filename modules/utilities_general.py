@@ -48,38 +48,38 @@ class FileUtilities:
                 bulk_type = parts[-3]
                 pairedness = 'paired-end' if '_1' or '_2' in filename else 'single-read'
 
+                key = line_name
                 self.log.success(f"""{filename} parsed. 
-                line_name:{line_name}
+                key:{key}
+                allele:{allele}
                 segregation_type:{segregation_type}
-                bulk_type:{bulk_type}
                 pairedness:{pairedness}
-                """)
-                if line_name not in expt_dict:
-                    expt_dict[line_name] = {
-                        'segregation_type': segregation_type,
+            """)
+                if key not in expt_dict:
+                    expt_dict[key] = {
+                        'allele': allele,
                         'wt_input': [],
                         'mu_input': [],
                         'pairedness': pairedness
                     }
-                
                 file_path = os.path.join(INPUT_DIR, filename)
 
-                if bulk_type == 'wt':
-                    expt_dict[line_name]['wt_input'].append(file_path)
-                elif bulk_type == 'mu':
-                    expt_dict[line_name]['mu_input'].append(file_path)
-            
-            for line_name, details in expt_dict.items():
-                details['wt_input'] = '" "'.join(sorted(details['wt_input']))
-                wt_input = details['wt_input']
-                details['mu_input'] = '" "'.join(sorted(details['mu_input']))
+                if 'wt' in segregation_type or 'mu' in segregation_type:
+                    bulk_list = expt_dict[key].get(segregation_type, [])
+                    bulk_list.append(file_path)
+                    expt_dict[key][segregation_type + "_input"] = sorted(
+                        bulk_list, key=lambda x: int(x.split('_')[-1][0])
+                    )
+                    input_files = ' '.join(expt_dict[key][segregation_type + "_input"])
+                    expt_dict[key][segregation_type + "_input"] = f'"{input_files}"'
+                    del expt_dict[key][segregation_type]
 
             self.log.success(f'Experiment dictionary generated.')
             return expt_dict
 
-        except Exception as e:
-            self.log.fail(f"Error while detecting experiment details: {e}")
-            return {}
+            except Exception as e:
+                self.log.fail(f"Error while detecting experiment details: {e}")
+                return {}
 
 
         except Exception as e:
@@ -135,7 +135,6 @@ class FileUtilities:
         Returns: 
         Pandas dataframe containing the information loaded from current_line_table_path
         """
-
         self.log.attempt(f"Attempting to load VCF table for line {current_line_name}")
         try:
             vcf_df = pd.read_csv(current_line_table_path, sep="\t")
@@ -209,64 +208,21 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
-    def create_experiment_dictionary(self, line_name, segregation_type, vcf_table)->dict:
-        '''
-        Creates an experiment dictionary from line_name and vcf_table input. 
-        Used to create experiment dictionaries when automatic experiment 
-        detection is not initiated. 
+    def process_path(self, directory: str, path: str) -> str:
+        if os.path.exists(path):
+            self.log.note(f'Path found and assigned: {path}')
+            return path
+        else:
+            self.log.note(f"path:{path} does not exist. Checking for it in {directory}..")
+            dir_path = os.path.join(directory, path)
+            if os.path.exists(input_path):
+                self.log.note(f" path:{dir_path} found! Assigning path value.")
+                return dir_path
+            else:
+                self.log.fail(f'path not found as {dir_path} or the hard coded ({path}). Aborting')
+                return None
 
-        Args:
-        line_name(str) 
-        vcf_table(str)
-
-        Returns: 
-        experiment_dictionary(dict)-
-            line_name:
-                [line_name][vcf_table]:
-                [line_name][vcf_table_path]:
-                [line_name][core ulid]:
-                [line_name][vcf table ulid]: (if the file is labeled),
-        '''
-        self.log.attempt('Parsing arguments to create experiment_dictionary')
-        try:
-            self.log.note(f'line name parsed: {line_name}')
-            self.log.note(f'vcf table parsed: {vcf_table}')
-            
-            core_ulid = self.log.ulid
-            self.log.note(f'core_ulid:{core_ulid}')
-            
-            vcf_table_path = os.path.join(INPUT_DIR, vcf_table)
-            self.log.note(f'vcf table path created: {vcf_table_path}')
-            
-            vcf_ulid = self._extract_ulid_from_file_path(vcf_table_path)
-            self.log.note(f'vcf ulid parsed:{vcf_ulid}')
-                
-        except Exception as e:
-            self.log.fail(f'There was an error parsing the line name and vcf table path: {e}')
-            quit()
-
-        self.log.attempt(f'Checking if {vcf_table_path} exists...')
-        try:
-            if os.path.exists(vcf_table_path):
-                self.log.success(f'Path exists: {vcf_table_path}')
-                experiment_dictionary = {}
-                experiment_dictionary[line_name] = {
-                    'vcf_table_path': vcf_table_path,
-                    'segregation_type': segregation_type,
-                    'vcf_ulid': vcf_ulid,
-                    'core_ulid' : core_ulid
-                }
-                return experiment_dictionary 
-            else: 
-                self.log.fail(f"{key} is not in the approved_inputs for experiment dictionary creation. Dictionary or arguments may need updating.")
-
-        experiment_dict = {
-            line : details
-        }
-
-    return experiment_dict
-
-    def _extract_ulid_from_file_path(self, file_path):
+    def extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')
         match = ulid_pattern.search(file_path)
         if match:
@@ -274,7 +230,7 @@ class FileUtilities:
         else:
             return None
 
-    def generate_vcf_file_paths(self, current_line_name, vcf_log, known_snps):
+    def generate_output_file_paths(self, experiment_dictionary):
         """
         Generate file paths based on the given parameters.
 
@@ -287,21 +243,19 @@ class FileUtilities:
         Tuple containing the generated file paths.
         """
         # Add output_path to experiment_dictionary. 
-        output_name_prefix = f"{vcf_log.ulid}_-{current_line_name}"
-        output_dir_path = os.path.join(OUTPUT_DIR, output_name_prefix)
-        output_prefix = os.path.join(output_dir_path, output_name_prefix)
+        for line, value in experiment_dictionary:
+            output_name_prefix = f"{self.log.ulid}_-{line}"
+            output_dir_path = self.process_path(OUTPUT_DIR, output_name_prefix)
+            output_prefix = os.path.join(output_dir_path, output_name_prefix)
+            value['output_dir_path'] = output_dir_path
+            value['output_prefix'] = output_prefix
         
         # Add vcftable_path to experiment_dictionary.
-        vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
-        vcf_table_path = os.path.join(OUTPUT_DIR, output_name_prefix, vcf_table_name)
-        
-        # Generate VCFgen.sh script path
-        vcfgen_script_path = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')
-        
-        # Generate the knownSnps .vcf file path
-        known_snps_path = os.path.join(REFERENCE_DIR, known_snps)
-        
-        return output_dir_path, output_prefix, vcf_table_path, vcfgen_script_path, known_snps_path
+        if value['vcf_table_path'] is None:
+            vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
+            value['vcf_table_path'] = self.process_path(OUTPUT_DIR, vcf_table_name)
+       
+        return experiment_dictionary
 
 class ThaleBSASQLDB:
     """
