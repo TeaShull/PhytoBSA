@@ -88,63 +88,41 @@ class FileUtilities:
             self.log.fail(f"Error while detecting experiment details: {e}")
             return {}
 
-    def check_vcfgen_variables(self, reference_genome_name=None, snpEff_species_db=None, reference_genome_source=None, threads_limit=None, cleanup=None, known_snps=None):
+    def check_vcf_gen_variables(self, experiment_dict: dict)-> dict:
         """
         Checks if the user has provided all the necessary variables
+        experiment_dictionary will be populated with the contents of 
+        vcf_gen_variables, if the user has not assigned any variables. 
 
+        Please update this list if you add any new variables to vcf_gen_variables
         Args:
-        reference_genome_name
-        snpEff_species_db
-        reference_genome_source
-        threads_limit
-        cleanup
-        known_snps
-
+            experiment_dict:
+                key:
+                    reference_genome_name
+                    snpEff_species_db
+                    reference_genome_source
+                    threads_limit
+                    cleanup
+                    known_snps
+                    call_variants_in_parallel
         Returns:
-        Variables sourced from variables.py module if they are missing
+        Variables sourced from settings.vcf_gen_variables module if they are missing
         True if variables are all accounted for
         """
-        self.log.attempt('Checking if runtime variables for VCFgen.sh subprocess are assigned...')
         try:
-            if any(var is None for var in [reference_genome_name,
-                                           snpEff_species_db,
-                                           reference_genome_source,
-                                           threads_limit,
-                                           cleanup,
-                                           known_snps]):
-                self.log.warning("Not all required variables are assigned.")
-                self.log.attempt('attempting to source variables from variables.py...')
-
-                import settings.vcf_gen_variables as variables
-
-                reference_genome_name = reference_genome_name or variables.reference_genome_name
-                snpEff_species_db = snpEff_species_db or variables.snpEff_species_db
-                reference_genome_source = reference_genome_source or variables.reference_genome_source
-                threads_limit = threads_limit or variables.threads_limit
-                cleanup = cleanup or variables.cleanup
-                known_snps = known_snps or variables.known_snps
-
-                if any(var is None for var in [reference_genome_name,
-                                               snpEff_species_db,
-                                               reference_genome_source,
-                                               threads_limit,
-                                               cleanup,
-                                               known_snps]):
-                    self.log.fail("""
-                        There was a critical failure sourcing variables from user input and variables.py
-                        Check the variables you pass to the command line or organize them in the variables module
-                    """)
-                else:
-                    return (reference_genome_name,
-                            snpEff_species_db,
-                            reference_genome_source,
-                            threads_limit,
-                            cleanup,
-                            known_snps)
-            else:
-                self.log.success("All variables were provided. Proceeding...")
-                return None
-
+            import settings.vcf_gen_variables as var
+            for line, details in experiment_dict.items():
+                for key, value in details.items():
+                    if value:
+                        self.log.note(f'Variable set by user|{key}:{value}')
+                    if value is None:
+                        try:
+                            self.log.note(f'{key} variable not set. Sourcing from settings/vcf_gen_variables...')
+                            sub_dict[key] = var.__dict__[key]
+                            self.log.note(f'Variable assigned|{key}:{sub_dict[key]}')
+                        except Exception as e:
+                            self.log.fail(f'Aborting. Setting variable {key} failed: {e}')
+            return experiment_dict
         except Exception as e:
             self.log.fail(f'There was an error while checking if variables for VCFgen.sh have been assigned: {e}')
 
@@ -233,59 +211,57 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
-    def create_experiment_dictionary(self, line_name, vcf_table)->dict:
-        '''
-        Creates an experiment dictionary from line_name and vcf_table input. 
-        Used to create experiment dictionaries when automatic experiment 
-        detection is not initiated. 
+    
+    def create_experiment_dictionary(self, line, **kwargs):
+        approved_inputs = [
+            'allele',
+            'pairedness',
+            'reference_genome_name',
+            'reference_genome_source',
+            'cleanup',
+            'vcf_table_path',
+            'threads_limit',
+            'wt_input',
+            'mu_input',
+            'known_snps_path',
+            'call_variants_in_parallel',
+            'snpEff_species_db',
+            'core_ulid',
+            'vcf_ulid',
+            'analysis_ulid'
+        ]
 
-        Args:
-        line_name(str) 
-        vcf_table(str)
-
-        Returns: 
-        experiment_dictionary(dict)-
-            line_name:
-                [line_name][vcf_table]:
-                [line_name][vcf_table_path]:
-                [line_name][core ulid]:
-                [line_name][vcf table ulid]: (if the file is labeled),
-        '''
-        self.log.attempt('Parsing arguments to create experiment_dictionary')
-        try:
-            self.log.note(f'line name parsed: {line_name}')
-            self.log.note(f'vcf table parsed: {vcf_table}')
-            
-            core_ulid = self.log.ulid
-            self.log.note(f'core_ulid:{core_ulid}')
-            
-            vcf_table_path = os.path.join(INPUT_DIR, vcf_table)
-            self.log.note(f'vcf table path created: {vcf_table_path}')
-            
-            vcf_ulid = self._extract_ulid_from_file_path(vcf_table_path)
-            self.log.note(f'vcf ulid parsed:{vcf_ulid}')
-                
-        except Exception as e:
-            self.log.fail(f'There was an error parsing the line name and vcf table path: {e}')
-            quit()
-
-        self.log.attempt(f'Checking if {vcf_table_path} exists...')
-        try:
-            if os.path.exists(vcf_table_path):
-                self.log.success(f'Path exists: {vcf_table_path}')
-                experiment_dictionary = ExperimentDictionary()
-                experiment_dictionary[line_name] = {
-                    'vcf_table_path': vcf_table_path,
-                    'vcf_ulid': vcf_ulid,
-                    'core_ulid' : core_ulid
-                }
-                return experiment_dictionary 
-            else: 
-                self.log.fail(f'vcf table path [{vcf_table_path}] does not exist.')
-                quit()
+        path_variables =[
+            'vcf_table_path',
+            'known_snps_path'
+        ]
         
-        except Exception as e:
-            self.log.fail(f'There was an error during experiment_dictionary creation:{e}')
+        details = {}
+
+        if not line:
+            self.log.fail(f'line name can not be empty - it is required to create an experiment dictionary! Aborting')
+
+        for key, value in kwargs.items():
+            if key in approved_inputs and path_variables:
+                if os.path.exists(value):
+                    details[key] = value  # Key-value pair in the subdictionary
+                else:
+                    self.log.note(f"path:{value} does not exist. Checking for it in {INPUT_DIR}..")
+                    input_path = os.path.join(INPUT_DIR, value)
+                    if os.path.exists(input_path):
+                        self.log.note(f" path:{input_path} found! Assigning path value to dictionary")
+                    else: 
+                        self.log.fail(f'{value} not found in {INPUT_DIR} or as a hard coded path. Aborting')
+            elif key in approved_inputs:
+                details[key] = value
+            else: 
+                self.log.fail(f"{key} is not in the approved_inputs for experiment dictionary creation. Dictionary or arguments may need updating.")
+
+        experiment_dict = {
+            line : details
+        }
+
+    return experiment_dict
 
     def _extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')

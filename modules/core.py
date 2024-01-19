@@ -34,26 +34,9 @@ class ThaleBSAParentFunctions:
                 self.log.warning('Experiment details undefined. Auto generating from files in ./input folder')
                 file_utils = FileUtilities(self.log)
                 experiment_dictionary = file_utils.experiment_detector()
+                experiment_dictionary = check_vcf_gen_variables(experiment_dictionary)
             else:
                 self.log.note('Experiment details provided. Checking other variables...')
-
-            check_variables=file_utils.check_vcfgen_variables(
-                reference_genome_name, 
-                snpEff_species_db, 
-                reference_genome_source, 
-                threads_limit, 
-                cleanup, 
-                known_snps
-            ) 
-            if check_variables is not None:
-                (
-                    reference_genome_name, 
-                    snpEff_species_db, 
-                    reference_genome_source, 
-                    threads_limit, 
-                    cleanup, 
-                    known_snps
-                ) = check_variables
 
         except Exception as e:
             self.log.fail(f'Parsing variables for subprocess_VCFgen.sh failed:{e}')
