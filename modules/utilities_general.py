@@ -89,60 +89,38 @@ class FileUtilities:
     def check_vcfgen_variables(self, reference_genome_name=None, snpEff_species_db=None, reference_genome_source=None, threads_limit=None, cleanup=None, known_snps=None):
         """
         Checks if the user has provided all the necessary variables
+        experiment_dictionary will be populated with the contents of 
+        vcf_gen_variables, if the user has not assigned any variables. 
 
+        Please update this list if you add any new variables to vcf_gen_variables
         Args:
-        reference_genome_name
-        snpEff_species_db
-        reference_genome_source
-        threads_limit
-        cleanup
-        known_snps
-
+            experiment_dict:
+                key:
+                    reference_genome_name
+                    snpEff_species_db
+                    reference_genome_source
+                    threads_limit
+                    cleanup
+                    known_snps
+                    call_variants_in_parallel
         Returns:
-        Variables sourced from variables.py module if they are missing
+        Variables sourced from settings.vcf_gen_variables module if they are missing
         True if variables are all accounted for
         """
-        self.log.attempt('Checking if runtime variables for VCFgen.sh subprocess are assigned...')
         try:
-            if any(var is None for var in [reference_genome_name,
-                                           snpEff_species_db,
-                                           reference_genome_source,
-                                           threads_limit,
-                                           cleanup,
-                                           known_snps]):
-                self.log.warning("Not all required variables are assigned.")
-                self.log.attempt('attempting to source variables from variables.py...')
-
-                import settings.vcf_gen_variables as variables
-
-                reference_genome_name = reference_genome_name or variables.reference_genome_name
-                snpEff_species_db = snpEff_species_db or variables.snpEff_species_db
-                reference_genome_source = reference_genome_source or variables.reference_genome_source
-                threads_limit = threads_limit or variables.threads_limit
-                cleanup = cleanup or variables.cleanup
-                known_snps = known_snps or variables.known_snps
-
-                if any(var is None for var in [reference_genome_name,
-                                               snpEff_species_db,
-                                               reference_genome_source,
-                                               threads_limit,
-                                               cleanup,
-                                               known_snps]):
-                    self.log.fail("""
-                        There was a critical failure sourcing variables from user input and variables.py
-                        Check the variables you pass to the command line or organize them in the variables module
-                    """)
-                else:
-                    return (reference_genome_name,
-                            snpEff_species_db,
-                            reference_genome_source,
-                            threads_limit,
-                            cleanup,
-                            known_snps)
-            else:
-                self.log.success("All variables were provided. Proceeding...")
-                return None
-
+            import settings.vcf_gen_variables as var
+            for line, details in experiment_dict.items():
+                for key, value in details.items():
+                    if value:
+                        self.log.note(f'Variable set by user|{key}:{value}')
+                    if value is None:
+                        try:
+                            self.log.note(f'{key} variable not set. Sourcing from settings/vcf_gen_variables...')
+                            sub_dict[key] = var.__dict__[key]
+                            self.log.note(f'Variable assigned|{key}:{sub_dict[key]}')
+                        except Exception as e:
+                            self.log.fail(f'Aborting. Setting variable {key} failed: {e}')
+            return experiment_dict
         except Exception as e:
             self.log.fail(f'There was an error while checking if variables for VCFgen.sh have been assigned: {e}')
 
@@ -280,11 +258,13 @@ class FileUtilities:
                 }
                 return experiment_dictionary 
             else: 
-                self.log.fail(f'vcf table path [{vcf_table_path}] does not exist.')
-                quit()
-        
-        except Exception as e:
-            self.log.fail(f'There was an error during experiment_dictionary creation:{e}')
+                self.log.fail(f"{key} is not in the approved_inputs for experiment dictionary creation. Dictionary or arguments may need updating.")
+
+        experiment_dict = {
+            line : details
+        }
+
+    return experiment_dict
 
     def _extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')
