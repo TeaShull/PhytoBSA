@@ -20,7 +20,7 @@ threads_limit = '20'
 cleanup = "False"
 
 # vcf of known background snps. 
-# Drop the file into the ./references folder. just list the file name here.
+# Drop the file into the ./references folder or give a hard coded path.
 # Makes your final data much more compact and clean. 
 known_snps_path = 'Arabidopsis_thaliana.vcf'
 
