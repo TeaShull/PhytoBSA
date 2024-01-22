@@ -77,7 +77,7 @@ class FileUtilities:
             self.log.success(f'Experiment dictionary generated.')
             return expt_dict
 
-            except Exception as e:
+            except Exception as e:s
                 self.log.fail(f"Error while detecting experiment details: {e}")
                 return {}
 
