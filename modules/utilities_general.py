@@ -6,7 +6,31 @@ import re
 import sqlite3
 
 class DictionaryUtilities:
-    #Utility class: Line dictionary creation and storage. 
+    '''
+    Utility class: Line dictionary creation and storage. Line_dict is a nested
+    dictionary, with all details under the primary key of "line"
+    
+    All processes which alter line_dict occur within this class. 
+
+    [NOTE] on the line_dict usage and structure
+    I recognize that I could simply store the details as class variables, but I
+    haven't found an nice way (i'm sure it exists) to iterate over "lines" for 
+    bulk experiment runs. this structure allows the program to iterate over as 
+    many "line_names" as are provided, facilitating fully automated bulk 
+    processing of experiments. 
+
+
+        [EXAMPLE line_dict]
+        line_dict = {
+            'line_name': {
+                'segregation_type': '...',
+                'wt_input': ['...', '...'],
+                'mu_input': ['...', '...'],
+                'pairedness': '...',
+                ...
+            }
+        }
+        '''
     def __init__(self, logger):
         self.log = logger
 
@@ -37,7 +61,7 @@ class DictionaryUtilities:
             'known_snps_path'
         ]
 
-    def run_detector(self) -> dict:
+    def experiment_detector(self) -> dict:
         '''
         Detects potential BSA experiments in the inputs folder if files are 
         named according to the conventions outlined in the README
@@ -77,6 +101,7 @@ class DictionaryUtilities:
                 bulk_type:{bulk_type}
                 pairedness:{pairedness}
                 """)
+
                 if line_name not in self.line_dict:
                     self.line_dict[line_name] = {
                         'segregation_type': segregation_type,
@@ -94,20 +119,20 @@ class DictionaryUtilities:
             
             for line_name, details in self.line_dict.items():
                 details['wt_input'] = '" "'.join(sorted(details['wt_input']))
-                wt_input = details['wt_input']
                 details['mu_input'] = '" "'.join(sorted(details['mu_input']))
 
             self.log.success(f'Experiment dictionary generated.')
 
         except Exception as e:
             self.log.fail(f"Error while detecting experiment details: {e}")
-            return {}
 
     def populate_line_dict(self, line, **kwargs)-> dict:
         '''
         Organizes user inputs into a dictionary. 
-        If the input needs to be a path, it checks if it exists. If it doesn't
-        the function will check INPUT_DIR for the file and correct the pathing.
+        If the input needs to be a path, it checks if it exists. 
+        If it doesn't exist, the function will check INPUT_DIR or REFERENCE_DIR 
+        (depending if the path variable name is in "self.in_path_variables" or 
+        "self.ref_path_variables" for the file and correct the pathing.
 
         input: line (which is the primary key for the dict, and is required)
         and user arguments passed as variables.
@@ -127,15 +152,19 @@ class DictionaryUtilities:
         try:
             if not line:
                 self.log.fail(f'line name can not be empty - it is required to create a line dictionary! Aborting')
+            
             for key, details in kwargs.items():
                 if key in self.approved_inputs and self.in_path_variables:
                     path = fileutils.process_path(INPUT_DIR, details[key])
                     details[key] = path
+                
                 elif key in self.approved_inputs and self.ref_path_variables:
                     path = fileutils.process_path(REFERENCE_DIR, details[key])
+                
                 elif key in self.approved_inputs:
                     details[key] = details
                     self.log.note(f'Arg to line dictionary| {key}:{details[key]}')
+                
                 else: 
                     self.log.fail(f"{key} is not in the approved_inputs for line dictionary creation. Dictionary or arguments may need updating.")
 
@@ -176,16 +205,21 @@ class DictionaryUtilities:
             import settings.vcf_gen_variables as var
             for line, details in experiment_dict.items():
                 for key, value in details.items():
+                    
                     if value:
                         self.log.note(f'Variable set by user|{key}:{value}')
+                    
                     if value is None:
                         try:
                             self.log.note(f'{key} variable not set. Sourcing from settings/vcf_gen_variables...')
                             sub_dict[key] = var.__dict__[key]
                             self.log.note(f'Variable assigned|{key}:{sub_dict[key]}')
+                    
                         except Exception as e:
                             self.log.fail(f'Aborting. Setting variable {key} failed: {e}')
+            
             return experiment_dict
+        
         except Exception as e:
             self.log.fail(f'There was an error while checking if variables for VCFgen.sh have been assigned: {e}')
 
@@ -231,19 +265,23 @@ class DictionaryUtilities:
         try:
             for key, value in self.line_dict.items():
                 info_filename= f"{self.log.ulid}_-{key}_experiment_details.txt"
+        
                 with open(info_filename, "w") as file:
                     file.write(f"Key: {key}\n")
                     file.write(f"Allele: {value['allele']}\n")
                     file.write(f"Pairedness: {value['pairedness']}\n")
                     file.write(f"WT Files:\n")
-                    for wt_file in value['wt']:
+        
+                    for wt_file in value['wt_input']:
                         file.write(f"- {wt_file}\n")
                     file.write(f"Mu Files:\n")
-                    for mu_file in value['mu']:
+        
+                    for mu_file in value['mu_input']:
                         file.write(f"- {mu_file}\n")
                     file.write("\n")
                     file.write(f"vcf log path: {value['vcf_log_path']}")
                     file.write(f"analysis log path: {value['analysis_log_path']}")
+        
             self.log.success("Experiment details saved successfully.")
         
         except Exception as e:
@@ -253,71 +291,6 @@ class FileUtilities:
     # Utility class: Handling file operations and inputs. 
     def __init__(self, logger):
         self.log = logger 
-
-    def experiment_detector(self)->dict:
-        '''
-        Detects potential BSA experiments in the inputs folder if files are 
-        named according to the conventions outlined in the README
-        
-        For paired-end:
-        <line_name>.<R or D>_<read number>.<wt or mu>.fq.gz  
-        
-        For single-read:
-        <line_name>.<R or D>.<wt or mu>.fq.gz
-
-        Args: None
-
-        Returns: self.line_dict containing the detected information. If
-        successful, all information needed to generate vcf files and run analysis
-        will have been parsed. 
-        '''
-        self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
-        try:
-            expt_dict = {}
-            for filename in os.listdir(INPUT_DIR):
-                parts = filename.split('.')
-                self.log.attempt(f'Parsing {filename}')
-                line_name = parts[0]
-                allele = parts[1]
-                if '_1' in allele:
-                    allele = allele.rstrip('_1')
-                if '_2' in allele:
-                    allele = allele.rstrip('_2')
-                segregation_type = parts[-3]
-                pairedness = 'paired-end' if '_1' or '_2' in filename else 'single-read'
-
-                key = line_name
-                self.log.success(f"""{filename} parsed. 
-                key:{key}
-                allele:{allele}
-                segregation_type:{segregation_type}
-                pairedness:{pairedness}
-            """)
-                if key not in expt_dict:
-                    expt_dict[key] = {
-                        'allele': allele,
-                        'wt_input': [],
-                        'mu_input': [],
-                        'pairedness': pairedness
-                    }
-                file_path = os.path.join(INPUT_DIR, filename)
-
-                if 'wt' in segregation_type or 'mu' in segregation_type:
-                    bulk_list = expt_dict[key].get(segregation_type, [])
-                    bulk_list.append(file_path)
-                    expt_dict[key][segregation_type + "_input"] = sorted(
-                        bulk_list, key=lambda x: int(x.split('_')[-1][0])
-                    )
-                    input_files = ' '.join(expt_dict[key][segregation_type + "_input"])
-                    expt_dict[key][segregation_type + "_input"] = f'"{input_files}"'
-                    del expt_dict[key][segregation_type]
-
-            self.log.success(f'Experiment dictionary generated.')
-            return expt_dict
-
-            except Exception as e:s
-                self.log.fail(f"Error while detecting experiment details: {e}")
-                return {}
 
     def load_vcf_table(self, current_line_table_path, current_line_name)->pd.DataFrame:
         """
