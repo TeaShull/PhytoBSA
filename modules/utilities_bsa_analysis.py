@@ -18,7 +18,7 @@ wild-type and mutant bulks are stored here.
 """
 
 class BSAAnalysisUtilities:
-    def __init__(self, current_line_name, vcf_ulid, logger):
+    def __init__(self, current_line_name, vcf_df, vcf_ulid, logger):
         self.current_line_name = current_line_name
         self.log = logger
         self.vcf_ulid = vcf_ulid
@@ -45,7 +45,7 @@ class BSAAnalysisUtilities:
         self.smooth_edges_bounds = 15
         self.shuffle_iterations = 1000
 
-    def drop_indels(self, vcf_df: pd.DataFrame) -> pd.DataFrame:
+    def drop_indels(self):
         """
         Drops insertion/deletions from VCF dataframe.
         
@@ -56,14 +56,10 @@ class BSAAnalysisUtilities:
         Returns: 
         VCF dataframe with no indels
         """
-        filtered_vcf_df = (
-            vcf_df.loc[~(vcf_df["ref"].str.len() > 1) 
-            & ~(vcf_df["alt"].str.len() > 1)]
-        )
-        return filtered_vcf_df
+        self.vcf_df.loc[~(self.vcf_df["ref"].str.len() > 1) 
+            & ~(self.vcf_df["alt"].str.len() > 1)]
 
-
-    def drop_na(self, vcf_df: pd.DataFrame) -> pd.DataFrame:
+    def drop_na(self):
         """
         Drops rows with NaN values from VCF dataframe.
         
@@ -71,12 +67,12 @@ class BSAAnalysisUtilities:
         vcf_df(pd.DataFrame)
         VCF dataframe
         
-        Returns: 
+        Produces: 
         VCF dataframe with no NaN values
         """
-        return vcf_df.dropna(axis=0, how='any', subset=["ratio"])
+        self.vcf_df.dropna(axis=0, how='any', subset=["ratio"])
 
-    def filter_genotypes(self, allele: str, vcf_df: pd.DataFrame) -> pd.DataFrame:
+    def filter_genotypes(self, segregation_type: str):
         """
         Filter genotypes in the 'mu:wt_GTpred' column of a DataFrame based on 
         the specified allele.
@@ -87,42 +83,35 @@ class BSAAnalysisUtilities:
             df (pd.DataFrame): The input DataFrame containing the genotypes.
 
         Returns:
-            pandas.DataFrame: A filtered DataFrame containing only the rows with matching genotypes.
+            pandas.DataFrame: A filtered DataFrame containing only the rows with 
+            matching genotypes.
 
             [IMPORTANT NOTE]
             #0/1:0/1 is included because of occasianal leaky genotypying by GATK 
             haplotype caller. Nearly 100% of negative delta SNP values arise from 
             0/1:0/1 situations. To retain information without losing data that
-            may help fit GAM or LOESS, we will instead cut the negative values
-            out after calculating the delta allele
-
-            [IMPORTANT NOTE]
-            #0/1:0/1 is included because of occasianal leaky genotypying by GATK 
-            haplotype caller. Nearly 100% of negative delta SNP values arise from 
-            0/1:0/1 situations. To retain information without losing data that
-            may help fit GAM or LOESS, we will instead cut the negative values
-            out after calculating the delta allele
+            may help fit GAM or LOESS, we will retain 0/1:0/1 loci and instead 
+            cut the negative values out after calculating the delta allele
+            see: self.drop_genos_with_negative_ratios
         """
         self.log.attempt('Attempting to filter genotypes based on segrigation pattern...')
         try:
-            if allele == 'R':
+            if segregation_type == 'R':
                 self.log.note('Filtering genotypes based an a recessive segrigation pattern')
                 seg_filter = ['1/1:0/1', '0/1:0/0', '0/1:0/1']
-            elif allele == 'D':
+            elif segregation_type == 'D':
                 self.log.note('Filtering genotypes based an a dominant segrigation pattern')
                 seg_filter = ['0/1:0/0', '1/1:0/0', '0/1:0/1']  
             else: 
-                self.log.fail(f'Allele type:{allele} is not a valid selection! Aborting.')
+                self.log.fail(f'Allele type:{segregation_type} is not a valid selection! Aborting.')
             
-            filtered_vcf_df = vcf_df[vcf_df['mu:wt_GTpred'].isin(seg_filter)]
-            
+            self.vcf_df[self.vcf_df['mu:wt_GTpred'].isin(seg_filter)]
             self.log.success('Genotypes filtured based on segrigation pattern')
-            return filtered_vcf_df
         
         except Exception as e:
             self.log.fail(f'There was an error while filtering genotypes:{e}')        
 
-    def filter_ems_mutations(self, vcf_df: pd.DataFrame) -> pd.DataFrame:
+    def filter_ems_mutations(self):
         """
         Filter mutations likely to be from EMS for analysis and return a filtered DataFrame.
 
@@ -132,10 +121,9 @@ class BSAAnalysisUtilities:
         Returns:
             pd.DataFrame: A filtered DataFrame containing the mutations.
         """
-        filtered_vcf_df = vcf_df[(vcf_df['ref'].isin(['G', 'C', 'A', 'T'])) & (vcf_df['alt'].isin(['A', 'T', 'G', 'C']))]
-        return filtered_vcf_df
+        self.vcf_df[(self.vcf_df['ref'].isin(['G', 'C', 'A', 'T'])) & (self.vcf_df['alt'].isin(['A', 'T', 'G', 'C']))]
 
-    def drop_genos_with_negative_ratios(self, vcf_df):
+    def drop_genos_with_negative_ratios(self):
         '''
         Removes those genotypes that give rise to negative delta SNP ratios.
         These genotypes are nearly always the result of 0/1:0/1 situations, 
@@ -145,12 +133,12 @@ class BSAAnalysisUtilities:
         '''
         self.log.attempt('Trying to remove Genotypes that produce negative delta SNP ratios')
         try: 
-            return vcf_df[vcf_df['ratio'] >= 0]
+            self.vcf_df[self.vcf_df['ratio'] >= 0]
             self.log.success('Genotypes that produce negative delta SNP ratios removed.')
         except Exception as e:
             self.log.fail(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
     
-    def calculate_delta_snp_and_g_statistic(self, vcf_df: pd.DataFrame)->pd.DataFrame:
+    def calculate_delta_snp_and_g_statistic(self):
         """
         Calculate delta SNP ratio and G-statistic
         
@@ -165,17 +153,17 @@ class BSAAnalysisUtilities:
         self.log.attempt(f"Initialize calculations for delta-SNP ratios and G-statistics")
         try:
             suppress = False
-            vcf_df['ratio'] = self._delta_snp_array(
-                vcf_df['wt_ref'], vcf_df['wt_alt'], 
-                vcf_df['mu_ref'], vcf_df['mu_alt'],
+            self.vcf_df['ratio'] = self._delta_snp_array(
+                self.vcf_df['wt_ref'], self.vcf_df['wt_alt'], 
+                self.vcf_df['mu_ref'], self.vcf_df['mu_alt'],
                 suppress
             )
-            vcf_df['G_S'] = self._g_statistic_array(
-                vcf_df['wt_ref'], vcf_df['wt_alt'], 
-                vcf_df['mu_ref'], vcf_df['mu_alt'],
+            self.vcf_df['G_S'] = self._g_statistic_array(
+                self.vcf_df['wt_ref'], self.vcf_df['wt_alt'], 
+                self.vcf_df['mu_ref'], self.vcf_df['mu_alt'],
                 suppress
             )
-            vcf_df['RS_G'] = vcf_df['ratio'] * vcf_df['G_S']
+            self.vcf_df['RS_G'] = self.vcf_df['ratio'] * self.vcf_df['G_S']
             self.log.success("Calculation of delta-SNP ratios and G-statistics were successful.")
             return vcf_df
         except Exception as e:
@@ -247,7 +235,7 @@ class BSAAnalysisUtilities:
             self.log.fail(f"Error in g_statistic_array for {self.current_line_name}: {e}")
             return None
 
-    def loess_smoothing(self, vcf_df)->pd.DataFrame:
+    def loess_smoothing(self)->pd.DataFrame:
         """
         LOESS smoothing of ratio and G-stat by chromosome
         
@@ -280,7 +268,7 @@ class BSAAnalysisUtilities:
         df_list = []
         chr_facets = df["chr"].unique()
 
-        def smooth_single_chr(df_chr, chr):
+        def _smooth_single_chr(df_chr, chr):
             """
             Input: df_chr chunk, extends the data 15 data values in each
             direction (to mitigate LOESS edge bias), fits smoothed values and 
@@ -341,48 +329,47 @@ class BSAAnalysisUtilities:
         try:
             for i in chr_facets:
                 df_chr = df[df['chr'] == i]
-                result = smooth_single_chr(df_chr, i)
+                result = _smooth_single_chr(df_chr, i)
                 if result is not None:
                     df_list.append(result)
             self.log.success('Chromosome facets LOESS smoothed')
-            return pd.concat(df_list)
+            self.vcf_df =  pd.concat(df_list)
         except Exception as e:
             self.log.fail(f'There was an error during LOESS smoothing of chromosome facets:{e}')
 
-    def calculate_empirical_cutoffs(self, vcf_df)->tuple:
+    def calculate_empirical_cutoffs(self):
         """
         Calculate empirical cutoffs.
         
         Input: processed VCF dataframe.  
         
-        Returns: vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff as a tuple
+        produces:self.gs_cutoff, self.rsg_cutoff, self.rsg_y_cutoff 
         """
         self.log.attempt("Initialize calculation of empirical cutoffs")
         self.log.note(f"breaking geno/pheno association. iterations:{self.shuffle_iterations}, LOESS span:{self.loess_span}")
         
         try:
-            vcf_df_position = vcf_df[['pos']].copy()
-            vcf_df_wt = vcf_df[['wt_ref', 'wt_alt']].copy()
-            vcf_df_mu = vcf_df[['mu_ref', 'mu_alt']].copy()
+            vcf_df_position = self.vcf_df[['pos']].copy()
+            vcf_df_wt = self.vcf_df[['wt_ref', 'wt_alt']].copy()
+            vcf_df_mu = self.vcf_df[['mu_ref', 'mu_alt']].copy()
 
-            gs_cutoff, rsg_cutoff, rsg_y_cutoff = self._empirical_cutoff(
+            self.gs_cutoff, self.rsg_cutoff, self.rsg_y_cutoff = self._empirical_cutoff(
                 vcf_df_position, vcf_df_wt, vcf_df_mu 
             )
 
-            vcf_df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) 
-                or (x > gs_cutoff)) else 0 for x in vcf_df['G_S']
+            self.vcf_df['G_S_05p'] = [1 if (np.isclose(x, self.gs_cutoff) 
+                or (x > self.gs_cutoff)) else 0 for x in self.vcf_df['G_S']
             ]
-            vcf_df['RS_G_05p'] = [1 if (np.isclose(x, rsg_cutoff) 
-                or (x > rsg_cutoff)) else 0 for x in vcf_df['RS_G']
+            self.vcf_df['RS_G_05p'] = [1 if (np.isclose(x, self.rsg_cutoff) 
+                or (x > self.rsg_cutoff)) else 0 for x in self.vcf_df['RS_G']
             ]
-            vcf_df['RS_G_yhat_01p'] = [1 if (np.isclose(x, rsg_y_cutoff) 
-                or (x > rsg_y_cutoff)) else 0 for x in vcf_df['RS_G_yhat']
+            self.vcf_df['RS_G_yhat_01p'] = [1 if (np.isclose(x, self.rsg_y_cutoff) 
+                or (x > self.rsg_y_cutoff)) else 0 for x in self.vcf_df['RS_G_yhat']
             ]
-            return vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff
 
-            self.log.success(f"G-statistic cutoff = {gs_cutoff}.")
-            self.log.success(f"Ratio-scaled G-statistic cutoff = {rsg_cutoff}.")
-            self.log.success(f"LOESS smoothed Ratio-scaled G-statistic cutoff = {rsg_y_cutoff}.")
+            self.log.success(f"G-statistic cutoff = {self.gs_cutoff}.")
+            self.log.success(f"Ratio-scaled G-statistic cutoff = {self.rsg_cutoff}.")
+            self.log.success(f"LOESS smoothed Ratio-scaled G-statistic cutoff = {self.rsg_y_cutoff}.")
             self.log.success(f"Empirical cutoff via randomization for {self.current_line_name} completed.")
 
         except Exception as e:
@@ -453,7 +440,7 @@ class BSAAnalysisUtilities:
             self.log.fail(f"Error in empirical_cutoff for {self.current_line_name}: {e}")
             return None, None, None        
 
-    def sort_save_likely_candidates(self, vcf_df):
+    def sort_save_likely_candidates(self):
         """
         Identify likely candidates
         """
@@ -462,8 +449,8 @@ class BSAAnalysisUtilities:
 
         try:
             # Identify likely candidates using G-stat and smoothed ratio-scaled G-stat
-            self.vcf_df_likely_cands = self.vcf_df.loc[self.vcf_df['RS_G_yhat_01p'] == 1]
-            likely_cands_sorted = self.vcf_df_likely_cands.sort_values(
+            vcf_df_likely_cands = vcf_df.loc[self.vcf_df['RS_G_yhat_01p'] == 1]
+            likely_cands_sorted = vcf_df_likely_cands.sort_values(
                 by=['G_S', 'RS_G_yhat'],
                 ascending=[False, False],
                 na_position='first'
@@ -486,37 +473,33 @@ class BSAAnalysisUtilities:
         except Exception as e:
             self.log.fail(f"An error occurred during {self.current_line_name} table generation: {e}")
 
-    def generate_plots(self, vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff):
+    def generate_plots(self):
         """
         Generate and save plots. Plot scenarios are below
         Plot scenarios format:
         ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)
         """
         plot_scenarios = [
-            ('G_S', 'G-statistic', 'G-statistic', None, False),
-            ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', 
-                self.gs_cutoff, True
-            ),
-            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic',
-                self.rsg_cutoff, False
-             ),
+            ('G_S', 'G-statistic', 'G-statistic', self.gs_cutoff, False),
+            ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', None, True),
+            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', self.rsg_cutoff, False),
             ('ratio', 'Delta SNP ratio', 'Ratio', None, False),
             ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
-            ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True),
+            ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', self.rsg_y_cutoff, True),
         ]
 
         self.log.attempt(f"Attempting to produce and save plots for {self.current_line_name}...")
         
         try:
             for plot_scenario in plot_scenarios:
-                self._plot_data(vcf_df, *plot_scenario)
+                self._plot_data(*plot_scenario)
             
             self.log.delimiter(f"Results for {self.current_line_name} generated.")
 
         except Exception as e:
             self.log.fail(f"An error occurred while producing and saving plots: {e}")
         
-    def _plot_data(self, df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+    def _plot_data(self, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
         """
         Generate and save plots.
         """
@@ -525,8 +508,8 @@ class BSAAnalysisUtilities:
         self.log.attempt(f"Plot data and save plots for {self.current_line_name}...")
         try:
             mb_conversion_constant = 0.000001
-            df['pos_mb'] = df['pos'] * mb_conversion_constant
-            chart = ggplot(df, aes('pos_mb', y=y_column))
+            self.self.vcf_df['pos_mb'] = self.self.vcf_df['pos'] * mb_conversion_constant
+            chart = ggplot(self.vcf_df, aes('pos_mb', y=y_column))
             title = ggtitle(title_text)
             axis_x = xlab("Position (Mb)")
             axis_y = ylab(ylab_text)

@@ -7,7 +7,7 @@ from datetime import datetime
 import argparse
 
 from modules.core import ThaleBSAParentFunctions
-from modules.utilities_general import FileUtilities
+from modules.utilities_general import FileUtilities, DictionaryUtilities
 from modules.utilities_logging import LogHandler
 
 def parse_program_arguments():
@@ -39,7 +39,6 @@ def main():
     core_log.add_db_record()
     
     # Create instances of ThaleBSAParentFunctions and FileUtilities. 
-    parent_functions = ThaleBSAParentFunctions(core_log)
     file_utils = FileUtilities(core_log)
 
     # parse command line arguments
@@ -82,10 +81,14 @@ def main():
 
         if not args.analysis:
             core_log.attempt('No command line arguments given. Running automatic command line operations.')
-            experiment_dictionary = file_utils.experiment_detector()
-            experiment_dictionary = file_utils.check_vcf_gen_variables(experiment_dictionary)
-            experiment_dictionary = parent_functions.vcf_generation()
-            parent_functions.bsa_analysis(experiment_dictionary)
+            dict_utils = DictionaryUtilities(core_log) #Initiate dict_utils
+            dict_utils.experiment_detector() # Detect experiments in ./inputs
+            dict_utils.check_vcf_gen_variables() #Source variables from settings/vcf_gen_variables.py if not passed by user
+            dict_utils.generate_output_file_paths() #Generate neccissary output paths before running pipeline
+            
+            parent_functions = ThaleBSAParentFunctions(core_log, dict_utils)
+            parent_functions.vcf_generation() #Generate VCF file to analyze
+            parent_functions.bsa_analysis() #Analyze VCF file
             quit()
 
     except Exception as e:
