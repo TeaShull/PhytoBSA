@@ -2,46 +2,28 @@
 source subprocess_utilities_VCFgen.sh
 
 main() {
-    # declare -A passed_variables
-    # passed_variables["vcf_ulid"]=${1}
-    # passed_variables["current_line_name"]=${2}
-    # passed_variables["input_dir"]=${3}
-    # passed_variables["wt_input"]=${4}
-    # passed_variables["mu_input"]=${5}
-    # passed_variables["pairedness"]=${6}
-    # passed_variables["output_dir_path"]=${7}
-    # passed_variables["output_prefix"]=${8}
-    # passed_variables["vcf_table_path"]=${9}
-    # passed_variables["reference_dir"]=${10}
-    # passed_variables["reference_genome_name"]=${11}
-    # passed_variables["snpEff_species_db"]=${12}
-    # passed_variables["reference_genome_source"]=${13}
-    # passed_variables["known_snps_path"]=${14}
-    # passed_variables["threads_limit"]=${15}
-    # passed_variables["cleanup"]=${16}
+    declare -A passed_variables
+    passed_variables["vcf_ulid"]=${1}
+    passed_variables["current_line_name"]=${2}
+    passed_variables["input_dir"]=${3}
+    passed_variables["wt_input"]=${4}
+    passed_variables["mu_input"]=${5}
+    passed_variables["pairedness"]=${6}
+    passed_variables["output_dir_path"]=${7}
+    passed_variables["output_prefix"]=${8}
+    passed_variables["vcf_table_path"]=${9}
+    passed_variables["reference_dir"]=${10}
+    passed_variables["reference_genome_name"]=${11}
+    passed_variables["snpEff_species_db"]=${12}
+    passed_variables["reference_genome_source"]=${13}
+    passed_variables["known_snps_path"]=${14}
+    passed_variables["threads_limit"]=${15}
+    passed_variables["cleanup"]=${16}
     
-    # ## Printing all assigned variables for logging purposes
-    # print_variable_info passed_variables "Variables passed to VCFgen.sh"
-    # ## Assigning variables in array to their respective keys
-    # assign_values passed_variables
-
-    vcf_ulid="01HMENMYJBGRSB71H8ZHHHAHGJ"
-    snpEff_species_db="Arabidopsis_thaliana"
-    reference_genome_name="Arabidopsis_thaliana"
-    wt_input="/mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/input/A38.R_1.wt.fq.gz /mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/input/A38.R_2.wt.fq.gz"
-    cleanup=False
-    mu_input="/mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/input/A38.R_1.mu.fq.gz /mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/input/A38.R_2.mu.fq.gz"
-    output_dir_path="/mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/output/01HMENMYJBGRSB71H8ZHHHAHGJ_-A38"
-    pairedness="paired-end"
-    known_snps_path="/mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/references/Arabidopsis_thaliana.vcf"
-    output_prefix="/mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/output/01HMENMYJBGRSB71H8ZHHHAHGJ_-A38/01HMENMYJBGRSB71H8ZHHHAHGJ_-A38"
-    vcf_table_path="/mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/output/01HMENMYJBGRSB71H8ZHHHAHGJ_-A38/01HMENMYJBGRSB71H8ZHHHAHGJ_-A38.noknownsnps.table"
-    input_dir="/mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/input"
-    reference_dir="/mnt/bdec1251-cc3f-4208-b17d-816c423896ae/analysis/genomics/PhytoBSA/data/references"
-    threads_limit=20
-    reference_genome_source="ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz"
-    current_line_name="A38"
-
+    ## Printing all assigned variables for logging purposes
+    print_variable_info passed_variables "Variables passed to VCFgen.sh"
+    ## Assigning variables in array to their respective keys
+    assign_values passed_variables
 
     ## Generate other needed variables
     declare -A generated_variables
@@ -71,133 +53,133 @@ main() {
     echo "Refrences and directories prepared. Proceeding with mapping...."
 
     print_message "Mapping"
-    # # Align reads using BWA. A more modern aligner for this may be implemented 
-    # # sometime  
-    # bwa mem \
-    #     -t "$threads_halfed" \
-    #     -M "${reference_chrs_fa_path}" \
-    #     $wt_input > "${output_prefix}_wt.sam" &
+    # Align reads using BWA. A more modern aligner for this may be implemented 
+    # sometime  
+    bwa mem \
+        -t "$threads_halfed" \
+        -M "${reference_chrs_fa_path}" \
+        $wt_input > "${output_prefix}_wt.sam" &
     
-    # bwa mem \
-    #     -t "$threads_halfed" \
-    #     -M "${reference_chrs_fa_path}" \
-    #     $mu_input > "${output_prefix}_mu.sam"
-    # wait
+    bwa mem \
+        -t "$threads_halfed" \
+        -M "${reference_chrs_fa_path}" \
+        $mu_input > "${output_prefix}_mu.sam"
+    wait
 
-    # #Create binary alignment map for more effecient processing
-    # print_message "Converting sam to bam"
-    # samtools view \
-    #     -bSh \
-    #     -@ "$threads_halfed" \
-    #     "${output_prefix}_mu.sam" > "${output_prefix}_mu.bam" &
-    # samtools view \
-    #     -bSh \
-    #     -@ "$threads_halfed" \
-    #     "${output_prefix}_wt.sam" > "${output_prefix}_wt.bam"
+    #Create binary alignment map for more effecient processing
+    print_message "Converting sam to bam"
+    samtools view \
+        -bSh \
+        -@ "$threads_halfed" \
+        "${output_prefix}_mu.sam" > "${output_prefix}_mu.bam" &
+    samtools view \
+        -bSh \
+        -@ "$threads_halfed" \
+        "${output_prefix}_wt.sam" > "${output_prefix}_wt.bam"
     
-    # echo "..."
-    # wait
+    echo "..."
+    wait
 
-    # # Fix paired-end
-    # # Ensures that mapping information between read pairs is accurate. 
-    # if [ "${pairedness}" == "paired-end" ]; then
-    #     print_message "Reads are paired-end. Running samtools fixmate"
-    #     samtools fixmate "${output_prefix}_wt.bam" "${output_prefix}_wt.fix.bam" &
-    #     samtools fixmate "${output_prefix}_mu.bam" "${output_prefix}_mu.fix.bam"
-    # fi
+    # Fix paired-end
+    # Ensures that mapping information between read pairs is accurate. 
+    if [ "${pairedness}" == "paired-end" ]; then
+        print_message "Reads are paired-end. Running samtools fixmate"
+        samtools fixmate "${output_prefix}_wt.bam" "${output_prefix}_wt.fix.bam" &
+        samtools fixmate "${output_prefix}_mu.bam" "${output_prefix}_mu.fix.bam"
+    fi
     
-    # echo "..."
-    # wait
+    echo "..."
+    wait
 
-    # #SortSam
-    # # Sorting ensures that reads are organized in genomic order. GATK haplotype
-    # # caller reassembles variant regions denovo - it needs regions to be ordered. 
-    # # Reassembly makes HC slow, but it is pretty accurate. 
-    # print_message "Sorting by coordinate"
-    # picard SortSam \
-    #     -I "${output_prefix}_mu.fix.bam" \
-    #     -O "${output_prefix}_mu.sort.bam" \
-    #     -SORT_ORDER coordinate &
-    # picard SortSam \
-    #     -I "${output_prefix}_wt.fix.bam" \
-    #     -O "${output_prefix}_wt.sort.bam" \
-    #     -SORT_ORDER coordinate
-    # wait
+    #SortSam
+    # Sorting ensures that reads are organized in genomic order. GATK haplotype
+    # caller reassembles variant regions denovo - it needs regions to be ordered. 
+    # Reassembly makes HC slow, but it is pretty accurate. 
+    print_message "Sorting by coordinate"
+    picard SortSam \
+        -I "${output_prefix}_mu.fix.bam" \
+        -O "${output_prefix}_mu.sort.bam" \
+        -SORT_ORDER coordinate &
+    picard SortSam \
+        -I "${output_prefix}_wt.fix.bam" \
+        -O "${output_prefix}_wt.sort.bam" \
+        -SORT_ORDER coordinate
+    wait
 
-    # # Mark duplicates. Reads with identical start and stop positions, and are 
-    # # formed during PCR amplification. Marking them allows accurate assesment 
-    # # of read depth, in that only unique reads at variants are counted.
-    # print_message "Marking duplicates"
-    # picard MarkDuplicates \
-    #     -I "${output_prefix}_mu.sort.bam" \
-    #     -O "${output_prefix}_mu.sort.md.bam" \
-    #     -METRICS_FILE "${output_prefix}_mu.metrics.txt" \
-    #     -ASSUME_SORTED true &
-    # picard MarkDuplicates \
-    #     -I "${output_prefix}_wt.sort.bam" \
-    #     -O "${output_prefix}_wt.sort.md.bam" \
-    #     -METRICS_FILE "${output_prefix}_wt.metrics.txt" \
-    #     -ASSUME_SORTED true
-    # wait
+    # Mark duplicates. Reads with identical start and stop positions, and are 
+    # formed during PCR amplification. Marking them allows accurate assesment 
+    # of read depth, in that only unique reads at variants are counted.
+    print_message "Marking duplicates"
+    picard MarkDuplicates \
+        -I "${output_prefix}_mu.sort.bam" \
+        -O "${output_prefix}_mu.sort.md.bam" \
+        -METRICS_FILE "${output_prefix}_mu.metrics.txt" \
+        -ASSUME_SORTED true &
+    picard MarkDuplicates \
+        -I "${output_prefix}_wt.sort.bam" \
+        -O "${output_prefix}_wt.sort.md.bam" \
+        -METRICS_FILE "${output_prefix}_wt.metrics.txt" \
+        -ASSUME_SORTED true
+    wait
 
-    # # Format headers so BAMs can be fed through GATK haplotype caller
-    # print_message "Adding header for GATK"
-    # picard AddOrReplaceReadGroups \
-    #     -I "${output_prefix}_mu.sort.md.bam" \
-    #     -O "${output_prefix}_mu.sort.md.rg.bam" \
-    #     -RGLB "${current_line_name}_mu" \
-    #     -RGPL illumina \
-    #     -RGSM "${current_line_name}_mu" \
-    #     -RGPU run1 \
-    #     -SORT_ORDER coordinate &
-    # picard AddOrReplaceReadGroups \
-    #     -I "${output_prefix}_wt.sort.md.bam" \
-    #     -O "${output_prefix}_wt.sort.md.rg.bam" \
-    #     -RGLB "${current_line_name}_wt" \
-    #     -RGPL illumina \
-    #     -RGSM "${current_line_name}_wt" \
-    #     -RGPU run1 \
-    #     -SORT_ORDER coordinate
-    # wait
+    # Format headers so BAMs can be fed through GATK haplotype caller
+    print_message "Adding header for GATK"
+    picard AddOrReplaceReadGroups \
+        -I "${output_prefix}_mu.sort.md.bam" \
+        -O "${output_prefix}_mu.sort.md.rg.bam" \
+        -RGLB "${current_line_name}_mu" \
+        -RGPL illumina \
+        -RGSM "${current_line_name}_mu" \
+        -RGPU run1 \
+        -SORT_ORDER coordinate &
+    picard AddOrReplaceReadGroups \
+        -I "${output_prefix}_wt.sort.md.bam" \
+        -O "${output_prefix}_wt.sort.md.rg.bam" \
+        -RGLB "${current_line_name}_wt" \
+        -RGPL illumina \
+        -RGSM "${current_line_name}_wt" \
+        -RGPU run1 \
+        -SORT_ORDER coordinate
+    wait
 
-    # print_message "Building BAM index"
-    # # Build BAM index
-    # # Needed to run haplotyple caller. Increases the speed of accessing and 
-    # # retrieving data within genomic regions during variant calling. Allows GATK HC
-    # # to skip directly to the region of interest.  
-    # picard BuildBamIndex \
-    #     -INPUT "${output_prefix}_mu.sort.md.rg.bam" \
-    #     -O "${output_prefix}_mu.sort.md.rg.bai" &
-    # picard BuildBamIndex \
-    #     -INPUT "${output_prefix}_wt.sort.md.rg.bam" \
-    #     -O "${output_prefix}_wt.sort.md.rg.bai"
-    # wait
+    print_message "Building BAM index"
+    # Build BAM index
+    # Needed to run haplotyple caller. Increases the speed of accessing and 
+    # retrieving data within genomic regions during variant calling. Allows GATK HC
+    # to skip directly to the region of interest.  
+    picard BuildBamIndex \
+        -INPUT "${output_prefix}_mu.sort.md.rg.bam" \
+        -O "${output_prefix}_mu.sort.md.rg.bai" &
+    picard BuildBamIndex \
+        -INPUT "${output_prefix}_wt.sort.md.rg.bam" \
+        -O "${output_prefix}_wt.sort.md.rg.bai"
+    wait
 
-    # print_message "Calling haplotypes. This may take a while..."
-    # # GATK HC Variant calling
-    # # Haplotype caller looks for regions with varience and locally reconstructs
-    # # the region using the available reads, and calls variants for the region. 
-    # # Time consuming but accurate
-    # gatk HaplotypeCaller \
-    #     -R "$reference_chrs_fa_path" \
-    #     -I "${output_prefix}_mu.sort.md.rg.bam" \
-    #     -I "${output_prefix}_wt.sort.md.rg.bam" \
-    #     -O "${output_prefix}.hc.vcf" \
-    #     -output-mode EMIT_ALL_CONFIDENT_SITES \
-    #     --native-pair-hmm-threads "$threads_limit"
+    print_message "Calling haplotypes. This may take a while..."
+    # GATK HC Variant calling
+    # Haplotype caller looks for regions with varience and locally reconstructs
+    # the region using the available reads, and calls variants for the region. 
+    # Time consuming but accurate
+    gatk HaplotypeCaller \
+        -R "$reference_chrs_fa_path" \
+        -I "${output_prefix}_mu.sort.md.rg.bam" \
+        -I "${output_prefix}_wt.sort.md.rg.bam" \
+        -O "${output_prefix}.hc.vcf" \
+        -output-mode EMIT_ALL_CONFIDENT_SITES \
+        --native-pair-hmm-threads "$threads_limit"
 
-    # print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
+    print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
     
-    # # snpEff, labeling SNPs
-    # # snpEff labels the variants in haplotype caller with likely impact of variants 
-    # # on gene function (early stop/start codons, missense mutations, exc) using
-    # # databases assembled from annotated reference files 
-    # # (gff, transcriptomes and genomes). 
-    # snpEff "$snpEff_species_db" \
-    #     -s "$snpeff_out_filename" \
-    #     "${output_prefix}.hc.vcf" > "${output_prefix}.se.vcf"
-    # wait
-    # print_message "Haplotypes called and SNPs labeled. Cleaning data."
+    # snpEff, labeling SNPs
+    # snpEff labels the variants in haplotype caller with likely impact of variants 
+    # on gene function (early stop/start codons, missense mutations, exc) using
+    # databases assembled from annotated reference files 
+    # (gff, transcriptomes and genomes). 
+    snpEff "$snpEff_species_db" \
+        -s "$snpeff_out_filename" \
+        "${output_prefix}.hc.vcf" > "${output_prefix}.se.vcf"
+    wait
+    print_message "Haplotypes called and SNPs labeled. Cleaning data."
 
     
     # Extracting SNPeff data and variant information into a table

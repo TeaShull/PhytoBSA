@@ -59,7 +59,7 @@ class FileUtilities:
                 # Initialize or update the dictionary entry for the key
                 if key not in expt_dict:
                     expt_dict[key] = {
-                        'allele': allele,
+                        'segregation_type': segregation_type,
                         'wt': [],
                         'mu': [],
                         'pairedness': pairedness
