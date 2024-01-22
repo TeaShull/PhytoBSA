@@ -62,7 +62,12 @@ create_directories() {
     fi
 
     for dir in "${@}"; do
-        mkdir -p "${dir}"
+        if [ -d "${dir}" ]; then
+            echo "${dir} already exists - Proceeding..."
+        else
+            echo "${dir} does not exist - Creating..."
+            mkdir -p "${dir}"
+        fi
     done
 }
 
@@ -71,7 +76,10 @@ download_reference_genome() {
     local reference_genome_path="$1"
     local reference_genome_source="$2"
 
-    if [ ! -f "${reference_genome_path}" ]; then
+    if [ -f "${reference_genome_path}" ]; then
+        echo "Reference genome already exists. Proceeding..."
+    else
+        echo "Reference genome not found - Downloading reference:${reference_genome_source}..."
         curl -o "${reference_genome_path}.gz" "${reference_genome_source}" && gzip -d "${reference_genome_path}.gz"
     fi
 }
@@ -83,6 +91,9 @@ create_chrs_file() {
 
     if [ ! -f "${reference_chrs_fa_path}" ]; then
         awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' "${reference_genome_path}" > "${reference_chrs_fa_path}"
+        echo "Chromosome file created: ${reference_chrs_fa_path}"
+    else
+        echo "Chromosome file already exists: ${reference_chrs_fa_path}"
     fi
 }
 

@@ -10,7 +10,6 @@ CONFIG_DIR = os.path.dirname(os.path.realpath(__file__)) #<- YOU ARE HERE
 BASE_DIR =  os.path.dirname(CONFIG_DIR)
 MODULES_DIR = os.path.join(BASE_DIR, 'modules')
 
-FRONTEND_DIR = os.path.join(MODULES_DIR, 'frontend')
 TEMPLATE_DIR = os.path.join(FRONTEND_DIR,'templates')
 STATIC_DIR = os.path.join(FRONTEND_DIR,'static')
 
