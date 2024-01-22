@@ -105,6 +105,9 @@ create_fai_and_index() {
     if [ ! -f "${reference_chrs_fa_path}.fai" ]; then
         samtools faidx "${reference_chrs_fa_path}"
         bwa index -p "${reference_chrs_fa_path}" -a is "${reference_genome_path}"
+        echo "FAI file and index created for ${reference_chrs_fa_path}"
+    else
+        echo "FAI file and index already exist for ${reference_chrs_fa_path}"
     fi
 }
 
@@ -115,6 +118,9 @@ create_sequence_dictionary() {
 
     if [ ! -f "${reference_chrs_path}.dict" ]; then
         picard CreateSequenceDictionary -R "${reference_chrs_fa_path}" -O "${reference_chrs_path}.dict"
+        echo "Sequence dictionary created for ${reference_chrs_path}"
+    else
+        echo "Sequence dictionary already exists for ${reference_chrs_path}"
     fi
 }
 
