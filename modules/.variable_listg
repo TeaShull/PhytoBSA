@@ -1,0 +1,21 @@
+variable_dict = {
+    'line': {
+        'allele': 'str',
+        'pairedness': 'str',
+        'reference_genome_name': 'str',
+        'reference_genome_source': 'str',
+        'cleanup': 'bool',
+        'vcf_table_path': 'str',
+        'vct_table': 'str',
+        'threads_limit': 'int',
+        'wt_input': 'list or str',
+        'mu_input': 'list or str',
+        'known_snps_path': 'str',
+        'call_variants_in_parallel': 'bool',
+        'snpEff_species_db': 'str',
+        'core_ulid': 'str',
+        'vcf_ulid': 'str',
+        'analysis_ulid': 'str'
+    }
+}
+
