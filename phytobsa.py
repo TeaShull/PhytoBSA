@@ -41,6 +41,7 @@ def parse_program_arguments():
     parser.add_argument('-an', '--analysis', action='store_true', help='Run the analysis.')
     parser.add_argument('-n', '--line_name', type=str, help='name of the line you wish to analyze. Will be used to name output files.')
     parser.add_argument('-vt', '--vcf_table', type=str, help='path to the vcf table you wish to analyze.')
+    parser.add_argument('-st', '--segregation_type', type=str, help='Recessive(R) or Dominant(D)?')
 
     reference_genome_name_help = f"""
         What is the name of your reference genome? this should be the base name of your fasta file. 
@@ -69,6 +70,7 @@ def main():
     args = parse_program_arguments()
     line_name = args.line_name
     vcf_table = args.vcf_table
+    segregation_type = args.segregation_type
     reference_genome_name = args.reference_genome_name
     snpEff_species_db = args.snpEff_species_db
     reference_genome_source = args.reference_genome_source
@@ -95,12 +97,11 @@ def main():
         # [if -an arg] accept line name and vcf table to run bsa_analysis 
         if args.analysis:
             core_log.note('Command line argument to run analysis detected.')
-
             core_log.attempt(f'Trying to create experiment_dictionary from arguments...')
             try:
-                if line_name and vcf_table:
+                if line_name and vcf_table and segregation_type:
                     experiment_dictionary=file_utils.create_experiment_dictionary(
-                        line_name, vcf_table
+                        line_name, segregation_type, vcf_table
                     )
                     core_log.success(f'experiment_dictionary successfully created')
                 else: 

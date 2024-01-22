@@ -224,7 +224,7 @@ class FileUtilities:
         try: 
             # Check if the output directory exists, and create it if necessary
             if not os.path.exists(directory):
-                self.log.attempt(f"Directory does not exist. Creating: {output_dir}")
+                self.log.attempt(f"Directory does not exist. Creating: {directory}")
                 os.makedirs(directory)
                 self.log.success(f'Directory created: {directory}')
             else:
@@ -233,7 +233,7 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
-    def create_experiment_dictionary(self, line_name, vcf_table)->dict:
+    def create_experiment_dictionary(self, line_name, segregation_type, vcf_table)->dict:
         '''
         Creates an experiment dictionary from line_name and vcf_table input. 
         Used to create experiment dictionaries when automatic experiment 
@@ -273,9 +273,10 @@ class FileUtilities:
         try:
             if os.path.exists(vcf_table_path):
                 self.log.success(f'Path exists: {vcf_table_path}')
-                experiment_dictionary = ExperimentDictionary()
+                experiment_dictionary = {}
                 experiment_dictionary[line_name] = {
                     'vcf_table_path': vcf_table_path,
+                    'segregation_type': segregation_type,
                     'vcf_ulid': vcf_ulid,
                     'core_ulid' : core_ulid
                 }
@@ -314,7 +315,7 @@ class FileUtilities:
         
         # Add vcftable_path to experiment_dictionary.
         vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
-        vcf_table_path = os.path.join(OUTPUT_DIR, vcf_table_name)
+        vcf_table_path = os.path.join(OUTPUT_DIR, output_name_prefix, vcf_table_name)
         
         # Generate VCFgen.sh script path
         vcfgen_script_path = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')

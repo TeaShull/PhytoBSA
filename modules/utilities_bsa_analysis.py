@@ -88,6 +88,13 @@ class BSAAnalysisUtilities:
 
         Returns:
             pandas.DataFrame: A filtered DataFrame containing only the rows with matching genotypes.
+
+            [IMPORTANT NOTE]
+            #0/1:0/1 is included because of occasianal leaky genotypying by GATK 
+            haplotype caller. Nearly 100% of negative delta SNP values arise from 
+            0/1:0/1 situations. To retain information without losing data that
+            may help fit GAM or LOESS, we will instead cut the negative values
+            out after calculating the delta allele
         """
         self.log.attempt('Attempting to filter genotypes based on segrigation pattern...')
         try:
@@ -96,7 +103,7 @@ class BSAAnalysisUtilities:
                 seg_filter = ['1/1:0/1', '0/1:0/0', '0/1:0/1']
             elif allele == 'D':
                 self.log.note('Filtering genotypes based an a dominant segrigation pattern')
-                seg_filter = ['0/1:0/0', '1/1:0/0', '0/1:0/1']
+                seg_filter = ['0/1:0/0', '1/1:0/0', '0/1:0/1']  
             else: 
                 self.log.fail(f'Allele type:{allele} is not a valid selection! Aborting.')
             
@@ -121,6 +128,21 @@ class BSAAnalysisUtilities:
         filtered_vcf_df = vcf_df[(vcf_df['ref'].isin(['G', 'C', 'A', 'T'])) & (vcf_df['alt'].isin(['A', 'T', 'G', 'C']))]
         return filtered_vcf_df
 
+    def drop_genos_with_negative_ratios(self, vcf_df):
+        '''
+        Removes those genotypes that give rise to negative delta SNP ratios.
+        These genotypes are nearly always the result of 0/1:0/1 situations, 
+        which exist only because GATK haplotype caller sometimes doesn't genotype 
+        everything perfectly and data that is useful for fitting LOESS or GAM 
+        models get cleaned out if 0/1:0/1 genotypes aren't included. 
+        '''
+        self.log.attempt('Trying to remove Genotypes that produce negative delta SNP ratios')
+        try: 
+            return vcf_df[vcf_df['ratio'] >= 0]
+            self.log.success('Genotypes that produce negative delta SNP ratios removed.')
+        except Exception as e:
+            self.log.fail(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
+    
     def calculate_delta_snp_and_g_statistic(self, vcf_df: pd.DataFrame)->pd.DataFrame:
         """
         Calculate delta SNP ratio and G-statistic
@@ -386,9 +408,9 @@ class BSAAnalysisUtilities:
             smGstatAll, smRatioAll, RS_GAll, smRS_G_yhatAll = [], [], [], []
             suppress = True
             for _ in range(self.shuffle_iterations):
-                dfShPos = vcf_df_position.sample(frac=self.loess_span1)
-                dfShwt = vcf_df_wt.sample(frac=self.loess_span1)
-                dfShmu = vcf_df_mu.sample(frac=self.loess_span1)
+                dfShPos = vcf_df_position.sample(frac=self.loess_span)
+                dfShwt = vcf_df_wt.sample(frac=self.loess_span)
+                dfShmu = vcf_df_mu.sample(frac=self.loess_span)
 
                 smPos = dfShPos['pos'].to_numpy()
                 sm_wt_ref = dfShwt['wt_ref'].to_numpy()
@@ -464,9 +486,9 @@ class BSAAnalysisUtilities:
         ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)
         """
         plot_scenarios = [
-            ('G_S', 'G-statistic', 'G-statistic', None, False),
+            ('G_S', 'G-statistic', 'G-statistic', gs_cutoff, False),
             ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', 
-                gs_cutoff, True
+                None, True
             ),
             ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic',
                 rsg_cutoff, False

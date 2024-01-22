@@ -85,8 +85,8 @@ class ThaleBSAParentFunctions:
                 #save vcf_table_path to the experiment dictionary for downstream use
                 value['vcf_table_path'] = vcf_table_path
 
-                # Retrieve allele and file input info from experiment_dictionary
-                allele = value['allele'] #Recessive or dominant?
+                # Retrieve segregation type and file input info from experiment_dictionary
+                segregation_type = value['segregation_type'] #Recessive or dominant?
                 pairedness = value['pairedness'] #Paired-end or single?
                 # Pull input files from dictionary
                 wt_input = ' '.join(value['wt'])
@@ -129,7 +129,7 @@ class ThaleBSAParentFunctions:
                     vcf_log.bash(line.strip())
                 process.wait()
                 self.log.note(f"VCF file generated for {current_line_name}.") 
-                self.log.note(f"Log saved to {log_path}")
+                self.log.note(f"Log saved to {vcf_log.log_path}")
                 self.log.note(f'VCF table path added to experiments_dictionary: {vcf_table_path}')
                 
             self.log.success("VCF file generation process complete")
@@ -150,7 +150,7 @@ class ThaleBSAParentFunctions:
         required 
         [key]: line_name
         [value] vcf_table_path, core_ulid, 
-        [value] allele (what segrigation pattern? R or D?)
+        [value] segregation type (what segrigation pattern? R or D?)
 
         optional
         [value] vcf_ulid
@@ -178,7 +178,7 @@ class ThaleBSAParentFunctions:
                 current_line_name = key
                 vcf_ulid = value['vcf_ulid'] 
                 vcf_table_path = value['vcf_table_path']
-                allele = value['allele']
+                segregation_type = value['segregation_type']
                 
                 # Configure an analysis logger for each line.
                 analysis_log = LogHandler(f'analysis_{current_line_name}')
@@ -199,7 +199,7 @@ class ThaleBSAParentFunctions:
                     current_line_name, vcf_ulid, analysis_log
                 )
                 ## Filter genotypes based on segrigation pattern
-                vcf_df = bsa_analysis_utils.filter_genotypes(allele, vcf_df)
+                vcf_df = bsa_analysis_utils.filter_genotypes(segregation_type, vcf_df)
                 
                 ## data cleaning and orginization
                 vcf_df = bsa_analysis_utils.filter_ems_mutations(vcf_df)
@@ -207,6 +207,9 @@ class ThaleBSAParentFunctions:
                 
                 ## Feature production
                 vcf_df = bsa_analysis_utils.calculate_delta_snp_and_g_statistic(
+                    vcf_df
+                )
+                vcf_df = bsa_analysis_utils.drop_genos_with_negative_ratios(
                     vcf_df
                 )
                 vcf_df = bsa_analysis_utils.drop_na(vcf_df)
