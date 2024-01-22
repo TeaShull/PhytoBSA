@@ -13,11 +13,11 @@ class FileUtilities:
     def __init__(self, logger):
         self.log = logger 
 
-    def experiment_detector(self)->dict:
+    def experiment_detector(self) -> dict:
         '''
         Detects potential BSA experiments in the inputs folder if files are 
         named according to the conventions outlined in the README
-        
+
         For paired-end:
         <line_name>.<R or D>_<read number>.<wt or mu>.fq.gz  
         
@@ -33,56 +33,54 @@ class FileUtilities:
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
         try:
             expt_dict = {}
-            # Iterate through the files in the directory
             for filename in os.listdir(INPUT_DIR):
-                # Split the filename into parts based on dots
                 parts = filename.split('.')
                 self.log.attempt(f'Parsing {filename}')
-                # Extract relevant information
                 line_name = parts[0]
-                allele = parts[1]
-                if '_1' in allele:
-                    allele = allele.rstrip('_1')
-                if '_2' in allele:
-                    allele = allele.rstrip('_2')
-                segregation_type = parts[-3]
+                segregation_type = parts[1]
+                
+                # Processing segregation_type
+                if '_1' in segregation_type:
+                    segregation_type = segregation_type.rstrip('_1')
+                if '_2' in segregation_type:
+                    segregation_type = segregation_type.rstrip('_2')
+                
+                bulk_type = parts[-3]
                 pairedness = 'paired-end' if '_1' or '_2' in filename else 'single-read'
 
-                # Use line_name as key for the dictionary
-                key = line_name
                 self.log.success(f"""{filename} parsed. 
-                    key:{key}
-                    allele:{allele}
-                    segregation_type:{segregation_type}
-                    pairedness:{pairedness}
+                line_name:{line_name}
+                segregation_type:{segregation_type}
+                bulk_type:{bulk_type}
+                pairedness:{pairedness}
                 """)
-                # Initialize or update the dictionary entry for the key
-                if key not in expt_dict:
-                    expt_dict[key] = {
+                if line_name not in expt_dict:
+                    expt_dict[line_name] = {
                         'segregation_type': segregation_type,
-                        'wt': [],
-                        'mu': [],
+                        'wt_input': [],
+                        'mu_input': [],
                         'pairedness': pairedness
                     }
-                # Add the file path to the appropriate list based on segregation_type
+                
                 file_path = os.path.join(INPUT_DIR, filename)
-                if 'wt' in segregation_type:
-                    wt_list = expt_dict[key]['wt']
-                    wt_list.append(file_path)
-                    # Sort the wt_list to ensure _1 and _2 files are in numeric order
-                    expt_dict[key]['wt'] = sorted(
-                        wt_list, key=lambda x: int(x.split('_')[-1][0])
-                    )
-                elif 'mu' in segregation_type:
-                    mu_list = expt_dict[key]['mu']
-                    mu_list.append(file_path)
-                    # Sort the mu_list to ensure _1 and _2 files are in numeric order
-                    expt_dict[key]['mu'] = sorted(
-                        mu_list, key=lambda x: int(x.split('_')[-1][0])
-                    )
+
+                if bulk_type == 'wt':
+                    expt_dict[line_name]['wt_input'].append(file_path)
+                elif bulk_type == 'mu':
+                    expt_dict[line_name]['mu_input'].append(file_path)
             
+            for line_name, details in expt_dict.items():
+                details['wt_input'] = '" "'.join(sorted(details['wt_input']))
+                wt_input = details['wt_input']
+                details['mu_input'] = '" "'.join(sorted(details['mu_input']))
+
             self.log.success(f'Experiment dictionary generated.')
             return expt_dict
+
+        except Exception as e:
+            self.log.fail(f"Error while detecting experiment details: {e}")
+            return {}
+
 
         except Exception as e:
             self.log.fail(f"Error while detecting experiment details: {e}")
@@ -190,11 +188,11 @@ class FileUtilities:
 
         self.log.attempt("Attempting to save run information for a quick overview of runconditions")
         try:
-            for key, value in experiment_dictionary.items():
-                info_filename= f"{self.log.ulid}_-{key}_experiment_details.txt"
+            for line_name, value in experiment_dictionary.items():
+                info_filename= f"{self.log.ulid}_-{line_name}_experiment_details.txt"
                 with open(info_filename, "w") as file:
-                    file.write(f"Key: {key}\n")
-                    file.write(f"Allele: {value['allele']}\n")
+                    file.write(f"Key: {line_name}\n")
+                    file.write(f"Allele: {value['segregation_type']}\n")
                     file.write(f"Pairedness: {value['pairedness']}\n")
                     file.write(f"WT Files:\n")
                     for wt_file in value['wt']:
@@ -301,7 +299,7 @@ class FileUtilities:
         Generate file paths based on the given parameters.
 
         Args:
-        current_line_name (str): The name used as a key in the experiment_dictionary.
+        current_line_name (str): The name used as a line_name in the experiment_dictionary.
         vcf_log: Some object with an 'ulid' attribute.
         known_snps (str): The name of the known_snps file.
 

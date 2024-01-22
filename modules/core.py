@@ -88,14 +88,8 @@ class ThaleBSAParentFunctions:
                 # Retrieve segregation type and file input info from experiment_dictionary
                 segregation_type = value['segregation_type'] #Recessive or dominant?
                 pairedness = value['pairedness'] #Paired-end or single?
-                # Pull input files from dictionary
-                wt_input = ' '.join(value['wt'])
-                wt_input = f'"{wt_input}"' #Wild-type bulk input files
-                self.log.note(f"wt_input:{wt_input}")
-                mu_input = ' '.join(value['mu'])
-                mu_input = f'"{mu_input}"'#Mutant bulk input files
-                self.log.note(f"mu_input:{mu_input}")
-
+                wt_input = value['wt_input']
+                mu_input = value['mu_input']
                 # Construct args to pass variables to VCFgen.sh.
                 args = (
                     vcf_log.ulid,

@@ -26,6 +26,7 @@ print_variable_info() {
 
     for var in "${!array[@]}"; do
         echo "${var}: ${array[$var]}"
+        wait
     done
 }
 
