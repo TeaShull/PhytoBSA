@@ -449,7 +449,12 @@ class BSAAnalysisUtilities:
 
         try:
             # Identify likely candidates using G-stat and smoothed ratio-scaled G-stat
-            vcf_df_likely_cands = vcf_df.loc[self.vcf_df['RS_G_yhat_01p'] == 1]
+            vcf_df_likely_cands = vcf_df[
+            (vcf_df['RS_G_yhat_01p'] == 1) |
+            (vcf_df['G_S_05p'] == 1) |
+            (vcf_df['RS_G_05p'] == 1)
+            ]
+            #sort
             likely_cands_sorted = vcf_df_likely_cands.sort_values(
                 by=['G_S', 'RS_G_yhat'],
                 ascending=[False, False],
