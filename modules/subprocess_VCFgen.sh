@@ -57,11 +57,20 @@ main() {
 
     ## Prepare references and directory structure
     print_message "Preparing references and directory structure"
-    create_directories "${output_dir}" "${snpeff_dir}" "${reference_dir}"
+    create_directories "${output_dir_path}" "${snpeff_dir}" "${reference_dir}"
 
     download_reference_genome "${reference_genome_path}" "${reference_genome_source}"
 
-    create_chrs_file "${reference_genome_path}" "${reference_chrs_fa_path}"
+    # Add patterns to this function to remove non chromosomal segments
+    # For example, mitochondrial (Mt) and plastid (Pt) sequences in ref genomes
+    filter_non_chromosomal_sequences \
+    "${reference_genome_path}" \
+    "${reference_chrs_fa_path}" \
+    Scaffold \
+    Contig \
+    Mt \
+    Pt
+    
     create_fai_and_index "${reference_genome_path}" "${reference_chrs_fa_path}"
     create_sequence_dictionary "${reference_chrs_fa_path}" "${reference_chrs_path}"
 
@@ -69,15 +78,13 @@ main() {
 
     print_message "Mapping"
     bwa mem \
-        -t "$threads_halfed" \
-        -M "${reference_chrs_fa_path}" \
-        -I "${wt_input}" \
-        "${bwa_output_sam_wt}" > "${bwa_output_sam_wt}" && \
+        -t $threads_halfed \
+        -M $reference_chrs_fa_path \
+        $wt_input > $bwa_output_sam_wt & 
     bwa mem \
-        -t "$threads_halfed" \
-        -M "${reference_chrs_fa_path}" \
-        -I "${mu_input}" \
-        "${bwa_output_sam_mu}" > "${bwa_output_sam_mu}"
+        -t $threads_halfed \
+        -M $reference_chrs_fa_path \
+        $mu_input > $bwa_output_sam_mu
 
     echo "..."
     wait
@@ -85,12 +92,12 @@ main() {
     print_message "Converting sam to bam"
     samtools view \
         -bSh \
-        -@ "$threads_halfed" \
-        "${bwa_output_sam_mu}" > "${samtools_output_bam_mu}" && \
+        -@ $threads_halfed \
+        $bwa_output_sam_mu > $samtools_output_bam_mu & 
     samtools view \
         -bSh \
         -@ "$threads_halfed" \
-        "${bwa_output_sam_wt}" > "${samtools_output_bam_wt}"
+        $bwa_output_sam_wt > $samtools_output_bam_wt
 
     echo "..."
     wait
@@ -98,11 +105,11 @@ main() {
     print_message "Fix paired-end reads"
     if [ "${pairedness}" == "paired-end" ]; then
         samtools fixmate \
-            "${samtools_output_bam_mu}" \
-            "${samtools_fixmate_output_mu}" && \
+            $samtools_output_bam_mu \
+            $samtools_fixmate_output_mu & 
         samtools fixmate \
-            "${samtools_output_bam_wt}" \
-            "${samtools_fixmate_output_wt}"
+            $samtools_output_bam_wt \
+            $samtools_fixmate_output_wt
     fi
 
     echo "..."
@@ -110,40 +117,40 @@ main() {
 
     print_message "Sorting by coordinate"
     picard SortSam \
-        -I "${samtools_fixmate_output_mu}" \
-        -O "${samtools_sortsam_output_mu}" \
-        -SORT_ORDER coordinate && \
+        -I $samtools_fixmate_output_mu \
+        -O $samtools_sortsam_output_mu \
+        -SORT_ORDER coordinate &
     picard SortSam \
-        -I "${samtools_fixmate_output_wt}" \
-        -O "${samtools_sortsam_output_wt}" \
+        -I $samtools_fixmate_output_wt \
+        -O $samtools_sortsam_output_wt \
         -SORT_ORDER coordinate
     wait
 
     print_message "Marking duplicates"
     picard MarkDuplicates \
-        -I "${samtools_sortsam_output_mu}" \
-        -O "${picard_markduplicates_output_mu}" \
+        -I $samtools_sortsam_output_mu \
+        -O $picard_markduplicates_output_mu \
         -METRICS_FILE "${output_prefix}_mu.metrics.txt" \
-        -ASSUME_SORTED true && \
+        -ASSUME_SORTED true &
     picard MarkDuplicates \
-        -I "${samtools_sortsam_output_wt}" \
-        -O "${picard_markduplicates_output_wt}" \
+        -I $samtools_sortsam_output_wt \
+        -O $picard_markduplicates_output_wt \
         -METRICS_FILE "${output_prefix}_wt.metrics.txt" \
         -ASSUME_SORTED true
     wait
 
     print_message "Adding header for GATK"
     picard AddOrReplaceReadGroups \
-        -I "${picard_markduplicates_output_mu}" \
-        -O "${picard_addorreplacereadgroups_output_mu}" \
+        -I $picard_markduplicates_output_mu \
+        -O $picard_addorreplacereadgroups_output_mu \
         -RGLB "${current_line_name}_mu" \
         -RGPL illumina \
         -RGSM "${current_line_name}_mu" \
         -RGPU run1 \
-        -SORT_ORDER coordinate && \
+        -SORT_ORDER coordinate &
     picard AddOrReplaceReadGroups \
-        -I "${picard_markduplicates_output_wt}" \
-        -O "${picard_addorreplacereadgroups_output_wt}" \
+        -I $picard_markduplicates_output_wt \
+        -O $picard_addorreplacereadgroups_output_wt \
         -RGLB "${current_line_name}_wt" \
         -RGPL illumina \
         -RGSM "${current_line_name}_wt" \
@@ -153,11 +160,11 @@ main() {
 
     print_message "Building BAM index"
     picard BuildBamIndex \
-        -INPUT "${picard_addorreplacereadgroups_output_mu}" \
-        -O "${picard_buildbamindex_output_mu}" && \
+        -INPUT $picard_addorreplacereadgroups_output_mu \
+        -O $picard_buildbamindex_output_mu &
     picard BuildBamIndex \
-        -INPUT "${picard_addorreplacereadgroups_output_wt}" \
-        -O "${picard_buildbamindex_output_wt}"
+        -INPUT $picard_addorreplacereadgroups_output_wt \
+        -O $picard_buildbamindex_output_wt
     wait
 
     print_message "Calling haplotypes. This may take a while..."
@@ -166,26 +173,26 @@ main() {
         split_and_call_haplotype $output_prefix $output_dir_path $reference_chrs_fa_path $threads_limit
     else
         gatk HaplotypeCaller \
-            -R "$reference_chrs_fa_path" \
-            -I "${picard_addorreplacereadgroups_output_mu}" \
-            -I "${picard_addorreplacereadgroups_output_wt}" \
-            -O "$gatk_haplotypecaller_output" \
+            -R $reference_chrs_fa_path \
+            -I $picard_addorreplacereadgroups_output_mu \
+            -I $picard_addorreplacereadgroups_output_wt \
+            -O $gatk_haplotypecaller_output \
             -output-mode EMIT_ALL_CONFIDENT_SITES \
             --native-pair-hmm-threads "$threads_limit"
     fi
 
     print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
 
-    snpEff "$snpEff_species_db" \
-        -s "$snpeff_out_filename" \
-        "$gatk_haplotypecaller_output" > "${snpeff_output}"
+    snpEff $snpEff_species_db \
+        -s $snpeff_out_filename \
+        $gatk_haplotypecaller_output > $snpeff_output
     wait
     print_message "Haplotypes called and SNPs labeled. Cleaning data."
 
     extract_fields_snpSift \
-        "$snpeff_output" \
-        "$snpsift_output" \
-        "$current_line_name"
+        $snpeff_output \
+        $snpsift_output \
+        $current_line_name
 
     remove_repetitive_nan "$snpsift_output" "$tmp_table_file_name"
     format_fields "$tmp_table_file_name" "$current_line_name"

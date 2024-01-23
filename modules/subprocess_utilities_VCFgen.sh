@@ -76,12 +76,52 @@ download_reference_genome() {
 }
 
 # Create .chrs file if it doesn't exist
-create_chrs_file() {
-    local reference_genome_path="$1"
-    local reference_chrs_fa_path="$2"
+filter_non_chromosomal_sequences() {
+    if [ "$#" -eq 0 ]; then
+        echo "Usage: filter_non_chromosomal_sequences <input_file> <output_file> <pattern1> [<pattern2> ...]"
+        return 1
+    fi
 
     if [ ! -f "${reference_chrs_fa_path}" ]; then
-        awk '/[Ss]caffold/ || /[Cc]ontig/ {exit} {print}' "${reference_genome_path}" > "${reference_chrs_fa_path}"
+        echo 'Creating reference chrs file based on provided patterns...'
+        local reference_genome_path="$1"
+        local reference_chrs_fa_path="$2"
+        shift 2
+
+        awk -v patterns="${patterns}" '
+            BEGIN {
+                FS = "\n";
+                RS = ">";
+                ORS = "";
+            }
+
+            function extract_identifier(header) {
+                # Extract the first string after ">", or between ">" and "|" or ":"
+                if (match(header, /^([^\|:>]+)/, match_array)) {
+                    return match_array[1];
+                }
+                return "";
+            }
+
+            function contains_pattern(header, patterns) {
+                split(tolower(extract_identifier(header)), words, /[ \t\n]+/);
+                if (index(tolower(patterns), tolower(words[1])) > 0) {
+                    return 1;
+                }
+                return 0;
+            }
+
+            {
+                if (!contains_pattern($1, patterns)) {
+                    print ">" $0;
+                }
+            }
+        ' "${reference_genome_path}" > "${reference_chrs_fa_path}"
+
+        echo "Chromosomes not containing the following patterns in the header will be used as reference: ${*}"
+        echo "[NOTE] If reference data is missing, you may need to edit the patterns provided to filter_sequences in subprocess_utilities_VCFgen.sh"
+    else
+        echo "Reference chr fa exists: ${reference_chrs_fa_path}"
     fi
 }
 
