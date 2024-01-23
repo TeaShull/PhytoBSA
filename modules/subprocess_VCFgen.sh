@@ -63,13 +63,17 @@ main() {
 
     # Add patterns to this function to remove non chromosomal segments
     # For example, mitochondrial (Mt) and plastid (Pt) sequences in ref genomes
-    filter_non_chromosomal_sequences \
+    create_chromosomal_fasta \
     "${reference_genome_path}" \
     "${reference_chrs_fa_path}" \
-    Scaffold \
-    Contig \
-    Mt \
-    Pt
+    ">Mt" \
+    ">mt" \
+    ">Pt" \
+    ">pt" \
+    "Scaffold" \
+    "scaffold" \
+    "Contig" \
+    "contig"
     
     create_fai_and_index "${reference_genome_path}" "${reference_chrs_fa_path}"
     create_sequence_dictionary "${reference_chrs_fa_path}" "${reference_chrs_path}"
