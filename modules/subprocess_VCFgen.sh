@@ -1,4 +1,3 @@
-echo "Current working directory: $(pwd)"
 source ./subprocess_utilities_VCFgen.sh
 
 main() {
@@ -25,12 +24,12 @@ main() {
     assign_values passed_variables
 
     declare -A generated_variables
+    generated_variables["threads_halfed"]=$((threads_limit / 2))
     generated_variables["reference_genome_path"]="${reference_dir}/${reference_genome_name}.fa"
     generated_variables["reference_chrs_path"]="${reference_dir}/${reference_genome_name}.chrs"
     generated_variables["reference_chrs_fa_path"]="${reference_dir}/${reference_genome_name}.chrs.fa"
     generated_variables["snpeff_dir"]="${output_dir_path}/snpEff"
     generated_variables["snpeff_out_filename"]="${output_dir_path}/snpEff/${vcf_ulid}-_${current_line_name}"
-    
     generated_variables["bwa_output_sam_wt"]="${output_prefix}_wt.sam"
     generated_variables["bwa_output_sam_mu"]="${output_prefix}_mu.sam"
     generated_variables["samtools_output_bam_wt"]="${output_prefix}_wt.bam"
@@ -45,8 +44,6 @@ main() {
     generated_variables["picard_addorreplacereadgroups_output_mu"]="${output_prefix}_mu.sort.md.rg.bam"
     generated_variables["picard_buildbamindex_output_wt"]="${output_prefix}_wt.sort.md.rg.bai"
     generated_variables["picard_buildbamindex_output_mu"]="${output_prefix}_mu.sort.md.rg.bai"
-    
-
     generated_variables["gatk_haplotypecaller_output"]="${output_prefix}.hc.vcf"
     generated_variables["snpeff_output"]="${output_prefix}.se.vcf"
     generated_variables["snpsift_output"]="${output_prefix}.snpsift.table.tmp"
@@ -62,9 +59,9 @@ main() {
     ## Prepare references and directory structure
     print_message "Preparing references and directory structure"
     create_directories "${output_dir}" "${snpeff_dir}" "${reference_dir}"
-    
+
     download_reference_genome "${reference_genome_path}" "${reference_genome_source}"
-    
+
     create_chrs_file "${reference_genome_path}" "${reference_chrs_fa_path}"
     create_fai_and_index "${reference_genome_path}" "${reference_chrs_fa_path}"
     create_sequence_dictionary "${reference_chrs_fa_path}" "${reference_chrs_path}"
@@ -72,145 +69,133 @@ main() {
     echo "References and directories prepared. Proceeding with mapping...."
 
     print_message "Mapping"
-    # Align reads using BWA. A more modern aligner for this may be implemented 
-    # sometime  
-    for bulk in "${bulktype[@]}"; do
-        bwa mem \
-            -t "$threads_halfed" \
-            -M "${reference_chrs_fa_path}" \
-            "${bwa_output_sam_${bulk}}" > "${bwa_output_sam_${bulk}}"
-    done
+    bwa mem \
+        -t "$threads_halfed" \
+        -M "${reference_chrs_fa_path}" \
+        -I "${wt_input}" \
+        "${bwa_output_sam_wt}" > "${bwa_output_sam_wt}" && \
+    bwa mem \
+        -t "$threads_halfed" \
+        -M "${reference_chrs_fa_path}" \
+        -I "${mu_input}" \
+        "${bwa_output_sam_mu}" > "${bwa_output_sam_mu}"
 
-    # Create binary alignment map for more efficient processing
+    echo "..."
+    wait
+
     print_message "Converting sam to bam"
-    for bulk in "${bulktype[@]}"; do
-        samtools view \
-            -bSh \
-            -@ "$threads_halfed" \
-            "${!bwa_output_sam_${bulk}}" > "${!samtools_output_bam_${bulk}}" &
-    done
-    
+    samtools view \
+        -bSh \
+        -@ "$threads_halfed" \
+        "${bwa_output_sam_mu}" > "${samtools_output_bam_mu}" && \
+    samtools view \
+        -bSh \
+        -@ "$threads_halfed" \
+        "${bwa_output_sam_wt}" > "${samtools_output_bam_wt}"
+
     echo "..."
     wait
 
-    # Fix paired-end
-    # Ensures that mapping information between read pairs is accurate. 
-    for bulk in "${bulktype[@]}"; do
-        if [ "${pairedness}" == "paired-end" ]; then
-            print_message "Reads are paired-end. Running samtools fixmate"
-            samtools fixmate \
-            "${!samtools_output_bam_${bulk}}" \
-            "${!samtools_fixmate_output_${bulk}}" &
-        fi
-    done
-    
+    print_message "Fix paired-end reads"
+    if [ "${pairedness}" == "paired-end" ]; then
+        samtools fixmate \
+            "${samtools_output_bam_mu}" \
+            "${samtools_fixmate_output_mu}" && \
+        samtools fixmate \
+            "${samtools_output_bam_wt}" \
+            "${samtools_fixmate_output_wt}"
+    fi
+
     echo "..."
     wait
 
-    # SortSam
-    # Sorting ensures that reads are organized in genomic order. GATK haplotype
-    # caller reassembles variant regions de novo - it needs regions to be ordered. 
-    # Reassembly makes HC slow, but it is pretty accurate. 
     print_message "Sorting by coordinate"
-    for bulk in "${bulktype[@]}"; do
-        picard SortSam \
-            -I "${!samtools_fixmate_output_${bulk}}" \
-            -O "${!samtools_sortsam_output_${bulk}}" \
-            -SORT_ORDER coordinate &
-    done
+    picard SortSam \
+        -I "${samtools_fixmate_output_mu}" \
+        -O "${samtools_sortsam_output_mu}" \
+        -SORT_ORDER coordinate && \
+    picard SortSam \
+        -I "${samtools_fixmate_output_wt}" \
+        -O "${samtools_sortsam_output_wt}" \
+        -SORT_ORDER coordinate
     wait
 
-    # Mark duplicates. Reads with identical start and stop positions, and are 
-    # formed during PCR amplification. Marking them allows accurate assessment 
-    # of read depth, in that only unique reads at variants are counted.
     print_message "Marking duplicates"
-    for bulk in "${bulktype[@]}"; do
-        picard MarkDuplicates \
-            -I "${!samtools_sortsam_output_${bulk}}" \
-            -O "${!picard_markduplicates_output_${bulk}}" \
-            -METRICS_FILE "${output_prefix}_${bulk}.metrics.txt" \
-            -ASSUME_SORTED true &
-    done
+    picard MarkDuplicates \
+        -I "${samtools_sortsam_output_mu}" \
+        -O "${picard_markduplicates_output_mu}" \
+        -METRICS_FILE "${output_prefix}_mu.metrics.txt" \
+        -ASSUME_SORTED true && \
+    picard MarkDuplicates \
+        -I "${samtools_sortsam_output_wt}" \
+        -O "${picard_markduplicates_output_wt}" \
+        -METRICS_FILE "${output_prefix}_wt.metrics.txt" \
+        -ASSUME_SORTED true
     wait
 
-    # Format headers so BAMs can be fed through GATK haplotype caller
     print_message "Adding header for GATK"
-    for bulk in "${bulktype[@]}"; do
-        picard AddOrReplaceReadGroups \
-            -I "${!picard_markduplicates_output_${bulk}}" \
-            -O "${!picard_addorreplacereadgroups_output_${bulk}}" \
-            -RGLB "${current_line_name}_${bulk}" \
-            -RGPL illumina \
-            -RGSM "${current_line_name}_${bulk}" \
-            -RGPU run1 \
-            -SORT_ORDER coordinate &
-    done
+    picard AddOrReplaceReadGroups \
+        -I "${picard_markduplicates_output_mu}" \
+        -O "${picard_addorreplacereadgroups_output_mu}" \
+        -RGLB "${current_line_name}_mu" \
+        -RGPL illumina \
+        -RGSM "${current_line_name}_mu" \
+        -RGPU run1 \
+        -SORT_ORDER coordinate && \
+    picard AddOrReplaceReadGroups \
+        -I "${picard_markduplicates_output_wt}" \
+        -O "${picard_addorreplacereadgroups_output_wt}" \
+        -RGLB "${current_line_name}_wt" \
+        -RGPL illumina \
+        -RGSM "${current_line_name}_wt" \
+        -RGPU run1 \
+        -SORT_ORDER coordinate
     wait
 
     print_message "Building BAM index"
-    # Build BAM index
-    # Needed to run haplotype caller. Increases the speed of accessing and 
-    # retrieving data within genomic regions during variant calling. Allows GATK HC
-    # to skip directly to the region of interest.  
-    for bulk in "${bulktype[@]}"; do
-        picard BuildBamIndex \
-            -INPUT "${!picard_addorreplacereadgroups_output_${bulk}}" \
-            -O "${!picard_buildbamindex_output_${bulk}}" &
-    done
+    picard BuildBamIndex \
+        -INPUT "${picard_addorreplacereadgroups_output_mu}" \
+        -O "${picard_buildbamindex_output_mu}" && \
+    picard BuildBamIndex \
+        -INPUT "${picard_addorreplacereadgroups_output_wt}" \
+        -O "${picard_buildbamindex_output_wt}"
     wait
 
     print_message "Calling haplotypes. This may take a while..."
 
-    # GATK HC Variant calling
-    # Haplotype caller looks for regions with variance and locally reconstructs
-    # the region using the available reads and calls variants for the region. 
-    # Time-consuming but accurate
-    
     if [ $call_variants_in_parallel = True ]; then
         split_and_call_haplotype $output_prefix $output_dir_path $reference_chrs_fa_path $threads_limit
     else
         gatk HaplotypeCaller \
             -R "$reference_chrs_fa_path" \
-            -I "${!picard_addorreplacereadgroups_output_mu]}" \
-            -I "${!picard_addorreplacereadgroups_output_wt]}" \
+            -I "${picard_addorreplacereadgroups_output_mu}" \
+            -I "${picard_addorreplacereadgroups_output_wt}" \
             -O "$gatk_haplotypecaller_output" \
             -output-mode EMIT_ALL_CONFIDENT_SITES \
             --native-pair-hmm-threads "$threads_limit"
     fi
 
     print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
-    
-    # snpEff, labeling SNPs
-    # snpEff labels the variants in haplotype caller with likely impacts of variants 
-    # on gene function (early stop/start codons, missense mutations, etc.) using
-    # databases assembled from annotated reference files 
-    # (gff, transcriptomes, and genomes). 
+
     snpEff "$snpEff_species_db" \
         -s "$snpeff_out_filename" \
         "$gatk_haplotypecaller_output" > "${snpeff_output}"
     wait
     print_message "Haplotypes called and SNPs labeled. Cleaning data."
 
-    # Extracting SNPeff data and variant information into a table
-    # built-in data processing of snpEff labels... 
     extract_fields_snpSift \
         "$snpeff_output" \
         "$snpsift_output" \
         "$current_line_name"
-    
-    # Clean up data table
+
     remove_repetitive_nan "$snpsift_output" "$tmp_table_file_name"
     format_fields "$tmp_table_file_name" "$current_line_name"
     remove_complex_genotypes "$tmp_table_file_name"
-    
-    # Remove known SNPs
+
     remove_known_snps "$known_snps_path" "$tmp_table_file_name" "$vcf_table_path"
-    remove_known_snps "$known_snps_path" "$tmp_table_file_name" "$vcf_table_path"
-    
-    # Add headers
+
     add_headers "$vcf_table_path"
 
-    # Clean up temporary files
     cleanup_files "$output_dir_path" "$cleanup"
 }
 
