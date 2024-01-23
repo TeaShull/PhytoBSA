@@ -10,10 +10,6 @@ CONFIG_DIR = os.path.dirname(os.path.realpath(__file__)) #<- YOU ARE HERE
 BASE_DIR =  os.path.dirname(CONFIG_DIR)
 MODULES_DIR = os.path.join(BASE_DIR, 'modules')
 
-TEMPLATE_DIR = os.path.join(FRONTEND_DIR,'templates')
-STATIC_DIR = os.path.join(FRONTEND_DIR,'static')
-
-
 """
  Feel free to edit these to customize your input and output folders. 
 just change "DATA_DIR" if you want to change where the data folder is located. 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from settings.config import (
-    INPUT_DIR, OUTPUT_DIR, LOG_DIR, TEMPLATE_DIR, STATIC_DIR
+    INPUT_DIR, OUTPUT_DIR, LOG_DIR
 )
 import os
 import sys
