@@ -84,55 +84,64 @@ download_reference_genome() {
     fi
 }
 
-# Create .chrs file if it doesn't exist
-filter_non_chromosomal_sequences() {
-    if [ "$#" -eq 0 ]; then
-        echo "Usage: filter_non_chromosomal_sequences <input_file> <output_file> <pattern1> [<pattern2> ...]"
-        return 1
-    fi
+# Create .chrs file if it doesn't exist\
+create_chromosomal_fasta() {
+    local input_file="$1"
+    local output_file="$2"
+    local patterns=""
 
-    if [ ! -f "${reference_chrs_fa_path}" ]; then
-        echo 'Creating reference chrs file based on provided patterns...'
-        local reference_genome_path="$1"
-        local reference_chrs_fa_path="$2"
-        shift 2
-
-        awk -v patterns="${patterns}" '
+    if [ ! -f "${output_file}" ]; then
+        echo "Creating $output_file with only chromosomal DNA..."
+        touch $output_file
+        while [ "$#" -gt 2 ]; do
+            patterns+="|$3"
+            shift
+        done
+        patterns=${patterns:1}
+        echo "Creating chomosomal fasta by removing nonchromosomal sequences"
+        echo "Patterns to remove: $patterns"
+        awk -v patterns="$patterns" -v output_file="$output_file" '
             BEGIN {
-                FS = "\n";
-                RS = ">";
-                ORS = "";
+                n = split(patterns, exclusion_patterns, "|")
+                # Open the output file for writing
+                output_handle = sprintf(output_file)    
+                # Redirect output to the output file
+                print "" > output_handle
+                close(output_handle)
             }
-
-            function extract_identifier(header) {
-                # Extract the first string after ">", or between ">" and "|" or ":"
-                if (match(header, /^([^\|:>]+)/, match_array)) {
-                    return match_array[1];
-                }
-                return "";
-            }
-
-            function contains_pattern(header, patterns) {
-                split(tolower(extract_identifier(header)), words, /[ \t\n]+/);
-                if (index(tolower(patterns), tolower(words[1])) > 0) {
-                    return 1;
-                }
-                return 0;
-            }
-
             {
-                if (!contains_pattern($1, patterns)) {
-                    print ">" $0;
+                if ($0 ~ /^>/) {
+                    skip_sequence = 0
+                    for (i = 1; i <= n; i++) {
+                        if (index($0, exclusion_patterns[i]) > 0) {
+                            skip_sequence = 1
+                            break
+                        }
+                    }
+                    if (!skip_sequence) {
+                        if (current_sequence != "") {
+                            print current_sequence > output_handle
+                            current_sequence = ""
+                        }
+                        print > output_handle
+                    }
+                } else if (!skip_sequence) {
+                    current_sequence = current_sequence $0 "\n"
                 }
             }
-        ' "${reference_genome_path}" > "${reference_chrs_fa_path}"
-
-        echo "Chromosomes not containing the following patterns in the header will be used as reference: ${*}"
-        echo "[NOTE] If reference data is missing, you may need to edit the patterns provided to filter_sequences in subprocess_utilities_VCFgen.sh"
+            END {
+                if (current_sequence != "") {
+                    print current_sequence > output_handle
+                }
+                close(output_handle)
+            }
+        ' "$input_file"
     else
-        echo "Reference chr fa exists: ${reference_chrs_fa_path}"
+        echo "Chromosomal fasta exists: $output_file" 
+        echo "Proceeding..."
     fi
 }
+
 
 # Create .fai and index files if they don't exist
 create_fai_and_index() {
