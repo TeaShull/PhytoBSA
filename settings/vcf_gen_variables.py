@@ -26,5 +26,5 @@ known_snps_path = 'Arabidopsis_thaliana.vcf'
 
 # Run gatk haplotype caller on each chromosome in parallel? The will generally run
 # faster, but is a beta feature and could be buggy
-call_variants_in_parallel = "True"
+call_variants_in_parallel = "False"
 
