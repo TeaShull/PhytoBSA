@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-from settings.config import INPUT_DIR, OUTPUT_DIR, LOG_DIR
+from settings.config import (
+    INPUT_DIR, OUTPUT_DIR, LOG_DIR
+)
 import os
 import sys
 import multiprocessing
@@ -41,6 +43,7 @@ def main():
     # Create instances of ThaleBSAParentFunctions and FileUtilities. 
     file_utils = FileUtilities(core_log)
 
+    args = parse_program_arguments()
     # parse command line arguments
     line_name = args.line_name
     vcf_table = args.vcf_table

@@ -176,19 +176,19 @@ class DictionaryUtilities:
                 line : details
             }
             self.log.success('User inputs successfully organized into line_dict.')
-            return experiment_dict
+            return self.line_dict
             
         except Exception as e:
             self.log.fail(f'Error creating the line dictionary from user inputs {e}.')
 
-    def check_vcf_gen_variables(self)-> 
+    def check_vcf_gen_variables(self): 
         """
         Line dictionary will be populated with the contents of vcf_gen_variables, 
         if the user has not assigned any variables. 
 
         Please update this list if you add any new variables to vcf_gen_variables
         Args:
-            experiment_dict:
+            self.line_dict:
                 key:
                     reference_genome_name
                     snpEff_species_db
@@ -203,51 +203,66 @@ class DictionaryUtilities:
         """
         try:
             import settings.vcf_gen_variables as var
-            for line, details in experiment_dict.items():
-                for key, value in details.items():
-                    
-                    if value:
-                        self.log.note(f'Variable set by user|{key}:{value}')
-                    
-                    if value is None:
-                        try:
+
+            for key, value in var.__dict__.items():
+                if not key.startswith('__'):
+                    for line, details in self.line_dict.items():
+                        if key not in details:
                             self.log.note(f'{key} variable not set. Sourcing from settings/vcf_gen_variables...')
-                            sub_dict[key] = var.__dict__[key]
-                            self.log.note(f'Variable assigned|{key}:{sub_dict[key]}')
-                    
-                        except Exception as e:
-                            self.log.fail(f'Aborting. Setting variable {key} failed: {e}')
-            
-            return experiment_dict
-        
+                            details[key] = value
+                            self.log.note(f'{key} variable assigned | {value}')
+                        else:
+                            self.log.note(f'{key} variable exists in the dictionary. Skipping sourcing...')
+            return True
+
         except Exception as e:
             self.log.fail(f'There was an error while checking if variables for VCFgen.sh have been assigned: {e}')
 
     def generate_output_file_paths(self):
         """
-        Generate file paths based on the given parameters.
+        Generate file paths based on the parameters in line_dict
 
-        Args:
-        current_line_name (str): The name used as a key in the self.line_dict.
-        vcf_log: Some object with an 'ulid' attribute.
-        known_snps (str): The name of the known_snps file.
+        output_dir_path is generated and its directory is made
+        if it doesn't exists
+        
+        output_prefix is generated and added to line_dict
 
-        Returns:
-        Tuple containing the generated file paths.
+        vcf_table_path is generated if it doesn't exist, and echked for 
         """
         # Add output_path to self.line_dict. 
-        for line, value in self.line_dict:
-            output_name_prefix = f"{self.log.ulid}_-{line}"
-            output_dir_path = self.process_path(OUTPUT_DIR, output_name_prefix)
-            output_prefix = os.path.join(output_dir_path, output_name_prefix)
-            value['output_dir_path'] = output_dir_path
-            value['output_prefix'] = output_prefix
-        
-        # Add vcftable_path to self.line_dict.
-        if value['vcf_table_path'] is None:
-            vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
-            value['vcf_table_path'] = self.process_path(OUTPUT_DIR, vcf_table_name)
-   
+        file_utils = FileUtilities(self.log)
+        try:
+            for line, value in self.line_dict.items():
+                # make output name prefix. This will begin all files created
+                output_name_prefix = f"{self.log.ulid}_-{line}"
+
+                # create output_dir path, and make the directory if it doesn't exist
+                output_dir_path = os.path.join(OUTPUT_DIR, output_name_prefix)
+                file_utils.setup_directory(output_dir_path)
+                value['output_dir_path'] = output_dir_path # store in dict
+
+                output_prefix = os.path.join(output_dir_path, output_name_prefix)
+                value['output_prefix'] = output_prefix
+            self.log.success('Output file paths added to self.line_dict.')
+
+        except Exception as e:
+            self.log.fail(f'There was an error producing output file paths:{e}')
+
+        self.log.attempt('checking for vcf_table_path in self.line_dict... ')
+        try:
+            # Add vcftable_path to self.line_dict
+            if 'vcf_table_path' not in value or value['vcf_table_path'] is None:
+                vcf_table_name = f"{output_name_prefix}.noknownsnps.table"
+                value['vcf_table_path'] = os.path.join(OUTPUT_DIR, vcf_table_name)
+                self.log.success('VCF table path added to self.line_dict')
+
+            else: 
+                self.log.success('vcf table path exists in line_dict.. proceeding')
+
+        except Exception as e:
+            self.log.fail(f'There was an error adding vcf_table_path to self.line_dict {e}')
+
+
     def save_experiment_details(self):
         '''
         Saves self.line_dict information into a human-readable file, for
@@ -348,7 +363,7 @@ class FileUtilities:
         else:
             self.log.note(f"path:{path} does not exist. Checking for it in {directory}..")
             dir_path = os.path.join(directory, path)
-            if os.path.exists(input_path):
+            if os.path.exists(dir_path):
                 self.log.note(f" path:{dir_path} found! Assigning path value.")
                 return dir_path
             else:
@@ -389,12 +404,12 @@ class LogDbUtilites:
         ''', (analysis_id,))
         result = cursor.fetchone()
 
-        if result
+        if result:
             analysis_log_path, vcf_log_pat = result
             print(f"Analysis ID: {analysis_id}")
             print(f"Analysis Log Path: {analysis_log_path}")
             print(f"VCF Log Path: {vcf_log_path}")
-        ele:
+        else:
             print(f"No record found for Analysis ID '{analysis_id}'")
 
 
