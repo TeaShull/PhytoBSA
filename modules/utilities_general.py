@@ -343,7 +343,7 @@ class FileUtilities:
         Returns: 
         None. Creates directory if it doesn't exist. 
         '''
-        self.log.attempt('Checking if directory exists...')
+        self.log.attempt(f'Checking if directory exists:{directory}')
         try: 
             # Check if the output directory exists, and create it if necessary
             if not os.path.exists(directory):
