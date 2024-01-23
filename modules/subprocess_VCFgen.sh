@@ -21,13 +21,9 @@ main() {
     passed_variables["call_variants_in_parallel"]=${16}
     passed_variables["cleanup"]=${17}
 
-    ## Printing all assigned variables for logging purposes
     print_variable_info passed_variables "Variables passed to subprocess_VCFgen.sh"
-    ## Assigning variables in array to their respective keys
     assign_values passed_variables
 
-    ## Generate other needed variables 
-    # ...get rid of the / paths! pass them with os.path.join for consistancy...
     declare -A generated_variables
     generated_variables["reference_genome_path"]="${reference_dir}/${reference_genome_name}.fa"
     generated_variables["reference_chrs_path"]="${reference_dir}/${reference_genome_name}.chrs"
@@ -35,24 +31,28 @@ main() {
     generated_variables["snpeff_dir"]="${output_dir_path}/snpEff"
     generated_variables["snpeff_out_filename"]="${output_dir_path}/snpEff/${vcf_ulid}-_${current_line_name}"
     
-    # Bulktype is to be used to iterate through the wt and mu bulk files,
-    # to ensure easy naming consistency...
-    bulktype=("wt" "mu")     
-    for bulk in "${bulktype[@]}"; do
-        generated_variables["bwa_output_sam_${bulk}"]="${output_prefix}_${bulk}.sam"
-        generated_variables["samtools_output_bam_${bulk}"]="${output_prefix}_${bulk}.bam"
-        generated_variables["samtools_fixmate_output_${bulk}"]="${output_prefix}_${bulk}.fix.bam"
-        generated_variables["samtools_sortsam_output_${bulk}"]="${output_prefix}_${bulk}.sort.bam"
-        generated_variables["picard_markduplicates_output_${bulk}"]="${output_prefix}_${bulk}.sort.md.bam"
-        generated_variables["picard_addorreplacereadgroups_output_${bulk}"]="${output_prefix}_${bulk}.sort.md.rg.bam"
-        generated_variables["picard_buildbamindex_output_${bulk}"]="${output_prefix}_${bulk}.sort.md.rg.bai"
-    done
+    generated_variables["bwa_output_sam_wt"]="${output_prefix}_wt.sam"
+    generated_variables["bwa_output_sam_mu"]="${output_prefix}_mu.sam"
+    generated_variables["samtools_output_bam_wt"]="${output_prefix}_wt.bam"
+    generated_variables["samtools_output_bam_mu"]="${output_prefix}_mu.bam"
+    generated_variables["samtools_fixmate_output_wt"]="${output_prefix}_wt.fix.bam"
+    generated_variables["samtools_fixmate_output_mu"]="${output_prefix}_mu.fix.bam"
+    generated_variables["samtools_sortsam_output_wt"]="${output_prefix}_wt.sort.bam"
+    generated_variables["samtools_sortsam_output_mu"]="${output_prefix}_mu.sort.bam"
+    generated_variables["picard_markduplicates_output_wt"]="${output_prefix}_wt.sort.md.bam"
+    generated_variables["picard_markduplicates_output_mu"]="${output_prefix}_mu.sort.md.bam"
+    generated_variables["picard_addorreplacereadgroups_output_wt"]="${output_prefix}_wt.sort.md.rg.bam"
+    generated_variables["picard_addorreplacereadgroups_output_mu"]="${output_prefix}_mu.sort.md.rg.bam"
+    generated_variables["picard_buildbamindex_output_wt"]="${output_prefix}_wt.sort.md.rg.bai"
+    generated_variables["picard_buildbamindex_output_mu"]="${output_prefix}_mu.sort.md.rg.bai"
+    
 
     generated_variables["gatk_haplotypecaller_output"]="${output_prefix}.hc.vcf"
     generated_variables["snpeff_output"]="${output_prefix}.se.vcf"
     generated_variables["snpsift_output"]="${output_prefix}.snpsift.table.tmp"
     generated_variables["tmp_table_file_name"]="${output_prefix}.table.tmp"
     generated_variables["snpsift_table_name"]="${output_prefix}.snpsift.table.tmp"
+
 
     ## Printing all generated variables for logging purposes
     print_variable_info generated_variables "Variables generated in subprocess_VCFgen.sh"
