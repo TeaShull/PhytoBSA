@@ -9,16 +9,15 @@ PACKAGE_NAME = "phytobsa"
 CONFIG_DIR = os.path.dirname(os.path.realpath(__file__)) #<- YOU ARE HERE
 BASE_DIR =  os.path.dirname(CONFIG_DIR)
 MODULES_DIR = os.path.join(BASE_DIR, 'modules')
-VCF_GEN_SCRIPT = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')
-
-FRONTEND_DIR = os.path.join(MODULES_DIR, 'frontend')
-TEMPLATE_DIR = os.path.join(FRONTEND_DIR,'templates')
-STATIC_DIR = os.path.join(FRONTEND_DIR,'static')
-
 
 """
  Feel free to edit these to customize your input and output folders. 
 just change "DATA_DIR" if you want to change where the data folder is located. 
 the rest will autopopulate
 """
-s
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+
+REFERENCE_DIR = os.path.join(DATA_DIR, 'references')
+INPUT_DIR = os.path.join(DATA_DIR, 'input')
+OUTPUT_DIR = os.path.join(DATA_DIR, 'output')
+LOG_DIR = os.path.join(DATA_DIR, 'logs')
