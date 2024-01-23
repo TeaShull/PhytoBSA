@@ -80,6 +80,7 @@ class ThaleBSAParentFunctions:
                     call_variants_in_parallel,
                     cleanup
                 )
+
                 # Construct the command for VCFgen.sh, passing the above variables
                 cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
                 # Run vcfgen shell subprocess.

@@ -1,4 +1,5 @@
-source subprocess_utilities_VCFgen.sh
+echo "Current working directory: $(pwd)"
+source ./subprocess_utilities_VCFgen.sh
 
 main() {
     declare -A passed_variables
@@ -34,8 +35,8 @@ main() {
     generated_variables["snpeff_dir"]="${output_dir_path}/snpEff"
     generated_variables["snpeff_out_filename"]="${output_dir_path}/snpEff/${vcf_ulid}-_${current_line_name}"
     
-    # Bulktupe is to be used to iterate through the wt and mu bulk files, 
-    # to ensure easy naming consistancy... Hope this isn't just harder to read
+    # Bulktype is to be used to iterate through the wt and mu bulk files,
+    # to ensure easy naming consistency...
     bulktype=("wt" "mu")     
     for bulk in "${bulktype[@]}"; do
         generated_variables["bwa_output_sam_${bulk}"]="${output_prefix}_${bulk}.sam"
@@ -49,7 +50,7 @@ main() {
 
     generated_variables["gatk_haplotypecaller_output"]="${output_prefix}.hc.vcf"
     generated_variables["snpeff_output"]="${output_prefix}.se.vcf"
-    generated_variables["snpsift_output"]=${output_prefix}.snpsift.table.tmp
+    generated_variables["snpsift_output"]="${output_prefix}.snpsift.table.tmp"
     generated_variables["tmp_table_file_name"]="${output_prefix}.table.tmp"
 
     ## Printing all generated variables for logging purposes
@@ -59,24 +60,24 @@ main() {
 
     ## Prepare references and directory structure
     print_message "Preparing references and directory structure"
-    create_directories ${output_dir} ${snpeff_dir} ${reference_dir}
+    create_directories "${output_dir}" "${snpeff_dir}" "${reference_dir}"
     
     download_reference_genome "${reference_genome_path}" "${reference_genome_source}"
     
     create_chrs_file "${reference_genome_path}" "${reference_chrs_fa_path}"
-    create_fai_and_index ${reference_genome_path} "${reference_chrs_fa_path}"
+    create_fai_and_index "${reference_genome_path}" "${reference_chrs_fa_path}"
     create_sequence_dictionary "${reference_chrs_fa_path}" "${reference_chrs_path}"
 
     echo "References and directories prepared. Proceeding with mapping...."
 
-       print_message "Mapping"
+    print_message "Mapping"
     # Align reads using BWA. A more modern aligner for this may be implemented 
     # sometime  
     for bulk in "${bulktype[@]}"; do
         bwa mem \
             -t "$threads_halfed" \
             -M "${reference_chrs_fa_path}" \
-            "bwa_output_sam_${bulk}" > "bwa_output_sam_${bulk}"
+            "${bwa_output_sam_${bulk}}" > "${bwa_output_sam_${bulk}}"
     done
 
     # Create binary alignment map for more efficient processing
@@ -85,7 +86,7 @@ main() {
         samtools view \
             -bSh \
             -@ "$threads_halfed" \
-            "bwa_output_sam_${bulk}" > "samtools_output_bam_${bulk}" &
+            "${!bwa_output_sam_${bulk}}" > "${!samtools_output_bam_${bulk}}" &
     done
     
     echo "..."
@@ -97,8 +98,8 @@ main() {
         if [ "${pairedness}" == "paired-end" ]; then
             print_message "Reads are paired-end. Running samtools fixmate"
             samtools fixmate \
-            "samtools_output_bam_${bulk}" \
-            "samtools_fixmate_output_${bulk}" &
+            "${!samtools_output_bam_${bulk}}" \
+            "${!samtools_fixmate_output_${bulk}}" &
         fi
     done
     
@@ -112,8 +113,8 @@ main() {
     print_message "Sorting by coordinate"
     for bulk in "${bulktype[@]}"; do
         picard SortSam \
-            -I "samtools_fixmate_output_${bulk}" \
-            -O "samtools_sortsam_output_${bulk}" \
+            -I "${!samtools_fixmate_output_${bulk}}" \
+            -O "${!samtools_sortsam_output_${bulk}}" \
             -SORT_ORDER coordinate &
     done
     wait
@@ -124,8 +125,8 @@ main() {
     print_message "Marking duplicates"
     for bulk in "${bulktype[@]}"; do
         picard MarkDuplicates \
-            -I "samtools_sortsam_output_${bulk}" \
-            -O "picard_markduplicates_output_${bulk}" \
+            -I "${!samtools_sortsam_output_${bulk}}" \
+            -O "${!picard_markduplicates_output_${bulk}}" \
             -METRICS_FILE "${output_prefix}_${bulk}.metrics.txt" \
             -ASSUME_SORTED true &
     done
@@ -135,8 +136,8 @@ main() {
     print_message "Adding header for GATK"
     for bulk in "${bulktype[@]}"; do
         picard AddOrReplaceReadGroups \
-            -I "picard_markduplicates_output_${bulk}" \
-            -O "picard_addorreplacereadgroups_output_${bulk}" \
+            -I "${!picard_markduplicates_output_${bulk}}" \
+            -O "${!picard_addorreplacereadgroups_output_${bulk}}" \
             -RGLB "${current_line_name}_${bulk}" \
             -RGPL illumina \
             -RGSM "${current_line_name}_${bulk}" \
@@ -152,8 +153,8 @@ main() {
     # to skip directly to the region of interest.  
     for bulk in "${bulktype[@]}"; do
         picard BuildBamIndex \
-            -INPUT "picard_addorreplacereadgroups_output_${bulk}" \
-            -O "picard_buildbamindex_output_${bulk}" &
+            -INPUT "${!picard_addorreplacereadgroups_output_${bulk}}" \
+            -O "${!picard_buildbamindex_output_${bulk}}" &
     done
     wait
 
@@ -169,8 +170,8 @@ main() {
     else
         gatk HaplotypeCaller \
             -R "$reference_chrs_fa_path" \
-            -I "$picard_addorreplacereadgroups_output_mu" \
-            -I "$picard_addorreplacereadgroups_output_wt" \
+            -I "${!picard_addorreplacereadgroups_output_mu]}" \
+            -I "${!picard_addorreplacereadgroups_output_wt]}" \
             -O "$gatk_haplotypecaller_output" \
             -output-mode EMIT_ALL_CONFIDENT_SITES \
             --native-pair-hmm-threads "$threads_limit"
