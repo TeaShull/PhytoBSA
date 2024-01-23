@@ -485,13 +485,15 @@ class BSAAnalysisUtilities:
         ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)
         """
         plot_scenarios = [
-            ('G_S', 'G-statistic', 'G-statistic', self.gs_cutoff, False),
+            ('G_S', 'G-statistic', 'G-statistic', gs_cutoff, False),
             ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', None, True),
-            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', self.rsg_cutoff, False),
+            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', rsg_cutoff, False)
             ('ratio', 'Delta SNP ratio', 'Ratio', None, False),
             ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
-            ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', self.rsg_y_cutoff, True),
+            ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True)
         ]
+
+        self.log.attempt(f"Attempting to produce and save plots for {self.current_line_name}...")
 
         self.log.attempt(f"Attempting to produce and save plots for {self.current_line_name}...")
         
