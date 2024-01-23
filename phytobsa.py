@@ -42,15 +42,15 @@ def main():
     file_utils = FileUtilities(core_log)
 
     # parse command line arguments
-        line_name = args.line_name
-        vcf_table = args.vcf_table
-        reference_genome_name = args.reference_genome_name
-        snpEff_species_db = args.snpEff_species_db
-        reference_genome_source = args.reference_genome_source
-        threads_limit = args.threads_limit
-        cleanup = args.cleanup
-        known_snps = args.known_snps
-        segregation_type = args.segregation_type
+    line_name = args.line_name
+    vcf_table = args.vcf_table
+    reference_genome_name = args.reference_genome_name
+    snpEff_species_db = args.snpEff_species_db
+    reference_genome_source = args.reference_genome_source
+    threads_limit = args.threads_limit
+    cleanup = args.cleanup
+    known_snps = args.known_snps
+    segregation_type = args.segregation_type
     
 
     # Check if user wants to the command line and variables.py instead of the Flask app.
