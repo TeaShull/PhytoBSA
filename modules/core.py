@@ -53,7 +53,6 @@ class ThaleBSAParentFunctions:
                 call_variants_in_parallel = details['call_variants_in_parallel']
                 cleanup = details['cleanup']
                 
-
                 # generate log instance, add run info to sql db
                 vcf_log = LogHandler(f'vcf_{line}')
                 details['vcf_ulid'] = vcf_log.ulid

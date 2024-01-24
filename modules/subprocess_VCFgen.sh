@@ -61,15 +61,19 @@ main() {
 
     download_reference_genome "${reference_genome_path}" "${reference_genome_source}"
 
-    # Add patterns to this function to remove non chromosomal segments
+    # Add patterns to this function to remove non chromosomal DNA from analysis
     # For example, mitochondrial (Mt) and plastid (Pt) sequences in ref genomes
+    # Be as specific as possible to avoid removing important headers. 
+    # Example: using only "pt" may remove all chromosomal sequences containing 
+    # Capta (plantain), so we instead use ">Pt ". (A different approach would be
+    # nice) 
     create_chromosomal_fasta \
     "${reference_genome_path}" \
     "${reference_chrs_fa_path}" \
-    ">Mt" \
-    ">mt" \
-    ">Pt" \
-    ">pt" \
+    ">Mt " \
+    ">mt " \
+    ">Pt " \
+    ">pt " \
     "Scaffold" \
     "scaffold" \
     "Contig" \
