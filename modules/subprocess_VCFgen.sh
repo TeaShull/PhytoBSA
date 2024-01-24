@@ -86,6 +86,8 @@ main() {
     echo "References and directories prepared. Proceeding with mapping...."
 
     print_message "Mapping"
+    # Align reads using BWA. A more modern aligner for this may be implemented 
+    # sometime  
     bwa mem \
         -t $threads_halfed \
         -M $reference_chrs_fa_path \
@@ -99,6 +101,7 @@ main() {
     wait
 
     print_message "Converting sam to bam"
+    #Create binary alignment map for more effecient processing
     samtools view \
         -bSh \
         -@ $threads_halfed \
@@ -112,6 +115,7 @@ main() {
     wait
 
     print_message "Fix paired-end reads"
+    # Ensures that mapping information between read pairs is accurate. 
     if [ "${pairedness}" == "paired-end" ]; then
         samtools fixmate \
             $samtools_output_bam_mu \
@@ -125,6 +129,9 @@ main() {
     wait
 
     print_message "Sorting by coordinate"
+    # Sorting ensures that reads are organized in genomic order. GATK haplotype
+    # caller reassembles variant regions denovo - it needs regions to be ordered. 
+    # Reassembly makes HC slow, but it is pretty accurate. 
     picard SortSam \
         -I $samtools_fixmate_output_mu \
         -O $samtools_sortsam_output_mu \
@@ -136,6 +143,9 @@ main() {
     wait
 
     print_message "Marking duplicates"
+    # Mark duplicates. Reads with identical start and stop positions, and are 
+    # formed during PCR amplification. Marking them allows accurate assesment 
+    # of read depth, in that only unique reads at variants are counted.
     picard MarkDuplicates \
         -I $samtools_sortsam_output_mu \
         -O $picard_markduplicates_output_mu \
@@ -149,6 +159,7 @@ main() {
     wait
 
     print_message "Adding header for GATK"
+    # Format headers so BAMs can be fed through GATK haplotype caller
     picard AddOrReplaceReadGroups \
         -I $picard_markduplicates_output_mu \
         -O $picard_addorreplacereadgroups_output_mu \
@@ -168,6 +179,9 @@ main() {
     wait
 
     print_message "Building BAM index"
+    # Needed to run haplotyple caller. Increases the speed of accessing and 
+    # retrieving data within genomic regions during variant calling. Allows GATK HC
+    # to skip directly to the region of interest.  
     picard BuildBamIndex \
         -INPUT $picard_addorreplacereadgroups_output_mu \
         -O $picard_buildbamindex_output_mu &
@@ -177,7 +191,10 @@ main() {
     wait
 
     print_message "Calling haplotypes. This may take a while..."
-
+    # Haplotype caller looks for regions with varience and locally reconstructs
+    # the region using the available reads, and calls variants for the region. 
+    # Time consuming but accurate. Calling variants in parallel allows faster
+    # processing time. 
     if [ $call_variants_in_parallel = True ]; then
         split_and_call_haplotype $output_prefix $output_dir_path $reference_chrs_fa_path $threads_limit
     else
@@ -191,26 +208,35 @@ main() {
     fi
 
     print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
-
+    # snpEff labels the variants in haplotype caller with likely impact of variants 
+    # on gene function (early stop/start codons, missense mutations, exc) using
+    # databases assembled from annotated reference files 
+    # (gff, transcriptomes and genomes). 
     snpEff $snpEff_species_db \
         -s $snpeff_out_filename \
         $gatk_haplotypecaller_output > $snpeff_output
     wait
     print_message "Haplotypes called and SNPs labeled. Cleaning data."
 
+    # Extracting SNPeff data and variant information into a table
+    # built in data processing of snpEff labels... 
     extract_fields_snpSift \
         $snpeff_output \
         $snpsift_output \
         $current_line_name
 
+    # Clean up data table
     remove_repetitive_nan "$snpsift_output" "$tmp_table_file_name"
     format_fields "$tmp_table_file_name" "$current_line_name"
     remove_complex_genotypes "$tmp_table_file_name"
 
+    # Remove known SNPs
     remove_known_snps "$known_snps_path" "$tmp_table_file_name" "$vcf_table_path"
 
+    # Add headers
     add_headers "$vcf_table_path"
-
+    
+    # Clean up temporary files
     cleanup_files "$output_dir_path" "$cleanup"
 }
 
