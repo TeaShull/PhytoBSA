@@ -235,7 +235,7 @@ class BSAAnalysisUtilities:
             self.log.fail(f"Error in g_statistic_array for {self.current_line_name}: {e}")
             return None
 
-    def loess_smoothing(self)->pd.DataFrame:
+    def loess_smoothing(self):
         """
         LOESS smoothing of ratio and G-stat by chromosome
         
@@ -487,7 +487,7 @@ class BSAAnalysisUtilities:
         plot_scenarios = [
             ('G_S', 'G-statistic', 'G-statistic', gs_cutoff, False),
             ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', None, True),
-            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', rsg_cutoff, False)
+            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', rsg_cutoff, False),
             ('ratio', 'Delta SNP ratio', 'Ratio', None, False),
             ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
             ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True)
