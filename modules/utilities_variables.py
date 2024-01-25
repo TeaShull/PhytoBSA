@@ -13,12 +13,19 @@ class Lines:
         self.wt_input = []
         self.mu_input = []
         self.pairedness = None
+    
         self.vcf_table_path = None
-        self.output_dir_path
-        self.output_prefix
-        self.core_ulid = None
-        self.vcf_ulid = None
+        self.vcf_df = None
+        self.output_dir_path = None
+        self.output_prefix = None
         self.analysis_ulid = None
+        self.vcf_ulid = None
+
+        self.analysis_out_prefix = None
+        self.analysis_out_path = None
+        self.gs_cutoff = None
+        self.rsg_cutoff = None
+        self.rsg_y_cutoff = None
 
         self.in_path_variables=[
            'vcf_table_path',
@@ -26,19 +33,10 @@ class Lines:
         self.ref_path_variables=[
            'known_snps_path'
         ]
-class RuntimeVariables:
-    def __init__(self, logger):
-        self.log = logger
 
-        self.lines=[]        
-        
-        self.reference_genome_name = None
-        self.reference_genome_source = None
-        self.cleanup = None
-        self.threads_limit = None
-        self.known_snps_path = None
-        self.call_variants_in_parallel = None
-        self.snpEff_species_db = None
+class LinesUtilities:
+    def __init__(self, logger)
+        self.lines = []
 
     def _process_file(self, filename):
         self.log.attempt(f'Parsing {filename}')
@@ -61,7 +59,6 @@ class RuntimeVariables:
             self._append_file_path(bulk_type, line, file_path)
 
     def _parse_filename(self, filename):
-
         parts = filename.split('.')
         self.log.attempt(f'Parsing {filename}')
         line_name = parts[0]
@@ -144,6 +141,20 @@ class RuntimeVariables:
         except Exception as e:
             self.log.fail(f'Error creating line dictionary from inputs {e}.') 
 
+class VCFGenVariables:
+    def __init__(self, lines, logger):
+        self.log = logger
+
+        self.lines = lines        
+        
+        self.reference_genome_name = None
+        self.reference_genome_source = None
+        self.cleanup = None
+        self.threads_limit = None
+        self.known_snps_path = None
+        self.call_variants_in_parallel = None
+        self.snpEff_species_db = None
+
     def _generate_output_dir_path(self, line):
         file_utils = FileUtilities(self.log)
         try:
@@ -182,3 +193,49 @@ class RuntimeVariables:
         for attribute in vars(self).keys():
             if getattr(self, attribute) is None and hasattr(vcf_gen_variables, attribute):
                 setattr(self, attribute, getattr(vcf_gen_variables, attribute))
+
+class BSAVariables
+    def __init__(self, lines, logger)
+        self.log = logger
+
+        self.lines = lines
+
+        self.loess_span = 0.3
+        self.smooth_edges_bounds = 15
+        self.shuffle_iterations = 1000
+
+    def construct_out_prefix(self, name, ulid, vcf_ulid):
+        analysis_out_prefix = f'{ulid}_-{name}'
+        if vcf_ulid:
+            out_path = os.path.join(
+                OUTPUT_DIR, 
+                f'{vcf_ulid}_-{name}',
+                analysis_out_prefix
+            )
+        else:
+            out_path = os.path.join(
+                OUTPUT_DIR,
+                analysis_out_prefix
+            )
+        file_utils = FileUtilities(self.log)
+        file_utils.setup_directory(out_path)
+        return out_path
+
+    def gen_results_table_path(self, name, ulid, vcf_ulid):
+        out_path = self.construct_out_path(name, ulid, vcf_ulid)
+        results_table_name = f"{self.analysis_out_prefix}_results_table.tsv"
+        return os.path.join(out_path, results_table_name)
+
+    def gen_candidates_table_path(self, name, ulid, vcf_ulid):
+        out_path = self.construct_out_path(name, ulid, vcf_ulid)
+        candidates_table_name = f"{self.analysis_out_prefix}_candidates_table.tsv"
+        return os.path.join(out_path, candidates_table_name)
+
+    def gen_plot_path(self, name, ulid, vcf_ulid, y_column):
+        out_path = self.construct_out_path(name, ulid, vcf_ulid)
+        plot_name = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
+        return os.path.join(out_path, plot_name)
+
+
+
+
