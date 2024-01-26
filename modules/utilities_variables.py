@@ -35,6 +35,16 @@ class Lines:
         ]
 
 class LinesUtilities:
+    '''
+    This class produces the Lines list(a list of instances of the Lines class) 
+    all core modules require the lines list to run. 
+    
+    Each variable class has a place to store the lines list, and from it 
+    (along with other inputs) creates necissary variables 
+    (file paths, inputs, organizing user inputs exc). 
+    
+    Variable classes: VCFGenVariables, BSAVariables
+    '''
     def __init__(self, logger)
         self.lines = []
 
@@ -239,3 +249,4 @@ class BSAVariables
 
 
 
+s
