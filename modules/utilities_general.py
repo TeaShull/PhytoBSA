@@ -10,32 +10,6 @@ class FileUtilities:
     def __init__(self, logger):
         self.log = logger 
 
-    def load_vcf_table(self, current_line_table_path, current_line_name)->pd.DataFrame:
-        """
-        Loads VCF table into a pandas dataframe.
-        
-        Args:  
-        current_line_table_path(str) - path to the vcf table to be loaded into df
-        current_line_name(str) - name of the line associated with the vcf table
-
-        Returns: 
-        Pandas dataframe containing the information loaded from current_line_table_path
-        """
-        self.log.attempt(f"Attempting to load VCF table for line {current_line_name}")
-        try:
-            vcf_df = pd.read_csv(current_line_table_path, sep="\t")
-            self.log.attempt(f"The VCF table for line {current_line_name} was successfully loaded.")
-            return vcf_df
-        
-        except FileNotFoundError:
-            self.log.fail(f"Error: File '{current_line_table_path}' not found.")
-        
-        except pd.errors.EmptyDataError:
-            self.log.fail(f"Error: File '{current_line_table_path}' is empty.")
-        
-        except Exception as e:
-            self.log.fail(f"An unexpected error occurred: {e}")
-
     def setup_directory(self, directory):
         '''
         Checks if the directory path given exists, and creates it if it doesn't.
