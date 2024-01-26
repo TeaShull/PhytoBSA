@@ -48,7 +48,7 @@ class Lines:
         else:
             return details
 
-    def usr_in_variables(self, name, **kwargs):
+    def usr_in_variables(self, **kwargs):
         self.log.attempt('Attempting to organize inputs into Line data class...')
         
         try:
@@ -80,59 +80,14 @@ class Lines:
         except (OSError, FileNotFoundError, PermissionError) as e:
             self.log.fail(f'OS error: {e}')
 
-class VCFGenVariables:
-    def __init__(self, logger,
-                 lines = [], 
-                 reference_genome_name=None, 
-                 reference_genome_source=None, 
-                 cleanup=None, 
-                 threads_limit=None, 
-                 known_snps_path=None, 
-                 call_variants_in_parallel=None, 
-                 snpEff_species_db=None):
-        
-        self.log = logger
-        
-        self.lines = lines        
-        
-        self.reference_genome_name = reference_genome_name
-        self.reference_genome_source = reference_genome_source
-        self.cleanup = cleanup
-        self.threads_limit = threads_limit
-        self.known_snps_path = known_snps_path
-        self.call_variants_in_parallel = call_variants_in_parallel
-        self.snpEff_species_db = snpEff_species_db
+class AutomaticVariables:
+    __init__(self, logger):
+    self.log = logger
+    self.lines = []
 
-    def gen_vcfgen_command(self, line):
-        self._apply_settings() #if None, source from settings.vcf_gen_variables
-            args = (
-                line.vcf_ulid,
-                line.name, 
-                INPUT_DIR,
-                line.wt_input,
-                line.mu_input,
-                line.pairedness,
-                line.output_dir_path,
-                line.output_prefix,
-                line.vcf_table_path,
-                REFERENCE_DIR,
-                self.reference_genome_name, 
-                self.snpEff_species_db,
-                self.reference_genome_source, 
-                self.known_snps_path,
-                self.threads_limit,
-                self.call_variants_in_parallel,
-                self.cleanup
-            )
-            cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
-            return cmd
+    automatic_line_variables()
 
-    def _apply_settings(self):
-        for attribute in vars(self).keys():
-            if getattr(self, attribute) is None and hasattr(vcf_gen_variables, attribute):
-                setattr(self, attribute, getattr(vcf_gen_variables, attribute))
-
-        def _parse_filename(self, filename):
+    def _parse_filename(self, filename):
         parts = filename.split('.')
         self.log.attempt(f'Parsing {filename}')
         name = parts[0]
@@ -202,6 +157,58 @@ class VCFGenVariables:
             self.log.success(f'Line and run details generated.')
         except Exception as e:
             self.log.fail(f"Error while detecting line and run details: {e}")
+
+class VCFGenVariables:
+    def __init__(self, logger,
+                 lines = [], 
+                 reference_genome_name=None, 
+                 reference_genome_source=None, 
+                 cleanup=None, 
+                 threads_limit=None, 
+                 known_snps_path=None, 
+                 call_variants_in_parallel=None, 
+                 snpEff_species_db=None):
+        
+        self.log = logger
+        
+        self.lines = lines        
+        
+        self.reference_genome_name = reference_genome_name
+        self.reference_genome_source = reference_genome_source
+        self.cleanup = cleanup
+        self.threads_limit = threads_limit
+        self.known_snps_path = known_snps_path
+        self.call_variants_in_parallel = call_variants_in_parallel
+        self.snpEff_species_db = snpEff_species_db
+
+    def make_vcfgen_command(self, line):
+        self._apply_settings() #if None, source from settings.vcf_gen_variables
+            args = (
+                line.vcf_ulid,
+                line.name, 
+                INPUT_DIR,
+                line.wt_input,
+                line.mu_input,
+                line.pairedness,
+                line.output_dir_path,
+                line.output_prefix,
+                line.vcf_table_path,
+                REFERENCE_DIR,
+                self.reference_genome_name, 
+                self.snpEff_species_db,
+                self.reference_genome_source, 
+                self.known_snps_path,
+                self.threads_limit,
+                self.call_variants_in_parallel,
+                self.cleanup
+            )
+            cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
+            return cmd
+
+    def _apply_settings(self):
+        for attribute in vars(self).keys():
+            if getattr(self, attribute) is None and hasattr(vcf_gen_variables, attribute):
+                setattr(self, attribute, getattr(vcf_gen_variables, attribute))
 
     def gen_vcf_output_paths(self, name, vcf_ulid):
         output_name = f"{vcf_ulid}-_{name}"
