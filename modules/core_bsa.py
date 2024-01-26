@@ -8,15 +8,16 @@ from plotnine import (
 )
 
 """
-Module for the bsa_analysis parent function. Save for a few file utilities used 
-in the parent function, the core of the read-depth analysis between the 
-wild-type and mutant bulks are stored here.
+Core module for bsa analysis
+Input variable class: 
+The read-depth analysis between the wild-type and mutant bulks are stored here.
 """
 
 class BSA:
     def __init__(self, bsa_vars):
         #AnalysisVariables class passed to function. 
         self.bsa_vars = bsa_vars
+        self.smoothing_function = sm.nonparametric.lowess
 
     def run_pipeline():
         for line in self.bsa_vars.lines:
@@ -26,7 +27,6 @@ class BSA:
 
             #setup line.analysis_out_prefix and line.analysis_out_path
             line.gen_analysis_out_paths(self.log.ulid) 
-            vcf_df = line.vcf_df
             
             ## data cleaning and orginization
             data_filter = DataFiltering(line.name)
@@ -41,16 +41,18 @@ class BSA:
             line.vcf_df = data_filter.drop_genos_with_negative_ratios(line.vcf_df)
             line.vcf_df = feature_prod.loess_smoothing(
                 line.vcf_df, bsa_vars.loess_span, bsa_vars.smooth_edges_bounds
-            ) #BROKEN
+            )
             
             ### Use bootstrapping to produce empircally direved cutoffs for features
             cutoffs = feature_prod.calculate_empirical_cutoffs(
                 line.vcf_df, bsa_vars.loess_span, bsa_vars.shuffle_iterations
             )
             line.gs_cutoff, line.rsg_cutoff, line.rsg_y_cutoff = cutoffs
-            line.vcf_df = label_df_with_cutoffs(line.vcf_df, line.gs_cutoff, line.rsg_cutoff, line.rsg_y_cutoff)
+            line.vcf_df = label_df_with_cutoffs(
+                line.vcf_df, line.gs_cutoff, line.rsg_cutoff, line.rsg_y_cutoff
+            )
             
-            #Construct output file paths
+            #Construct output file path prefix
             line.analysis_out_prefix = self.bsa_vars.construct_out_prefix(
                 line.name, line.analysis_ulid, line.vcf_ulid
             )
@@ -61,12 +63,8 @@ class BSA:
                 line.vcf_df,
                 line.analysis_out_prefix
             )
-            table_and_plots.sort_save_likely_candidates(
-                line.vcf_df, 
-                line.vcf_ulid
-            )
+            table_and_plots.sort_save_likely_candidates()
             table_and_plots.generate_plots(
-                line.vcf_df,
                 line.gs_cutoff, 
                 line.rsg_cutoff, 
                 line.rsg_y_cutoff
@@ -87,10 +85,12 @@ class DataFiltering
         Returns: 
         VCF dataframe with no indels
         """
-        
-        vcf_df.loc[~(vcf_df["ref"].str.len() > 1) 
-            & ~(vcf_df["alt"].str.len() > 1)
-        ]
+        try:
+            vcf_df.loc[~(vcf_df["ref"].str.len() > 1) 
+                & ~(vcf_df["alt"].str.len() > 1)
+            ]
+        except AttributeError:
+            self.log.fail("'ref' and 'alt' columns should only contain strings. VCF may not be properly formatted. Aborting...")
         return vcf_df
     
     def drop_na(self, vcf_df: pd.Dataframe):-> pd.Dataframe
@@ -130,20 +130,25 @@ class DataFiltering
             cut the negative values out after calculating the delta allele
             see: self.drop_genos_with_negative_ratios
         """
-        self.log.attempt('Attempting to filter genotypes based on segrigation pattern...')
+        self.log.attempt('Attempting to filter genotypes based on segregation pattern...')
         try:
             if segregation_type == 'R':
-                self.log.note('Filtering genotypes based an a recessive segrigation pattern')
+                self.log.note('Filtering genotypes based an a recessive segregation pattern')
                 seg_filter = ['1/1:0/1', '0/1:0/0', '0/1:0/1']
             elif segregation_type == 'D':
-                self.log.note('Filtering genotypes based an a dominant segrigation pattern')
+                self.log.note('Filtering genotypes based an a dominant segregation pattern')
                 seg_filter = ['0/1:0/0', '1/1:0/0', '0/1:0/1']  
             else: 
                 self.log.fail(f'Allele type:{segregation_type} is not a valid selection! Aborting.')
             
-            vcf_df[vcf_df['mu:wt_GTpred'].isin(seg_filter)]
+            try:
+                vcf_df[vcf_df['mu:wt_GTpred'].isin(seg_filter)]
+            except KeyError as e:
+                self.log.note('Key error. VCF dataframe should have the following headers: ')
+                self.log.note('chr  pos ref alt gene snpEffect snpVariant snpImpact mu:wt_GTpred mu_ref mu_alt wt_ref wt_alt')
+                self.log.fail(f"Dataframe doesn't contain {e} column. Aborting...")
             
-            self.log.success('Genotypes filtured based on segrigation pattern')
+            self.log.success('Genotypes filtured based on segregation pattern')
             return vcf_df
         
         except Exception as e:
@@ -284,7 +289,8 @@ class FeatureProduction:
             self.log.fail(f"Error in g_statistic_array for {self.line_name}: {e}")
             return None
 
-    def loess_smoothing(self, vcf_df: pd.Dataframe, loess_span, smooth_edges_bounds):-> pd.Dataframe
+    def loess_smoothing(self, vcf_df, loess_span, smooth_edges_bounds)->pd.DataFrame:
+        line.vcf_df, bsa_vars.loess_span, bsa_vars.smooth_edges_bounds
         """
         LOESS smoothing of ratio and G-stat by chromosome
         
@@ -298,14 +304,13 @@ class FeatureProduction:
         try:
 
             vcf_df = self._smooth_chr_facets(vcf_df)
-            
             self.log.success("LOESS smoothing calculations successful.")
             return vcf_df
         
         except Exception as e:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
-    def _smooth_chr_facets(self, df)->pd.DataFrame:
+    def _smooth_chr_facets(self, vcf_df, loess_span, smooth_edges_bounds)->pd.DataFrame:
         """
         Internal Function for smoothing chromosome facets using LOESS. 
         Uses function "smooth_single_chr" to interate over chromosomes as facets
@@ -318,14 +323,74 @@ class FeatureProduction:
         df_list = []
         chr_facets = df["chr"].unique()
 
-        def _smooth_single_chr(df_chr, chr):
+        def _smooth_single_chr(df_chr, chr, loess_span, smooth_edges_bounds):
             """
             Input: df_chr chunk, extends the data 15 data values in each
             direction (to mitigate LOESS edge bias), fits smoothed values and 
             subsequently removes the extended data. 
             Returns: df with fitted values included.
             """
-            self.log.attempt(f"LOESS of chr:{chr} for {line_name}")
+            self.log.attempt(f"LOESS of chr:{chr} for {self.name}...")
+
+            positions = df_chr['pos'].to_numpy()
+            
+            deltas = ([pos - positions[i - 1]
+                       if i > 0 else pos for i, pos in enumerate(positions)]
+                      )
+            deltas_pos_inv = deltas[::-1][-smooth_edges_bounds:-1]
+            deltas_neg_inv = deltas[::-1][1:smooth_edges_bounds]
+            deltas_mirrored_ends = deltas_pos_inv + deltas + deltas_neg_inv
+
+            psuedo_pos = []
+            for i, pos in enumerate(deltas_mirrored_ends):
+                if i == 0:
+                    psuedo_pos.append(0)
+                if i > 0:
+                    psuedo_pos.append(pos + psuedo_pos[i - 1])
+
+            df_chr_inv_neg = df_chr[::-1].iloc[-smooth_edges_bounds:-1]
+            df_chr_inv_pos = df_chr[::-1].iloc[1:smooth_edges_bounds]
+            df_chr_smooth_list = [df_chr_inv_neg, df_chr, df_chr_inv_pos]
+            df_chr = pd.concat(df_chr_smooth_list, ignore_index=False)
+
+            df_chr['pseudo_pos'] = psuedo_pos
+            X = df_chr['pseudo_pos'].values
+
+            ratio_Y = df_chr['ratio'].values
+            df_chr['ratio_yhat'] = (
+                self.smoothing_function(ratio_Y, X, frac=loess_span)[:, 1]
+            )
+
+            G_S_Y = df_chr['G_S'].values
+            df_chr['GS_yhat'] = (
+                self.smoothing_function(G_S_Y, X, frac=loess_span)[:, 1]
+            )
+
+            df_chr['RS_G'] = df_chr['G_S'] * df_chr['ratio']
+            RS_G_Y = df_chr['RS_G'].values
+            df_chr['RS_G_yhat'] = (
+                self.smoothing_function(RS_G_Y, X, frac=loess_span)[:, 1]
+            )
+
+            df_chr = df_chr[smooth_edges_bounds:-smooth_edges_bounds].drop(
+                columns='pseudo_pos'
+            )
+
+            self.log.success(f"LOESS of chr:{chr} for {self.name} complete"
+            )
+            return df_chr
+
+        self.log.attempt('Smoothing chromosome facets')
+        try:
+            for i in chr_facets:
+                df_chr = df[df['chr'] == i]
+                result = smooth_single_chr(df_chr, i,  loess_span, smooth_edges_bounds)
+                if result is not None:
+                    df_list.append(result)
+            self.log.success('Chromosome facets LOESS smoothed')
+            return pd.concat(df_list)
+        except Exception as e:
+            self.log.fail(f'There was an error during LOESS smoothing of chromosome facets:{e}')
 
     def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu, loess_span, shuffle_iterations):
         """
@@ -349,7 +414,6 @@ class FeatureProduction:
         """
         self.log.attempt('Initializing bootstrapping for empirical cutoff estimation...')
         try:
-            lowess = sm.nonparametric.lowess
             smGstatAll, smRatioAll, RS_GAll, smRS_G_yhatAll = [], [], [], []
             suppress = True
             for _ in range(shuffle_iterations):
@@ -376,7 +440,7 @@ class FeatureProduction:
                 smRS_G = smRatio * smGstat
                 RS_GAll.extend(smRS_G)
 
-                smRS_G_yhatAll.extend(lowess(
+                smRS_G_yhatAll.extend(smoothing_function(
                     smRS_G, smPos, frac=self.bsa_vars.loess_span)[:, 1]
                 )
             G_S_95p = np.percentile(smGstatAll, 95)
@@ -405,6 +469,7 @@ class FeatureProduction:
             self.log.note(f"G-statistic cutoff = {self.gs_cutoff}.")
             self.log.note(f"Ratio-scaled G-statistic cutoff = {self.rsg_cutoff}.")
             self.log.note(f"LOESS smoothed Ratio-scaled G-statistic cutoff = {self.rsg_y_cutoff}.")
+            return gs_cutoff, rsg_cutoff, rsg_y_cutoff
 
     def label_df_with_cutoffs(self, vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff)
         try:
@@ -424,39 +489,23 @@ class FeatureProduction:
 class TableAndPlots:
     def __init__(self, name, vcf_df, analysis_out_prefix)
         self.name = name
-        self.vcf_ulid = vcf_ulid
+        self.vcf_df = vcf_df
         self.analysis_out_prefix = analysis_out_prefix
-    
-    def sort_save_likely_candidates(self, vcf_df: pd.Dataframe, candidates_table_path, results_table_path):
-        """
-        Identify likely candidates
-        """
-        self.log.attempt(f'Initialize the identification of likely candidates for {self.name}')
-        self.log.note(f'associated VCF table ulid: {vcf_ulid}')
 
+    def _identify_likely_candidates(self):
         try:
-            # Identify likely candidates using G-stat and smoothed ratio-scaled G-stat
-            vcf_df_likely_cands = self.vcf_df[
-            (self.vcf_df['RS_G_yhat_01p'] == 1) |
-            (self.vcf_df['G_S_05p'] == 1) |
-            (self.vcf_df['RS_G_05p'] == 1)
+            return self.vcf_df[
+                (self.vcf_df['RS_G_yhat_01p'] == 1) |
+                (self.vcf_df['G_S_05p'] == 1) |
+                (self.vcf_df['RS_G_05p'] == 1)
             ]
-            #sort
-            likely_cands_sorted = self.vcf_df_likely_cands.sort_values(
-                by=['G_S', 'RS_G_yhat'],
-                ascending=[False, False],
-                na_position='first'
-            )
-            # Save DataFrames to CSV files
-            results_table_path = f"{self.analysis_out_prefix}_results_table.tsv"
-            self.vcf_df.to_csv(results_table_path, sep='\t', index=False)
-            
-            candidates_table_path = f"{self.analysis_out_prefix}_candidates_table.tsv"
-            likely_cands_sorted.to_csv(candidates_table_path, sep='\t', index=False)
-            self.log.success(f"Results and candidates tables for {self.name} generated.")
+        except KeyError as e:
+            self.log.fail(f"Column {e} not found in DataFrame. Please ensure column names are correct.")
 
-        except Exception as e:
-            self.log.fail(f"An error occurred during {self.name} table generation: {e}")
+    def sort_save_likely_candidates(self):
+        vcf_df_likely_cands = self._identify_likely_candidates()
+        likely_cands_sorted = self._sort_likely_candidates(vcf_df_likely_cands)
+        self._save_candidates(likely_cands_sorted)
 
     def generate_plots(self, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff: float, plot_path: str):
         """
@@ -472,62 +521,59 @@ class TableAndPlots:
             ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
             ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True)
         ]
-        try:
-            for plot_scenario in plot_scenarios:
-                self._plot_data(plot_path, *plot_scenario)
-        
-    def _plot_data(self, plot_path, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
-        """
-        Generate and save plots.
-        """
-        warnings.filterwarnings("ignore", module="plotnine\..*")
+        for plot_scenario in plot_scenarios:
+            plot_created = self._create_plot(*plot_scenario)
+            if plot_created is not None:
+                self._save_plot(plot_created, *plot_scenario)
 
-            self.log.attempt(f"Plot data and save plots for {self.name}...")
-            try:
-                mb_conversion_constant = 0.000001
-                self.vcf_df['pos_mb']=self.vcf_df['pos'] * mb_conversion_constant
-                chart = ggplot(self.vcf_df, aes('pos_mb', y=y_column))
-                title = ggtitle(title_text)
+    def _create_plot(self, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+        try:
+            mb_conversion_constant = 0.000001
+            self.vcf_df['pos_mb'] = self.vcf_df['pos'] * mb_conversion_constant
+            chart = ggplot(self.vcf_df, aes('pos_mb', y=y_column))
+            title = ggtitle(title_text)
                 axis_x = xlab("Position (Mb)")
                 axis_y = ylab(ylab_text)
 
-                if cutoff_value is not None:
-                    cutoff = geom_hline(yintercept=cutoff_value, color='red',
-                                        linetype="dashed", size=0.3
-                                        )
-                    plot = (chart
-                            + geom_point(color='goldenrod', size=0.8)
-                            + theme_linedraw()
-                            + facet_grid('. ~ chr', space='free_x', scales='free_x')
-                            + title
-                            + axis_x
-                            + axis_y
-                            + theme(panel_spacing=0.025)
-                            + cutoff
-                            )
-                else:
-                    plot = (chart
-                            + geom_point(color='goldenrod', size=0.8)
-                            + theme_linedraw()
-                            + facet_grid('. ~ chr', space='free_x', scales='free_x')
-                            + title
-                            + axis_x
-                            + axis_y
-                            + theme(panel_spacing=0.025)
-                            )
-                if lines:
-                    plot += geom_line(color='blue')
-                # Save plot
-                plot_path = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
-                plot.save(
-                    filename=plot_path,
-                    height=6,
-                    width=8,
-                    units='in',
-                    dpi=500
-                )
-                self.log.success(f"Plot saved {plot_path}")
-            
-            except Exception as e:
-                self.log.fail(f"Plotting data failed for {self.name}: {e}")
+            if cutoff_value is not None:
+                cutoff = geom_hline(yintercept=cutoff_value, color='red',
+                                    linetype="dashed", size=0.3
+                                    )
+                plot = (chart
+                        + geom_point(color='goldenrod', size=0.8)
+                        + theme_linedraw()
+                        + facet_grid('. ~ chr', space='free_x', scales='free_x')
+                        + title
+                        + axis_x
+                        + axis_y
+                        + theme(panel_spacing=0.025)
+                        + cutoff
+                        )
+            else:
+                plot = (chart
+                        + geom_point(color='goldenrod', size=0.8)
+                        + theme_linedraw()
+                        + facet_grid('. ~ chr', space='free_x', scales='free_x')
+                        + title
+                        + axis_x
+                        + axis_y
+                        + theme(panel_spacing=0.025)
+                        )
+
+            if lines:
+                plot += geom_line(color='blue')
+            return plot
+        except Exception as e:
+            self.log.fail(f"Plot creation failed for {self.name}, column {y_column}: {e}")
+            return None
+
+    def _save_plot(self, plot, y_column, *args):
+        try:
+            plot_path = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
+            plot.save(filename=plot_path, height=6, width=8, units='in', dpi=500)
+            self.log.success(f"Plot saved {plot_path}")
+            return True
+        except Exception as e:
+            self.log.fail(f"Saving plot failed for {self.name}, column {y_column}: {e}")
+            return False
 
