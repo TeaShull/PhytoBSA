@@ -9,34 +9,39 @@ from plotnine import (
 
 """
 Core module for bsa analysis
-Input variable class: 
+Input variable class: BSA_variables from utilities_variables module.
 The read-depth analysis between the wild-type and mutant bulks are stored here.
 """
 
 class BSA:
-    def __init__(self, bsa_vars):
+    def __init__(self, bsa_vars, logger):
         #AnalysisVariables class passed to function. 
+        self.log = logger
+        
         self.bsa_vars = bsa_vars
         self.smoothing_function = sm.nonparametric.lowess
 
     def run_pipeline():
         for line in self.bsa_vars.lines:
             self.log = LogHandler(f'analysis_{line.name}')
-            analysis_log.add_db_record(line, self.log.ulid, line.vcf_ulid)
+            self.add_db_record(line, self.log.ulid, line.vcf_ulid)
             self.log.ulid = line.analysis_ulid
 
+            #Load VCF data table pandas dataframe vcf_df
+            line.vcf_df = bsa_vars.load_vcf_table(line.vcf_table_path)
+            
             #setup line.analysis_out_prefix and line.analysis_out_path
             line.gen_analysis_out_paths(self.log.ulid) 
             
             ## data cleaning and orginization
-            data_filter = DataFiltering(line.name)
+            data_filter = DataFiltering(line.name, self.log)
             line.vcf_df = data_filter.filter_genotypes(line.segregation_type, line.vcf_df)
             line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
             line.vcf_df = data_filter.drop_indels(line.vcf_df)
             line.vcf_df = data_filter.drop_na(line.vcf_df)
             
             ## Feature production
-            feature_prod = FeatureProduction(line.name)
+            feature_prod = FeatureProduction(line.name, self.log)
             line.vcf_df = feature_prod.calculate_delta_snp_and_g_statistic(line.vcf_df)
             line.vcf_df = data_filter.drop_genos_with_negative_ratios(line.vcf_df)
             line.vcf_df = feature_prod.loess_smoothing(
@@ -53,7 +58,7 @@ class BSA:
             )
             
             #Construct output file path prefix
-            line.analysis_out_prefix = self.bsa_vars.construct_out_prefix(
+            line.analysis_out_prefix = self.bsa_vars.construct_an_out_prefix(
                 line.name, line.analysis_ulid, line.vcf_ulid
             )
 
@@ -61,7 +66,8 @@ class BSA:
             table_and_plots = TableAndPlots(
                 line.name,
                 line.vcf_df,
-                line.analysis_out_prefix
+                line.analysis_out_prefix,
+                self.log
             )
             table_and_plots.sort_save_likely_candidates()
             table_and_plots.generate_plots(
@@ -70,9 +76,11 @@ class BSA:
                 line.rsg_y_cutoff
             )
 
-class DataFiltering
-    def __init__ (self, name)
-    self.name = name
+class DataFiltering:
+    def __init__ (self, name, logger)
+        self.log = logger
+        
+        self.name = name
     
     def drop_indels(self, vcf_df: pd.Dataframe):-> pd.Dataframe
         """
@@ -91,6 +99,8 @@ class DataFiltering
             ]
         except AttributeError:
             self.log.fail("'ref' and 'alt' columns should only contain strings. VCF may not be properly formatted. Aborting...")
+        except KeyError:
+            self.log.fail("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
         return vcf_df
     
     def drop_na(self, vcf_df: pd.Dataframe):-> pd.Dataframe
@@ -186,7 +196,9 @@ class DataFiltering
             self.log.fail(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
     
 class FeatureProduction:
-    def __init__(self, name):
+    def __init__(self, name, logger):
+        self.log = logger
+        
         self.name = name
 
     def calculate_delta_snp_and_g_statistic(self, vcf_df: pd.Dataframe):-> pd.Dataframe
@@ -487,7 +499,9 @@ class FeatureProduction:
             self.log.fail(f"An error while labeling dataframe with cutoffs: {e}")
 
 class TableAndPlots:
-    def __init__(self, name, vcf_df, analysis_out_prefix)
+    def __init__(self, name, vcf_df, analysis_out_prefix, logger)
+        self.log = logger
+        
         self.name = name
         self.vcf_df = vcf_df
         self.analysis_out_prefix = analysis_out_prefix
