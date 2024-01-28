@@ -2,15 +2,14 @@ import subprocess
 
 from modules.utilities_logging import LogHandler
 
-class ThaleBSAParentFunctions:
-    def __init__(self, logger, vcf_gen_vars):
+class VCFGenerator
+    def __init__(self, vcf_gen_vars, logger):
         self.log = logger
         self.vcf_gen_vars = vcf_gen_vars
 
-    def vcf_generation(self):
+    def run_subprocess(self):
         """
-        Input: Experiment dictionary as well as paths and variables needed 
-        to run VCFgen.sh. Subprocess VCFgen.sh takes raw reads(wild-type(wt) 
+        Input: Subprocess VCFgen.sh takes raw reads(wild-type(wt) 
         and mutant(mu)), either single or paired end and generates VCF table 
         *.noknownsnps.table.
 
@@ -39,7 +38,7 @@ class ThaleBSAParentFunctions:
             ) = vcf_out_paths
 
             #Generate line.vcf_gen_cmd
-            line.vcf_gen_cmd = gen_vcfgen_command(line)
+            line.vcf_gen_cmd = make_vcfgen_command(line)
                 # Run vcfgen shell subprocess.
             process = subprocess.Popen(
                 line.vcf_gen_cmd, 
