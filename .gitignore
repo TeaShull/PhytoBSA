@@ -36,4 +36,5 @@
 */__pycache__/*
 #ignore testfiles
 *_test.py
-
+#ignore vscode
+*.vscode
