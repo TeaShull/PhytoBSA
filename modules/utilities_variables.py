@@ -6,6 +6,16 @@ from modules.utilities_general import FileUtilities
 import os
 import pandas as pd
 class Lines:
+    '''
+    This class contains information and methods pertaining to variables
+    needed for entire pipeline. The variables contained here are potentially
+    variable between runs. 
+
+    The variables of this class can be populated by automatic_line_variables
+    in the AutomaticLineVariableDetector class or the usr_in_line_variables 
+    within this current class. 
+    '''
+    
     __slots__ = [
         'log', 'name', 'segregation_type', 'vcf_table_path', 
         'mu_input', 'wt_input', 'pairedness', 'vcf_gen_cmd', 
@@ -94,7 +104,7 @@ class Lines:
         except (OSError, FileNotFoundError, PermissionError) as e:
             self.log.fail(f'OS error: {e}')
 
-class AutomaticVariables:
+class AutomaticLineVariableDetector:
     def __init__(self, logger):
         self.log = logger
         self.lines = []
@@ -129,7 +139,6 @@ class AutomaticVariables:
             line.wt_input.append(file_path)
         elif bulk_type == 'mu':
             line.mu_input.append(file_path)
-
 
     def _process_file(self, filename):
         self.log.attempt(f'Parsing {filename}')
@@ -172,7 +181,7 @@ class AutomaticVariables:
 
 class VCFGenVariables:
     def __init__(self, logger,
-                 lines = [], 
+                 lines, 
                  reference_genome_name=None, 
                  snpEff_species_db=None,
                  reference_genome_source=None, 
@@ -183,9 +192,8 @@ class VCFGenVariables:
                  ):
         
         self.log = logger
-        
-        self.lines = lines        
-        
+        self.lines=lines
+
         self.reference_genome_name = reference_genome_name
         self.reference_genome_source = reference_genome_source
         self.cleanup = cleanup
@@ -232,21 +240,22 @@ class VCFGenVariables:
         vcf_output_dir_path = os.path.join(OUTPUT_DIR, output_name)
         vcf_output_prefix = os.path.join(vcf_output_dir_path, output_name) 
         vcf_table_path= f"{vcf_output_prefix}.noknownsnps.table"
+        
         snpeff_dir= os.path.join(OUTPUT_DIR, 'snpEff')
         snpeff_out_filename=os.path.join(snpeff_dir, output_name)
+        
         return (vcf_output_dir_path, vcf_output_prefix, 
             vcf_table_path, snpeff_dir, snpeff_out_filename
         )
 
 class BSAVariables:
     def __init__(self, logger,
-             lines=[], 
-             loess_span=0.3, 
-             smooth_edges_bounds = 15, 
-             shuffle_iterations = 1000):
+             lines, 
+             loess_span, 
+             smooth_edges_bounds, 
+             shuffle_iterations):
         
         self.log = logger
-        
         self.lines = lines
 
         self.loess_span = loess_span

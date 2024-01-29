@@ -125,11 +125,10 @@ def main():
         vcf_gen.run_subprocess()
 
     elif args.automatic:
-        auto_vars = AutomaticVariables(core_log)
+        auto_vars = AutomaticLineVariableDetector(core_log)
         auto_vars.automatic_line_variables()
 
         vcf_vars = VCFGenVariables(core_log, lines=auto_vars.lines)
-        print(auto_vars.lines)
         vcf_gen = VCFGenerator(core_log, vcf_vars)
         vcf_gen.run_subprocess()
         

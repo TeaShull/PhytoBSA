@@ -53,7 +53,8 @@ class BSA:
                 line.vcf_df, bsa_vars.loess_span, bsa_vars.shuffle_iterations
             )
             line.gs_cutoff, line.rsg_cutoff, line.rsg_y_cutoff = cutoffs
-            line.vcf_df = label_df_with_cutoffs(
+            
+            line.vcf_df = feature_prod.label_df_with_cutoffs(
                 line.vcf_df, line.gs_cutoff, line.rsg_cutoff, line.rsg_y_cutoff
             )
             
@@ -97,11 +98,13 @@ class DataFiltering:
             vcf_df.loc[~(vcf_df["ref"].str.len() > 1) 
                 & ~(vcf_df["alt"].str.len() > 1)
             ]
+            return vcf_df
+        
         except AttributeError:
             self.log.fail("'ref' and 'alt' columns should only contain strings. VCF may not be properly formatted. Aborting...")
         except KeyError:
             self.log.fail("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
-        return vcf_df
+        
     
     def drop_na(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
@@ -115,8 +118,7 @@ class DataFiltering:
         VCF dataframe with no NaN values
         """
         
-        vcf_df.dropna(axis=0, how='any', subset=["ratio"])
-        return vcf_df
+        return vcf_df.dropna(axis=0, how='any', subset=["ratio"])
 
     def filter_genotypes(self, segregation_type: str):
         """
@@ -153,6 +155,7 @@ class DataFiltering:
             
             try:
                 vcf_df[vcf_df['mu:wt_GTpred'].isin(seg_filter)]
+
             except KeyError as e:
                 self.log.note('Key error. VCF dataframe should have the following headers: ')
                 self.log.note('chr  pos ref alt gene snpEffect snpVariant snpImpact mu:wt_GTpred mu_ref mu_alt wt_ref wt_alt')
@@ -188,8 +191,8 @@ class DataFiltering:
         self.log.attempt('Trying to remove Genotypes that produce negative delta SNP ratios')
         try: 
             vcf_df[vcf_df['ratio'] >= 0]
-            
             self.log.success('Genotypes that produce negative delta SNP ratios removed.')
+            
             return vcf_df
 
         except Exception as e:
@@ -254,15 +257,15 @@ class FeatureProduction:
         """ 
 
         if not suppress:
-            self.log.attempt(f"Calculate delta-SNP ratios for {self.line_name}...")
+            self.log.attempt(f"Calculate delta-SNP ratios for {self.name}...")
         try:
             result = ((wtr) / (wtr + wta)) - ((mur) / (mur + mua))
             if not suppress:
-                self.log.success(f"Delta-SNP calculation successful for {self.line_name}")
+                self.log.success(f"Delta-SNP calculation successful for {self.name}")
             return result
         
         except Exception as e:
-            self.log.fail(f"Error in delta_snp_array for {self.line_name}: {e}")
+            self.log.fail(f"Error in delta_snp_array for {self.name}: {e}")
             return None
 
     def _g_statistic_array(self, wtr, wta, mur, mua, suppress)->np.ndarray:
@@ -272,7 +275,7 @@ class FeatureProduction:
         Chi square ish.
         """ 
         if not suppress:
-            self.log.attempt(f"Calculate G-statistics for {self.line_name}....")
+            self.log.attempt(f"Calculate G-statistics for {self.name}....")
         try:
             np.seterr(all='ignore')
 
@@ -293,12 +296,12 @@ class FeatureProduction:
                 e1 * e2 * e3 * e4 == 0, 0.0, llr1 + llr2 + llr3 + llr4
             )
             if not suppress:
-                self.log.success(f"G-statistic calculation complete for {self.line_name}"
+                self.log.success(f"G-statistic calculation complete for {self.name}"
                 )
             return result
 
         except Exception as e:
-            self.log.fail(f"Error in g_statistic_array for {self.line_name}: {e}")
+            self.log.fail(f"Error in g_statistic_array for {self.name}: {e}")
             return None
 
     def loess_smoothing(self, vcf_df, loess_span, smooth_edges_bounds)->pd.DataFrame:
