@@ -42,6 +42,7 @@ class VCFGenerator:
 
             #Generate line.vcf_gen_cmd
             line.vcf_gen_cmd = self.vcf_gen_vars.make_vcfgen_command(line)
+            
             # Run vcfgen shell subprocess.
             process = subprocess.Popen(
                 line.vcf_gen_cmd, 
