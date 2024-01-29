@@ -77,12 +77,12 @@ class BSA:
             )
 
 class DataFiltering:
-    def __init__ (self, name, logger)
+    def __init__ (self, name, logger):
         self.log = logger
         
         self.name = name
     
-    def drop_indels(self, vcf_df: pd.Dataframe):-> pd.Dataframe
+    def drop_indels(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Drops insertion/deletions from VCF dataframe.
         
@@ -103,7 +103,7 @@ class DataFiltering:
             self.log.fail("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
         return vcf_df
     
-    def drop_na(self, vcf_df: pd.Dataframe):-> pd.Dataframe
+    def drop_na(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Drops rows with NaN values from VCF dataframe.
         
@@ -164,7 +164,7 @@ class DataFiltering:
         except Exception as e:
             self.log.fail(f'There was an error while filtering genotypes:{e}')        
 
-    def filter_ems_mutations(self, vcf_df: pd.Dataframe):-> pd.Dataframe
+    def filter_ems_mutations(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Filter mutations likely to be from EMS for analysis and return a filtered DataFrame.
 
@@ -177,7 +177,7 @@ class DataFiltering:
         vcf_df[(vcf_df['ref'].isin(['G', 'C', 'A', 'T'])) & (vcf_df['alt'].isin(['A', 'T', 'G', 'C']))]
         return vcf_df
 
-    def drop_genos_with_negative_ratios(self, vcf_df: pd.Dataframe):-> pd.Dataframe
+    def drop_genos_with_negative_ratios(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         '''
         Removes those genotypes that give rise to negative delta SNP ratios.
         These genotypes are nearly always the result of 0/1:0/1 situations, 
@@ -201,7 +201,7 @@ class FeatureProduction:
         
         self.name = name
 
-    def calculate_delta_snp_and_g_statistic(self, vcf_df: pd.Dataframe):-> pd.Dataframe
+    def calculate_delta_snp_and_g_statistic(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Calculate delta SNP ratio and G-statistic
         
@@ -467,7 +467,7 @@ class FeatureProduction:
             self.log.fail(f"Error in bootstrapping calculations: {e}")
             return None, None, None        
 
-    def calculate_empirical_cutoffs(self, vcf_df, loess_span, shuffle_iterations)
+    def calculate_empirical_cutoffs(self, vcf_df, loess_span, shuffle_iterations):
         self.log.attempt('Bootstrapping to generate empirical cutoffs...')
         try:
             vcf_df_position = vcf_df[['pos']].copy()
@@ -482,8 +482,10 @@ class FeatureProduction:
             self.log.note(f"Ratio-scaled G-statistic cutoff = {self.rsg_cutoff}.")
             self.log.note(f"LOESS smoothed Ratio-scaled G-statistic cutoff = {self.rsg_y_cutoff}.")
             return gs_cutoff, rsg_cutoff, rsg_y_cutoff
+        except Exception as e:
+            self.log.fail(f'Bootstrapping to generate empirical cutoffs failed:{e}')
 
-    def label_df_with_cutoffs(self, vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff)
+    def label_df_with_cutoffs(self, vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff):
         try:
             vcf_df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) 
                 or (x > gs_cutoff)) else 0 for x in vcf_df['G_S']
@@ -499,7 +501,7 @@ class FeatureProduction:
             self.log.fail(f"An error while labeling dataframe with cutoffs: {e}")
 
 class TableAndPlots:
-    def __init__(self, name, vcf_df, analysis_out_prefix, logger)
+    def __init__(self, name, vcf_df, analysis_out_prefix, logger):
         self.log = logger
         
         self.name = name
@@ -546,8 +548,8 @@ class TableAndPlots:
             self.vcf_df['pos_mb'] = self.vcf_df['pos'] * mb_conversion_constant
             chart = ggplot(self.vcf_df, aes('pos_mb', y=y_column))
             title = ggtitle(title_text)
-                axis_x = xlab("Position (Mb)")
-                axis_y = ylab(ylab_text)
+            axis_x = xlab("Position (Mb)")
+            axis_y = ylab(ylab_text)
 
             if cutoff_value is not None:
                 cutoff = geom_hline(yintercept=cutoff_value, color='red',

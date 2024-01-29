@@ -62,6 +62,7 @@ create_directories() {
 
     for dir in "${@}"; do
         mkdir -p "${dir}"
+        echo "Directory created:${dir}"
     done
 }
 
