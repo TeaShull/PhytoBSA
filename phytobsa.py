@@ -36,7 +36,7 @@ def parse_program_arguments():
     parser_analysis = subparsers.add_parser('analysis', help='Run PhytoBSA analysis seperately.')
     ### REQUIRED
     parser_analysis.add_argument('-n', '--name', required=True, type=str, help='name of the line you wish to analyze. Will be used to name output files.')
-    parser_analysis.add_argument('-vt', '--vcf_table', required=True, type=str, help='path to the vcf table you wish to analyze.')
+    parser_analysis.add_argument('-vt', '--vcf_table_path', required=True, type=str, help='path to the vcf table you wish to analyze.')
     parser_analysis.add_argument('-st', '--segregation_type', required=True, type=str, help="Recessive(R) or Dominant(D)")
     ### OPTIONAL
     parser_analysis.add_argument('-ls', '--loess_span', type=float, default=0.3, help="Influences smoothing parameters.")
@@ -80,8 +80,9 @@ def main():
     # Determine which routine to run
     if args.command == 'analysis':
         line = Lines(core_log, args.name)
+    
+        line.usr_in_line_variables(args.vcf_table_path, arg.segregation_type)
         
-        line.usr_in_line_variables(args.vcf_table, args.segregation_type)
         bsa_vars = BSAVariables(core_log, 
             lines=line, 
             loess_span=args.loess_span, 
@@ -94,7 +95,7 @@ def main():
     
     elif args.command == 'vcf_generator':
         line = Lines(core_log, args.name)
-        
+
         line.usr_in_line_variables(args.reference_genome_name, 
             args.wt_input, args.mu_input
         )
