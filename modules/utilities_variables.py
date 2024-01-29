@@ -12,9 +12,10 @@ class Lines:
         'vcf_output_prefix', 'vcf_output_dir', 'vcf_ulid', 'vcf_df', 
         'analysis_out_prefix', 'analysis_out_path', 'gs_cutoff', 
         'rsg_cutoff', 'rsg_y_cutoff', 'analysis_ulid', 
-        'in_path_variables', 'ref_path_variables'
+        'in_path_variables', 'ref_path_variables', 'snpeff_dir', 
+        'snpeff_out_filename'
     ]
-    
+
     def __init__(self, name, logger):
         self.log = logger
 
@@ -32,6 +33,10 @@ class Lines:
         self.vcf_output_dir = None
         self.vcf_ulid = None
 
+        # snpeff variables
+        self.snpeff_dir = None
+        self.snpeff_out_filename = None
+
         # BSA variables
         self.vcf_df = None
         self.analysis_out_prefix = None
@@ -47,7 +52,6 @@ class Lines:
         self.ref_path_variables=[
            'known_snps_path'
         ]
-
 
     def _process_input(self, key, details):
         file_utils = self.FileUtilities(self.log)
@@ -192,6 +196,8 @@ class VCFGenVariables:
 
     def make_vcfgen_command(self, line):
         self._apply_settings() #if None, source from settings.vcf_gen_variables
+        rgp = os.path.join(REFERENCE_DIR, self.reference_genome_name)
+        reference_genome_prefix = rgp
         args = (
             line.vcf_ulid,
             line.name, 
@@ -202,10 +208,12 @@ class VCFGenVariables:
             line.vcf_output_dir,
             line.vcf_output_prefix,
             line.vcf_table_path,
+            line.snpeff_dir,
+            line.snpeff_out_filename,
             REFERENCE_DIR,
-            self.reference_genome_name, 
-            self.snpEff_species_db,
             self.reference_genome_source, 
+            reference_genome_prefix, 
+            self.snpEff_species_db,
             self.known_snps_path,
             self.threads_limit,
             self.call_variants_in_parallel,
@@ -224,8 +232,11 @@ class VCFGenVariables:
         vcf_output_dir_path = os.path.join(OUTPUT_DIR, output_name)
         vcf_output_prefix = os.path.join(vcf_output_dir_path, output_name) 
         vcf_table_path= f"{vcf_output_prefix}.noknownsnps.table"
-        print(vcf_table_path)
-        return vcf_output_dir_path, vcf_output_prefix, vcf_table_path
+        snpeff_dir= os.path.join(OUTPUT_DIR, 'snpEff')
+        snpeff_out_filename=os.path.join(snpeff_dir, output_name)
+        return (vcf_output_dir_path, vcf_output_prefix, 
+            vcf_table_path, snpeff_dir, snpeff_out_filename
+        )
 
 class BSAVariables:
     def __init__(self, logger,

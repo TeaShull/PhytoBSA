@@ -35,7 +35,9 @@ class VCFGenerator:
             (
                 line.vcf_output_dir, 
                 line.vcf_output_prefix, 
-                line.vcf_table_path
+                line.vcf_table_path,
+                line.snpeff_dir,
+                line.snpeff_out_filename
             ) = vcf_out_paths
 
             #Generate line.vcf_gen_cmd
