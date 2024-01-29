@@ -48,7 +48,7 @@ class BSA:
                 line.vcf_df, bsa_vars.loess_span, bsa_vars.smooth_edges_bounds
             )
             
-            ### Use bootstrapping to produce empircally direved cutoffs for features
+            ### Use bootstrapping to produce cutoffs for features
             cutoffs = feature_prod.calculate_empirical_cutoffs(
                 line.vcf_df, bsa_vars.loess_span, bsa_vars.shuffle_iterations
             )
