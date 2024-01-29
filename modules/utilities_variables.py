@@ -8,8 +8,9 @@ import pandas as pd
 class Lines:
     '''
     This class contains information and methods pertaining to variables
-    needed for entire pipeline. The variables contained here are potentially
-    variable between runs. 
+    needed for both vcf generation and bsa pipeline. The variables contained 
+    here are dynamic, and many are used in both processes. I attempt to make
+    clear what variables are needed for each process.  
 
     The variables of this class can be populated by automatic_line_variables
     in the AutomaticLineVariableDetector class or the usr_in_line_variables 
@@ -31,7 +32,6 @@ class Lines:
 
         # BSA and VCF_gen variables
         self.name = name
-        self.segregation_type = None
         self.vcf_table_path = None 
 
         # VCF_gen variables 
@@ -42,12 +42,12 @@ class Lines:
         self.vcf_output_prefix = None
         self.vcf_output_dir = None
         self.vcf_ulid = None
-
-        # snpeff variables
         self.snpeff_dir = None
         self.snpeff_out_filename = None
 
+
         # BSA variables
+        self.segregation_type = None
         self.vcf_df = None
         self.analysis_out_prefix = None
         self.analysis_out_path = None
@@ -56,8 +56,16 @@ class Lines:
         self.rsg_y_cutoff = None
         self.analysis_ulid = None
 
+        '''
+        Variables that require path parsing. Variables in in_path_variables
+        will be double checked - first if they are hard-coded, or if they 
+        are in ./data/inputs. Same deal with ref_path_variables, but for 
+        the ./data/references folder.
+        '''  
         self.in_path_variables=[
            'vcf_table_path',
+           'mu_input',
+           'wt_input'
         ]
         self.ref_path_variables=[
            'known_snps_path'
@@ -65,13 +73,13 @@ class Lines:
 
     def _process_input(self, key, details):
         file_utils = self.FileUtilities(self.log)
-        if key in self.in_path_variables:
-            return file_utils.process_path(INPUT_DIR, details)
-        elif key in self.ref_path_variables:
-            return file_utils.process_path(REFERENCE_DIR, details)
-        else:
+        if key in self.in_path_variables or key in self.ref_path_variables:
+            paths = details.split()
+            dir = INPUT_DIR if key in self.in_path_variables else REFERENCE_DIR
+            processed_paths = [file_utils.process_path(dir, path) for path in paths]
+            return ' '.join(processed_paths)
             return details
-
+    
     def usr_in_line_variables(self, **kwargs):
         self.log.attempt('Attempting to organize inputs into Line data class...')
         
@@ -93,16 +101,6 @@ class Lines:
                 self.log.note(f'User input added: |{name}|{key}:{processed_input} ')
         except Exception as e:
             self.log.fail(f'There was an error processing user inputs:{e}')
-
-        try:
-            output_name_prefix = f"{self.log.ulid}_-{line.name}"
-            line.output_dir_path = os.path.join(OUTPUT_DIR, output_name_prefix)
-            
-            file_utils = FileUtilities(self.log)
-            file_utils.setup_directory(line.output_dir_path)
-            self.log.success('Output directory path set.')
-        except (OSError, FileNotFoundError, PermissionError) as e:
-            self.log.fail(f'OS error: {e}')
 
 class AutomaticLineVariableDetector:
     def __init__(self, logger):
