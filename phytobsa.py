@@ -30,8 +30,8 @@ Current log list:
 def parse_program_arguments():
     # Main parser
     parser = argparse.ArgumentParser(description='PyAtBSA main command line script...')
-    parser.add_argument('-a', '--automatic', type='store_true', help='Run PhytoBSA in automatic mode. Primary, default workflow.')
-    subparsers = parser.add_subparsers(help='Sub-command help')
+    parser.add_argument('-a', '--automatic', action='store_true', help='Run PhytoBSA in automatic mode. Primary, default workflow.')
+    subparsers = parser.add_subparsers(help='Sub-command help', dest='command')
 
     ## Analysis subparser
     parser_analysis = subparsers.add_parser('analysis', help='Run PhytoBSA analysis seperately.')
@@ -42,7 +42,7 @@ def parse_program_arguments():
     ### OPTIONAL
     parser_analysis.add_argument('-ls', '--loess_span', type=float, default=0.3, help="Influences smoothing parameters.")
     parser_analysis.add_argument('-si', '--shuffle_iterations', type=int, default=1000, help="Iterations of bootstrapping during empirical cutoff calculations. Below 1000 can yeild inconsistant results")
-    parser_analysis.add_argumment('-sb', '--smooth_edges_bounds', type=int, default=15, help="Number of mirrored datapoints at chromosome edges to correct for loess edge bias. Increase if edge bias seems high")
+    parser_analysis.add_argument('-sb', '--smooth_edges_bounds', type=int, default=15, help="Number of mirrored datapoints at chromosome edges to correct for loess edge bias. Increase if edge bias seems high")
 
     ## VCF generation subparser
     parser_vcf_gen = subparsers.add_parser('vcf_generator', help='Run PhytoBSA VCF Generator seperately')
@@ -93,12 +93,12 @@ def main():
     if args.command == 'analysis':
         line = Lines(core_log, args.name)
         
-        line.usr_in_variables(args.vcf_table, args.segregation_type)
+        line.usr_in_line_variables(args.vcf_table, args.segregation_type)
         bsa_vars = BSAVariables(core_log, 
             lines=line, 
-            args.loess_span, 
-            args.smooth_edges_bounds, 
-            args.shuffle_iterations
+            loess_span=args.loess_span, 
+            smooth_edges_bounds=args.smooth_edges_bounds, 
+            shuffle_iterations=args.shuffle_iterations
         )
     
         bsa = BSA(core_log, bsa_vars)    
@@ -107,24 +107,29 @@ def main():
     elif args.command == 'vcf_generator':
         line = Lines(core_log, args.name)
         
-        line.usr_in_variables(args.reference_genome_name, args.wt_input, args.mu_input)
+        line.usr_in_line_variables(args.reference_genome_name, 
+            args.wt_input, args.mu_input
+        )
         vcf_gen_vars = VCFGenVariables(core_log, 
             lines=line,
-            args.reference_genome_source, 
-            args.snpEff_species_db, 
-            args.known_snps, 
-            args.threads_limit, 
-            args.call_variants_in_parallel,
-            args.cleanup
+            reference_genome_source=args.reference_genome_source, 
+            snpEff_species_db=args.snpEff_species_db,
+            reference_genome_name=args.reference_genome_source, 
+            known_snps=args.known_snps, 
+            threads_limit=args.threads_limit, 
+            call_variants_in_parallel=args.call_variants_in_parallel,
+            cleanup=args.cleanup
         )
 
         vcf_gen = VCFGenerator(core_log, vcf_gen_vars)
         vcf_gen.run_subprocess()
 
-    elif not args.command
+    elif args.automatic:
         auto_vars = AutomaticVariables(core_log)
+        auto_vars.automatic_line_variables()
 
-        vcf_vars = VCFGenVariables(core_log, auto_vars.lines)
+        vcf_vars = VCFGenVariables(core_log, lines=auto_vars.lines)
+        print(auto_vars.lines)
         vcf_gen = VCFGenerator(core_log, vcf_vars)
         vcf_gen.run_subprocess()
         

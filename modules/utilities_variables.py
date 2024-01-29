@@ -1,11 +1,20 @@
 from settings.config import (INPUT_DIR, OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR, 
      VCF_GEN_SCRIPT)
-import settings.vcf_gen_variables
+from settings import vcf_gen_variables
 from modules.utilities_general import FileUtilities
 
 import os
-
+import pandas as pd
 class Lines:
+    __slots__ = [
+        'log', 'name', 'segregation_type', 'vcf_table_path', 
+        'mu_input', 'wt_input', 'pairedness', 'vcf_gen_cmd', 
+        'vcf_output_prefix', 'vcf_output_dir', 'vcf_ulid', 'vcf_df', 
+        'analysis_out_prefix', 'analysis_out_path', 'gs_cutoff', 
+        'rsg_cutoff', 'rsg_y_cutoff', 'analysis_ulid', 
+        'in_path_variables', 'ref_path_variables'
+    ]
+    
     def __init__(self, name, logger):
         self.log = logger
 
@@ -39,6 +48,7 @@ class Lines:
            'known_snps_path'
         ]
 
+
     def _process_input(self, key, details):
         file_utils = self.FileUtilities(self.log)
         if key in self.in_path_variables:
@@ -48,7 +58,7 @@ class Lines:
         else:
             return details
 
-    def usr_in_variables(self, **kwargs):
+    def usr_in_line_variables(self, **kwargs):
         self.log.attempt('Attempting to organize inputs into Line data class...')
         
         try:
@@ -81,11 +91,9 @@ class Lines:
             self.log.fail(f'OS error: {e}')
 
 class AutomaticVariables:
-    __init__(self, logger):
-    self.log = logger
-    self.lines = []
-
-    automatic_line_variables()
+    def __init__(self, logger):
+        self.log = logger
+        self.lines = []
 
     def _parse_filename(self, filename):
         parts = filename.split('.')
@@ -108,7 +116,7 @@ class AutomaticVariables:
             if l.name == name:
                 return l
                 
-        line = Lines(name)
+        line = Lines(name, self.log)
         self.lines.append(line)
         return line
 
@@ -118,31 +126,31 @@ class AutomaticVariables:
         elif bulk_type == 'mu':
             line.mu_input.append(file_path)
 
+
     def _process_file(self, filename):
         self.log.attempt(f'Parsing {filename}')
-        for filename in os.listdir(INPUT_DIR):
-            details = self._parse_filename(filename)
-            name, segregation_type, bulk_type, pairedness = details
-            
-            self.log.success(f"""{filename} parsed. 
-            name:{name}
-            segregation_type:{segregation_type}
-            bulk_type:{bulk_type}
-            pairedness:{pairedness}
-            """)
+        details = self._parse_filename(filename)
+        name, segregation_type, bulk_type, pairedness = details
+        
+        self.log.success(f"""{filename} parsed. 
+        name:{name}
+        segregation_type:{segregation_type}
+        bulk_type:{bulk_type}
+        pairedness:{pairedness}
+        """)
 
-            line = self._get_line(name)
-            
-            line.segregation_type = segregation_type
-            line.pairedness = pairedness
-            file_path = os.path.join(INPUT_DIR, filename)
-            
-            self._append_file_path(bulk_type, line, file_path)
-
+        line = self._get_line(name)
+        
+        line.segregation_type = segregation_type
+        line.pairedness = pairedness
+        file_path = os.path.join(INPUT_DIR, filename)
+        
+        self._append_file_path(bulk_type, line, file_path)
+    
     def _sort_file_paths(self):
         for line in self.lines:
-            sorted_wt_inputs = " ".join(sorted(line.wt_input))
-            sorted_mu_inputs = " ".join(sorted(line.mu_input))
+            sorted_wt_inputs = "' '".join(sorted(line.wt_input))
+            sorted_mu_inputs = "' '".join(sorted(line.mu_input))
             line.wt_input = sorted_wt_inputs
             line.mu_input = sorted_mu_inputs
 
@@ -162,12 +170,13 @@ class VCFGenVariables:
     def __init__(self, logger,
                  lines = [], 
                  reference_genome_name=None, 
+                 snpEff_species_db=None,
                  reference_genome_source=None, 
-                 cleanup=None, 
-                 threads_limit=None, 
                  known_snps_path=None, 
+                 threads_limit=None, 
                  call_variants_in_parallel=None, 
-                 snpEff_species_db=None):
+                 cleanup=None 
+                 ):
         
         self.log = logger
         
@@ -183,27 +192,27 @@ class VCFGenVariables:
 
     def make_vcfgen_command(self, line):
         self._apply_settings() #if None, source from settings.vcf_gen_variables
-            args = (
-                line.vcf_ulid,
-                line.name, 
-                INPUT_DIR,
-                line.wt_input,
-                line.mu_input,
-                line.pairedness,
-                line.output_dir_path,
-                line.output_prefix,
-                line.vcf_table_path,
-                REFERENCE_DIR,
-                self.reference_genome_name, 
-                self.snpEff_species_db,
-                self.reference_genome_source, 
-                self.known_snps_path,
-                self.threads_limit,
-                self.call_variants_in_parallel,
-                self.cleanup
-            )
-            cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
-            return cmd
+        args = (
+            line.vcf_ulid,
+            line.name, 
+            INPUT_DIR,
+            line.wt_input,
+            line.mu_input,
+            line.pairedness,
+            line.vcf_output_dir,
+            line.vcf_output_prefix,
+            line.vcf_table_path,
+            REFERENCE_DIR,
+            self.reference_genome_name, 
+            self.snpEff_species_db,
+            self.reference_genome_source, 
+            self.known_snps_path,
+            self.threads_limit,
+            self.call_variants_in_parallel,
+            self.cleanup
+        )
+        cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
+        return cmd
 
     def _apply_settings(self):
         for attribute in vars(self).keys():
@@ -213,8 +222,9 @@ class VCFGenVariables:
     def gen_vcf_output_paths(self, name, vcf_ulid):
         output_name = f"{vcf_ulid}-_{name}"
         vcf_output_dir_path = os.path.join(OUTPUT_DIR, output_name)
-        vcf_output_prefix = os.path.join(vcf_output_dir_path, output_name)
-        vcf_table_path = vcf_table_name = f"{output_prefix}.noknownsnps.table"
+        vcf_output_prefix = os.path.join(vcf_output_dir_path, output_name) 
+        vcf_table_path= f"{vcf_output_prefix}.noknownsnps.table"
+        print(vcf_table_path)
         return vcf_output_dir_path, vcf_output_prefix, vcf_table_path
 
 class BSAVariables:

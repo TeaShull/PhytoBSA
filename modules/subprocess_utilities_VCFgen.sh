@@ -62,12 +62,8 @@ create_directories() {
     fi
 
     for dir in "${@}"; do
-        if [ -d "${dir}" ]; then
-            echo "${dir} already exists - Proceeding..."
-        else
-            echo "${dir} does not exist - Creating..."
-            mkdir -p "${dir}"
-        fi
+        mkdir -p "${dir}"
+        echo "Directory created:${dir}"
     done
 }
 
