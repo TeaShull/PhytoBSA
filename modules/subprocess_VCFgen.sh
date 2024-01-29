@@ -1,58 +1,57 @@
 source ./subprocess_utilities_VCFgen.sh
 
 main() {
-    declare -A passed_variables
-    passed_variables["vcf_ulid"]=${1}
-    passed_variables["current_line_name"]=${2}
-    passed_variables["input_dir"]=${3}
-    passed_variables["wt_input"]=${4}
-    passed_variables["mu_input"]=${5}
-    passed_variables["pairedness"]=${6}
-    passed_variables["output_dir_path"]=${7}
-    passed_variables["output_prefix"]=${8}
-    passed_variables["vcf_table_path"]=${9}
-    passed_variables["reference_dir"]=${10}
-    passed_variables["reference_genome_name"]=${11}
-    passed_variables["snpEff_species_db"]=${12}
-    passed_variables["reference_genome_source"]=${13}
-    passed_variables["known_snps_path"]=${14}
-    passed_variables["threads_limit"]=${15}
-    passed_variables["call_variants_in_parallel"]=${16}
-    passed_variables["cleanup"]=${17}
-
+    declare -A passed_variables=(
+        ["vcf_ulid"]=${1}
+        ["current_line_name"]=${2}
+        ["input_dir"]=${3}
+        ["wt_input"]=${4}
+        ["mu_input"]=${5}
+        ["pairedness"]=${6}
+        ["output_dir_path"]=${7}
+        ["output_prefix"]=${8}
+        ["vcf_table_path"]=${9}
+        ["snpeff_dir"]=${10}
+        ["snpeff_out_filename"]=${11}
+        ["reference_dir"]=${12}
+        ["reference_genome_source"]=${13}
+        ["reference_genome_prefix"]=${14}
+        ["snpEff_species_db"]=${15}
+        ["known_snps_path"]=${16}
+        ["threads_limit"]=${17}
+        ["call_variants_in_parallel"]=${18}
+        ["cleanup"]=${19}
+    )
+    
     print_variable_info passed_variables "Variables passed to subprocess_VCFgen.sh"
-    assign_values passed_variables
+    assign_values passed_variables #assign variables based on keys for easy access
 
-    declare -A generated_variables
-    generated_variables["threads_halfed"]=$((threads_limit / 2))
-    generated_variables["reference_genome_path"]="${reference_dir}/${reference_genome_name}.fa"
-    generated_variables["reference_chrs_path"]="${reference_dir}/${reference_genome_name}.chrs"
-    generated_variables["reference_chrs_fa_path"]="${reference_dir}/${reference_genome_name}.chrs.fa"
-    generated_variables["snpeff_dir"]="${output_dir_path}/snpEff"
-    generated_variables["snpeff_out_filename"]="${output_dir_path}/snpEff/${vcf_ulid}-_${current_line_name}"
-    generated_variables["bwa_output_sam_wt"]="${output_prefix}_wt.sam"
-    generated_variables["bwa_output_sam_mu"]="${output_prefix}_mu.sam"
-    generated_variables["samtools_output_bam_wt"]="${output_prefix}_wt.bam"
-    generated_variables["samtools_output_bam_mu"]="${output_prefix}_mu.bam"
-    generated_variables["samtools_fixmate_output_wt"]="${output_prefix}_wt.fix.bam"
-    generated_variables["samtools_fixmate_output_mu"]="${output_prefix}_mu.fix.bam"
-    generated_variables["samtools_sortsam_output_wt"]="${output_prefix}_wt.sort.bam"
-    generated_variables["samtools_sortsam_output_mu"]="${output_prefix}_mu.sort.bam"
-    generated_variables["picard_markduplicates_output_wt"]="${output_prefix}_wt.sort.md.bam"
-    generated_variables["picard_markduplicates_output_mu"]="${output_prefix}_mu.sort.md.bam"
-    generated_variables["picard_addorreplacereadgroups_output_wt"]="${output_prefix}_wt.sort.md.rg.bam"
-    generated_variables["picard_addorreplacereadgroups_output_mu"]="${output_prefix}_mu.sort.md.rg.bam"
-    generated_variables["picard_buildbamindex_output_wt"]="${output_prefix}_wt.sort.md.rg.bai"
-    generated_variables["picard_buildbamindex_output_mu"]="${output_prefix}_mu.sort.md.rg.bai"
-    generated_variables["gatk_haplotypecaller_output"]="${output_prefix}.hc.vcf"
-    generated_variables["snpeff_output"]="${output_prefix}.se.vcf"
-    generated_variables["snpsift_output"]="${output_prefix}.snpsift.table.tmp"
-    generated_variables["tmp_table_file_name"]="${output_prefix}.table.tmp"
+    declare -A generated_variables=(
+        ["threads_halfed"]=$((threads_limit / 2))
+        ["reference_genome_path"]="${reference_genome_prefix}.fa"
+        ["reference_chrs_path"]="${reference_genome_prefix}.chrs"
+        ["reference_chrs_fa_path"]="${reference_genome_prefix}.chrs.fa"
+        ["bwa_output_sam_wt"]="${output_prefix}_wt.sam"
+        ["bwa_output_sam_mu"]="${output_prefix}_mu.sam"
+        ["samtools_output_bam_wt"]="${output_prefix}_wt.bam"
+        ["samtools_output_bam_mu"]="${output_prefix}_mu.bam"
+        ["samtools_fixmate_output_wt"]="${output_prefix}_wt.fix.bam"
+        ["samtools_fixmate_output_mu"]="${output_prefix}_mu.fix.bam"
+        ["samtools_sortsam_output_wt"]="${output_prefix}_wt.sort.bam"
+        ["samtools_sortsam_output_mu"]="${output_prefix}_mu.sort.bam"
+        ["picard_markduplicates_output_wt"]="${output_prefix}_wt.sort.md.bam"
+        ["picard_markduplicates_output_mu"]="${output_prefix}_mu.sort.md.bam"
+        ["picard_addorreplacereadgroups_output_wt"]="${output_prefix}_wt.sort.md.rg.bam"
+        ["picard_addorreplacereadgroups_output_mu"]="${output_prefix}_mu.sort.md.rg.bam"
+        ["picard_buildbamindex_output_wt"]="${output_prefix}_wt.sort.md.rg.bai"
+        ["picard_buildbamindex_output_mu"]="${output_prefix}_mu.sort.md.rg.bai"
+        ["gatk_haplotypecaller_output"]="${output_prefix}.hc.vcf"
+        ["snpeff_output"]="${output_prefix}.se.vcf"
+        ["snpsift_output"]="${output_prefix}.snpsift.table.tmp"
+        ["tmp_table_file_name"]="${output_prefix}.table.tmp"
+    )
 
-
-    ## Printing all generated variables for logging purposes
     print_variable_info generated_variables "Variables generated in subprocess_VCFgen.sh"
-    ## Assigning variables in array to their respective keys
     assign_values generated_variables
 
     ## Prepare references and directory structure
