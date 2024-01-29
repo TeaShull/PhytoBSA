@@ -4,23 +4,21 @@ import sys
 import argparse
 
 from modules.utilities_variables import (
-    Lines, AutomaticVariables, VCFGenVariables, BSAVariables
+    Lines,AutomaticLineVariableDetector, VCFGenVariables, BSAVariables
 )
 from modules.utilities_logging import LogHandler
+from modules.core_vcf_gen import VCFGenerator
+from modules.core_bsa import BSA
 
 # Initialize core_log instance of LogHandler
 '''
-[NOTE]
 All classes in this program must have a log passed to them upon initialization.
 
-Every log is assigned a unique ID (ulid) upon initialization of the LogHandler class
-ulid's are passed around in the LogHandler class instance.
-the ulid is used to link all file outputs to its relevent log. 
+Every log is assigned a unique ID (ulid) upon init of LogHandler
+ulid's are stored in LogHandler instance, and exported to the Lines data class. 
+Ulids link file outputs to their log. 
 
-Upon creating a new instance of a class, point the log output to an 
-appropriate logger. 
-If an appropriate logger doesn't exist in the log list, simply initialize one 
-with an a good name, and add it to the list below to keep track. 
+Logging includes a log database, which will save run information. 
 
 Current log list:
 'core' - logs all parent functions, thale_bsa.py and flask front end. 
@@ -57,6 +55,13 @@ def parse_program_arguments():
     parser_vcf_gen.add_argument('-t', '--threads_limit', default=None, type=str, help='Maximum threads you wish to use for analysis')
     parser_vcf_gen.add_argument('-p', '--call_variants_in_parallel', default=False, type=bool, help='Run gatk haplotype caller in parallel')
     parser_vcf_gen.add_argument('-c','--cleanup', default=None, type=bool, help='If true, intermediate files will de deleted. False for troubleshooting and archiving files.' )
+    
+    ## Log database subparser
+    parser_log_db = subparsers.add_parser('logdb', help='Gather log information from log database')
+    parser_log_db.add_argument('-vcf', "--vcf_ulid_log", default = None, type = str, help="Retrieve vcf log information based on vcf ulid input")
+    parser_log_db.add_argument('-an', "--analysis_ulid_log", default = None, type = str, help="Retrieve analysis log information based on analysis ulid input")
+    parser_log_db.add_argument('-name', "--line_name_log", default = None, type = str, help="Retrieve all information associated with the provided line name. ")    
+    parser_log_db.add_argument('-core', '--core_ulid_log', default = None, type = str, help="Retrieve all information associated with the provided core log ulid")
     args = parser.parse_args()
     return args
 
@@ -82,13 +87,16 @@ def parse_program_arguments():
     parser.add_argument('-ks','--known_snps', default=None, type=str)
     return parser.parse_args()
 def main():
-    core_log = LogHandler('core')
-    core_log.note(f'Core log begin. ulid: {core_log.ulid}')
-    core_log.add_db_record()
-    
+        
     # Parse command line arguments
     args = parse_program_arguments()
 
+    # initialize core log, unless trying to pull log information
+    if args.command != 'logdb':
+        core_log = LogHandler('core')
+        core_log.note(f'Core log begin. ulid: {core_log.ulid}')
+        core_log.add_db_record()
+    
     # Determine which routine to run
     if args.command == 'analysis':
         line = Lines(core_log, args.name)
@@ -135,6 +143,17 @@ def main():
         bsa_vars = BSAVariables(core_log, lines=vcf_gen.lines)
         bsa = BSA(core_log, bsa_vars)
         bsa.run_pipeline()
+
+    elif args.command == 'logdb':
+        logdb_utils = LogDbUtilites()
+        if args.vcf_ulid_log:
+            logdb_utils.print_vcf_log_data(args.vcf_ulid_log)
+        if args.analysis_ulid_log:
+            logdb_utils.print_analysis_log_data(args.analysis_ulid_log)
+        if args.line_name_log:
+            logdb_utils.print_line_name_data(args.line_name_log)
+        if args.core_ulid_log:
+            logdb_utils.print_core_ulid_data(args.core_ulid_log)
 
 if __name__ == "__main__":
     main()
