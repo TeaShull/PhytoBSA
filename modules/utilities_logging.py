@@ -1,4 +1,4 @@
-from settings.config import LOG_DIR
+from settings.config import LOG_DIR, LOG_DATABASE_PATH
 
 import os
 import sys
@@ -59,7 +59,7 @@ class ULID:
         return encoded_time + encoded_random
 
 class LogHandler:
-    def __init__(self, name, db_name="thale_bsa_sqldb.db"):
+    def __init__(self, name):
         # Initialize log file parameters
         self.name = name 
         self.init_timestamp = datetime.now().strftime("%Y.%m.%d-%H.%M")
@@ -73,19 +73,17 @@ class LogHandler:
         self.logger = self.setup_logger()
 
         # Initialize log database for storing log parameters between runs
-        self.db_name = db_name
-        self.conn = sqlite3.connect(self.db_name)
+        self.conn = sqlite3.connect(LOG_DATABASE_PATH)
         self._create_tables()
 
         #Add some initilization notes at the beginning of every log
         self.print(
         f"""
-log name: {name}
-ulid: {self.ulid}
-log filename: {self.log_filename}
-log path: {self.log_path}
-        """)
-
+        log name: {name}
+        ulid: {self.ulid}
+        log filename: {self.log_filename}
+        log path: {self.log_path}
+                """)
 
     def setup_logger(self):
         """Initialize logger, which is designed to be passed to class instances 
