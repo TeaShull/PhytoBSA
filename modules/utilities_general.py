@@ -1,4 +1,4 @@
-from settings.config import (INPUT_DIR, 
+from settings.paths import (INPUT_DIR, 
     OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR, LOG_DATABASE_NAME, LOG_DATABASE_PATH
 )
 

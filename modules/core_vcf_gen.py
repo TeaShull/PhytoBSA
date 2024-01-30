@@ -1,7 +1,7 @@
 import subprocess
 
 from modules.utilities_logging import LogHandler
-from settings.config import MODULES_DIR
+from settings.paths import MODULES_DIR
 
 class VCFGenerator:
     def __init__(self, logger, vcf_gen_vars):

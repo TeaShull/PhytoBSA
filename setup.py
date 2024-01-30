@@ -1,27 +1,24 @@
 #!/usr/bin/env python
-from settings.config import (
-    BASE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, REFERENCE_DIR
-)
 import os
 import sys
 
-def create_directories(directories):
+from settings.config import (
+    BASE_DIR, DATA_DIR, REFERENCE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR
+)
+
+def setup_data_dir():
     """
     Check for directories and create them if absent.
     Args:
     directories (list): List of directory paths to be checked/created.
     """
-    for directory in directories:
+    required_directories = (
+        DATA_DIR, REFERENCE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR
+    )
+    for directory in required_directories:
         if not os.path.exists(directory):
             try:
                 os.makedirs(directory)
                 print(f"Directory created: {directory}")
             except OSError as e:
                 print(f"Error creating directory {directory}: {e}")
-                
-def main():
-    required_directories = (SRC_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, REFERENCE_DIR)
-    create_directories(required_directories)
-
-if __name__ == '__main__':
-    main()
