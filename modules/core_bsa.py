@@ -36,9 +36,15 @@ class BSA:
             ## data cleaning and orginization
             data_filter = DataFiltering(line.name, self.log)
             line.vcf_df = data_filter.filter_genotypes(line.segregation_type, line.vcf_df)
-            line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
-            line.vcf_df = data_filter.drop_indels(line.vcf_df)
             line.vcf_df = data_filter.drop_na(line.vcf_df)
+            
+            if bsa_vars.filter_indels: #default True
+                line.vcf_df = data_filter.drop_indels(line.vcf_df)
+            if bsa_vars.filter_ems: #default True (for EMS mutants)
+                line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
+            if bsa_vars.snpmask_path: #Mask background snps if provided
+                line.snpmask_df = bsa_vars.load_vcf_table(line.snpmask_path)
+                line.vcf_df = data_filter.mask_known_snps(line.snpmask_df, vcf_df)
             
             ## Feature production
             feature_prod = FeatureProduction(line.name, self.log)
@@ -197,7 +203,21 @@ class DataFiltering:
 
         except Exception as e:
             self.log.fail(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
-    
+
+    def mask_known_snps(self, snpmask_df, vcf_df):
+        # Convert column names to lower case
+        snpmask_df.columns = snpmask_df.columns.str.lower()
+        vcf_df.columns = vcf_df.columns.str.lower()
+
+        # Create a set from the 'chrom', 'pos', 'ref', 'alt' columns
+        known_snps_set = set(zip(snpmask_df['chrom'], snpmask_df['pos'], 
+                                  snpmask_df['ref'], snpmask_df['alt']))
+
+        # Filter the vcf_df to only include rows not in the known_snps_set
+        return vcf_df[~vcf_df[['chrom', 'pos', 'ref', 'alt']]
+                              .apply(tuple, axis=1).isin(known_snps_set)]
+
+
 class FeatureProduction:
     def __init__(self, name, logger):
         self.log = logger

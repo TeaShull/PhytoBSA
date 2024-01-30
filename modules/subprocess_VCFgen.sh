@@ -79,8 +79,8 @@ main() {
     "contig"
     
     create_fai_and_index "${reference_genome_path}" "${reference_chrs_fa_path}"
-    create_sequence_dictionary "${reference_chrs_fa_path}" "${reference_chrs_path}"
-
+    create_sequence_dictionary "${reference_chrs_fa_path}"
+    
     echo "References and directories prepared. Proceeding with mapping...."
 
     print_message "Mapping"

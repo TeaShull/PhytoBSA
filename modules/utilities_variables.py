@@ -1,6 +1,5 @@
-from settings.config import (INPUT_DIR, OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR, 
+from settings.paths import (INPUT_DIR, OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR, 
      VCF_GEN_SCRIPT)
-from settings import vcf_gen_variables
 from modules.utilities_general import FileUtilities
 
 import os
@@ -17,8 +16,7 @@ class Lines:
     within this current class. 
     '''
     
-    __slots__ = [
-        'log', 'name', 'segregation_type', 'vcf_table_path', 
+    __slots__ = ['log', 'name', 'segregation_type', 'vcf_table_path', 
         'mu_input', 'wt_input', 'pairedness', 'vcf_gen_cmd', 
         'vcf_output_prefix', 'vcf_output_dir', 'vcf_ulid', 'vcf_df', 
         'analysis_out_prefix', 'analysis_out_path', 'gs_cutoff', 
@@ -182,8 +180,7 @@ class VCFGenVariables:
                  lines, 
                  reference_genome_name=None, 
                  snpEff_species_db=None,
-                 reference_genome_source=None, 
-                 known_snps_path=None, 
+                 reference_genome_source=None,
                  threads_limit=None, 
                  call_variants_in_parallel=None, 
                  cleanup=None 
@@ -201,7 +198,6 @@ class VCFGenVariables:
         self.snpEff_species_db = snpEff_species_db
 
     def make_vcfgen_command(self, line):
-        self._apply_settings() #if None, source from settings.vcf_gen_variables
         rgp = os.path.join(REFERENCE_DIR, self.reference_genome_name)
         reference_genome_prefix = rgp
         args = (
@@ -228,11 +224,6 @@ class VCFGenVariables:
         cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
         return cmd
 
-    def _apply_settings(self):
-        for attribute in vars(self).keys():
-            if getattr(self, attribute) is None and hasattr(vcf_gen_variables, attribute):
-                setattr(self, attribute, getattr(vcf_gen_variables, attribute))
-
     def gen_vcf_output_paths(self, name, vcf_ulid):
         output_name = f"{vcf_ulid}-_{name}"
         vcf_output_dir_path = os.path.join(OUTPUT_DIR, output_name)
@@ -247,18 +238,29 @@ class VCFGenVariables:
         )
 
 class BSAVariables:
+    __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
+        'shuffle_iterations', 'snpmask_path', 'snpmask_df'
+    ]
+    
     def __init__(self, logger,
              lines, 
              loess_span, 
              smooth_edges_bounds, 
-             shuffle_iterations):
+             shuffle_iterations,
+             filter_indels,
+             filter_ems, 
+             snpmask_path):
         
         self.log = logger
         self.lines = lines
-
         self.loess_span = loess_span
         self.smooth_edges_bounds = smooth_edges_bounds 
         self.shuffle_iterations = shuffle_iterations
+        self.filter_indels = args.filter_indels
+        self.filter_ems = args.filter_ems,
+        self.snpmask_path = snpmask_path
+        self.snpmask_df = None
+
 
     def load_vcf_table(self, vcf_table_path)->pd.DataFrame:
         """
@@ -271,9 +273,9 @@ class BSAVariables:
         Returns: 
         Pandas dataframe containing the information loaded from current_line_table_path
         """
-        self.log.attempt(f"Attempting to load VCF table for line {current_line_name}")
+        self.log.attempt(f"Attempting to load {vcf_table_path} for line {current_line_name}")
         try:
-            vcf_df = pd.read_csv(current_line_table_path, sep="\t")
+            vcf_df = pd.read_csv(current_line_table_path, sep="\t", comment='#')
             self.log.attempt(f"The VCF table for line {current_line_name} was successfully loaded.")
             return vcf_df
         

@@ -137,12 +137,11 @@ create_chromosomal_fasta() {
 
 # Create .fai and index files if they don't exist
 create_fai_and_index() {
-    local reference_genome_path="$1"
     local reference_chrs_fa_path="$2"
 
     if [ ! -f "${reference_chrs_fa_path}.fai" ]; then
         samtools faidx "${reference_chrs_fa_path}"
-        bwa index -p "${reference_chrs_fa_path}" -a is "${reference_genome_path}"
+        bwa index -p "${reference_chrs_fa_path}" -a is "${reference_chrs_fa_path}"
     fi
 }
 
@@ -155,25 +154,6 @@ create_sequence_dictionary() {
         picard CreateSequenceDictionary -R "${reference_chrs_fa_path}" -O "${reference_chrs_path}.dict"
     fi
 }
-
-# remove known SNPs
-remove_known_snps() {
-    local known_snps_file="$1"
-    local input_file="$2"
-    local output_file="$3"
-    
-    awk -v line_name="${line_name}" -v pairedness="${pairedness}" \
-        'FNR==NR{a[$1$2];next};!(($1$2) in a) || $1~/#CHROM/' \
-        "$known_snps_file" "$input_file" > "$output_file"
-}
-
-#remove polymorphisms in mitochondria and chloroplast
-remove_nongenomic_polymorphisms() {
-    local line_name="$1"
-    local file="$2"
-    awk -i inplace '$1 == ($1+0)' "$file"
-}
-
 
 # Add neccissary headers to file. 
 add_headers() {
