@@ -4,25 +4,19 @@ main() {
     declare -A passed_variables=(
         ["vcf_ulid"]=${1}
         ["current_line_name"]=${2}
-        ["input_dir"]=${3}
-        ["wt_input"]=${4}
-        ["mu_input"]=${5}
-        ["pairedness"]=${6}
-        ["output_dir_path"]=${7}
-        ["output_prefix"]=${8}
-        ["vcf_table_path"]=${9}
-        ["snpeff_dir"]=${10}
-        ["snpeff_out_filename"]=${11}
-        ["reference_dir"]=${12}
-        ["reference_genome_source"]=${13}
-        ["reference_genome_prefix"]=${14}
-        ["snpEff_species_db"]=${15}
-        ["known_snps_path"]=${16}
-        ["threads_limit"]=${17}
-        ["call_variants_in_parallel"]=${18}
-        ["cleanup"]=${19}
+        ["wt_input"]=${3}
+        ["mu_input"]=${4}
+        ["pairedness"]=${5}
+        ["output_prefix"]=${6}
+        ["vcf_table_path"]=${7}
+        ["snpeff_dir"]=${8}
+        ["snpeff_out_filename"]=${9}
+        ["reference_genome_prefix"]=${10}
+        ["snpEff_species_db"]=${11}
+        ["threads_limit"]=${12}
+        ["call_variants_in_parallel"]=${13}
+        ["cleanup"]=${14}
     )
-    
     print_variable_info passed_variables "Variables passed to subprocess_VCFgen.sh"
     assign_values passed_variables #assign variables based on keys for easy access
 
@@ -50,37 +44,11 @@ main() {
         ["snpsift_output"]="${output_prefix}.snpsift.table.tmp"
         ["tmp_table_file_name"]="${output_prefix}.table.tmp"
     )
-
     print_variable_info generated_variables "Variables generated in subprocess_VCFgen.sh"
     assign_values generated_variables
 
-    ## Prepare references and directory structure
-    print_message "Preparing references and directory structure"
-    create_directories "${output_dir_path}" "${snpeff_dir}" "${reference_dir}"
-
-    download_reference_genome "${reference_genome_path}" "${reference_genome_source}"
-
-    # Add patterns to this function to remove non chromosomal DNA from analysis
-    # For example, mitochondrial (Mt) and plastid (Pt) sequences in ref genomes
-    # Be as specific as possible to avoid removing important headers. 
-    # Example: using only "pt" may remove all chromosomal sequences containing 
-    # Capta (plantain), so we instead use ">Pt ". (A different approach would be
-    # nice) 
-    create_chromosomal_fasta \
-    "${reference_genome_path}" \
-    "${reference_chrs_fa_path}" \
-    ">Mt " \
-    ">mt " \
-    ">Pt " \
-    ">pt " \
-    "Scaffold" \
-    "scaffold" \
-    "Contig" \
-    "contig"
-    
     create_fai_and_index "${reference_genome_path}" "${reference_chrs_fa_path}"
     create_sequence_dictionary "${reference_chrs_fa_path}"
-    
     echo "References and directories prepared. Proceeding with mapping...."
 
     print_message "Mapping"
@@ -222,20 +190,6 @@ main() {
         $snpeff_output \
         $snpsift_output \
         $current_line_name
-
-    # Clean up data table
-    remove_repetitive_nan "$snpsift_output" "$tmp_table_file_name"
-    format_fields "$tmp_table_file_name" "$current_line_name"
-    remove_complex_genotypes "$tmp_table_file_name"
-
-    # Remove known SNPs
-    remove_known_snps "$known_snps_path" "$tmp_table_file_name" "$vcf_table_path"
-
-    # Add headers
-    add_headers "$vcf_table_path"
-    
-    # Clean up temporary files
-    cleanup_files "$output_dir_path" "$cleanup"
 }
 
 # Execute the main function

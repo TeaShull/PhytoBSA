@@ -12,7 +12,7 @@ class ArgumentParser:
 
         if self.args.command == 'settings':
             print('Applying settings...')
-            self.apply_settings_to_config(args, config)
+            self.apply_settings_to_config()
 
         if self.args.automatic:
             self.apply_defaults_from_config('VCF')
@@ -22,18 +22,22 @@ class ArgumentParser:
         elif 'analysis' in self.args:
             self.apply_defaults_from_config('BSA')
  
-    def apply_settings_to_config(self, args, config):
-        for arg in vars(args):
-            if arg.startswith('set_') and getattr(args, arg) is not None:
-                value = getattr(args, arg)
+    def apply_settings_to_config(self):
+        for arg in vars(self.args):
+            if arg.startswith('set_') and getattr(self.args, arg) is not None:
+                value = getattr(self.args, arg)
                 config_key = arg.replace('set_', '')
-                for section in config.sections():
-                    if config.has_option(section, config_key):
-                        print(f'Default {config_key} in section {section} is now set to {value}')
-                        config.set(section, config_key, str(value))
+                print(f'{value}:{config_key}')
+                for section in self.config.sections():
+                    if self.config.has_option(section, config_key):
+                        # Convert lists to comma-separated strings
+                        if isinstance(value, list):
+                            value = ', '.join(value)
+                        print(f'Default updated |{section}|{config_key} = {value}')
+                        self.config.set(section, config_key, str(value))
                         break  # break after finding the option in the section
-        with open('config.ini', 'w') as configfile:
-            config.write(configfile)
+        with open(self.config_ini, 'w') as configfile:
+            self.config.write(configfile)
         quit()
 
     def apply_defaults_from_config(self, section):
@@ -61,7 +65,7 @@ class ArgumentParser:
         vcf_gen_options.add_argument('-t', '--threads_limit', default=None, type=str, help='Maximum threads you wish to use for analysis')
         vcf_gen_options.add_argument('-p', '--call_variants_in_parallel', default=None, type=bool, help='Run gatk haplotype caller in parallel')
         vcf_gen_options.add_argument('-c','--cleanup', default=None, type=bool, help='If true, intermediate files will de deleted. False for troubleshooting and archiving files.' )
-
+        vcf_gen_options.add_argument('-cft', '--cleanup_filetypes', default=None, type=str, help="Filetypes to clean out after VCF generation is complete. format - ['*file_suffix', exc] example - ['*.tmp', '*.metrics']")
     def parse_program_arguments(self):
         
         # Main parser

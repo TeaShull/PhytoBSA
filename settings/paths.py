@@ -33,7 +33,6 @@ def setup_data_dir():
 
 CONFIG_DIR = os.path.dirname(os.path.realpath(__file__))
 CONFIG_INI =  os.path.join(CONFIG_DIR, 'config.ini')
-print(CONFIG_INI)
 BASE_DIR =  os.path.dirname(CONFIG_DIR)
 MODULES_DIR = os.path.join(BASE_DIR, 'modules')
 VCF_GEN_SCRIPT = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')     
