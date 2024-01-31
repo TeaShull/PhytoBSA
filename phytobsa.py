@@ -3,14 +3,14 @@ from modules.utilities_parser import ArgumentParser
 arg_parser = ArgumentParser()
 args = arg_parser.args
 
-from modules.utilities_variables import (
-    Lines,AutomaticLineVariableDetector, VCFGenVariables, BSAVariables
-)
 from modules.utilities_logging import LogHandler
-from modules.core_vcf_gen import VCFGenerator
-from modules.core_bsa import BSA
 from modules.utilities_general import LogDbUtilites
 
+from modules.core_vcf_gen import VCFGenerator
+from modules.core_bsa import BSA
+from modules.core_variables import (
+    Lines, AutomaticLineVariableDetector, VCFGenVariables, BSAVariables
+)
 
 def main():
     # Primary program
