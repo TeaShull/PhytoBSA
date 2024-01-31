@@ -9,11 +9,18 @@ import re
 from Bio import SeqIO
 
 from modules.utilities_logging import LogHandler
-from settings.paths import MODULES_DIR
+from settings.paths import MODULES_DIR, REFERENCE_DIR
+
+"""
+Core module for VCF generation subprocess.
+Input variable class: vcf_vars from utilities_variables module.
+
+This module processes bulk segregant fasta files, and formats them for BSA. 
+"""
 
 class VCFGenerator:
-    def __init__(self, logger, vcf_gen_vars):
-        self.vcf_gen_vars = vcf_gen_vars
+    def __init__(self, logger, vcf_vars):
+        self.vcf_vars = vcf_vars
         self.log = logger
 
     def run_subprocess(self):
@@ -29,23 +36,38 @@ class VCFGenerator:
         Returns: updated line_dict containing the paths to 
         the noknownsnps.table.
         """
-        self._download_reference_genome(self.vcf_gen_vars.reference_genome_path, 
-            self.vcf_gen_vars.reference_genome_source
+        #Parse reference genome path. Check if hard-coded. If not, will return
+        self.vcf_vars.reference_genome_path = self.vcf_vars.get_ref_path(
+            self.vcf_vars.reference_genome_path
         )
-        # Create a new fasta file, with unneeded contigs filtered based on user defaults. (mitochondria, exc)
-        self._create_chromosomal_fasta(self.vcf_gen_vars.reference_genome_path, 
-            self.reference_chrs_path, self.vcf_gen_vars.omit_chrs_patterns
+        # Retrieve the base name of the reference genome
+        ref_name = self.vcf_vars.get_ref_name(self.vcf_vars.reference_genome_path
+        )
+        #Reference genome prefix for .chrs.fa file
+        ref_genome_prefix = os.path.join(REFERENCE_DIR, ref_name)
+        self.vcf_vars.reference_chrs_path = (f"{ref_genome_prefix}.chrs.fa")
+        
+        # Parse reference genome path. If exists - proceed. 
+        # If compressed, decompress. 
+        # If not there, download from reference_genome_source and decompress
+        self.vcf_vars.reference_genome_path = self._parse_reference_genome(
+            self.vcf_vars.reference_genome_path, 
+            self.vcf_vars.reference_genome_source
+        )
+        # Create a new fasta file, with unneeded contigs filtered based on 
+        # user defaults. (mitochondria, exc)
+        self._create_chromosomal_fasta(self.vcf_vars.reference_genome_path, 
+            self.vcf_vars.reference_chrs_path, self.vcf_vars.omit_chrs_patterns
         )
 
-        # Generate the knownSnps .vcf file path
-        for line in self.vcf_gen_vars.lines:
+        for line in self.vcf_vars.lines:
             self.log.note(f'Initializing vcf_generation subprocess log for {line.name}')
             vcf_log = LogHandler(f'vcf_{line.name}')
             line.vcf_ulid = vcf_log.ulid
             vcf_log.add_db_record(line.name, line.vcf_ulid)
 
             #Generate output paths for process
-            vcf_out_paths = self.vcf_gen_vars.gen_vcf_output_paths(
+            vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
                 line.name, line.vcf_ulid
             )
             (
@@ -56,10 +78,9 @@ class VCFGenerator:
                 line.snpeff_out_path, 
                 line.snpsift_out_path
             ) = vcf_out_paths
-
             
             #Generate line.vcf_gen_cmd
-            line.vcf_gen_cmd = self.vcf_gen_vars.make_vcfgen_command(line)
+            line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
             
             # Run vcfgen shell subprocess.
             process = subprocess.Popen(
@@ -89,7 +110,7 @@ class VCFGenerator:
             if cleanup:
                 self._cleanup_files(line.vcf_output_dir)
             
-    def _download_reference_genome(ref_genome_path, ref_genome_source):
+    def _parse_reference_genome(self, ref_genome_path, ref_genome_source):
         # Parse the source URL to get the file extension
         parsed_url = urlparse(ref_genome_source)
         source_extension = os.path.splitext(parsed_url.path)[1]
@@ -102,13 +123,16 @@ class VCFGenerator:
         if not os.path.isfile(ref_genome_path):
             urllib.request.urlretrieve(ref_genome_source, ref_genome_path)
 
-            # If the file is compressed, uncompress it
-            if source_extension == '.gz':
-                with gzip.open(ref_genome_path, 'rb') as f_in:
-                    with open(ref_genome_path[:-3], 'wb') as f_out:  # Remove '.gz' from the end of the path
-                        shutil.copyfileobj(f_in, f_out)
+        # If the file is compressed, uncompress it
+        if ref_genome_path.endswith('.gz'):
+            with gzip.open(ref_genome_path, 'rb') as f_in:
+                with open(ref_genome_path[:-3], 'wb') as f_out:  # Remove '.gz' from the end of the path
+                    shutil.copyfileobj(f_in, f_out)
+            ref_genome_path = ref_genome_path[:-3]  # Update ref_genome_path to the uncompressed file
 
-    def _create_chromosomal_fasta(input_file, output_file, *patterns):
+        return ref_genome_path
+
+    def _create_chromosomal_fasta(self, input_file, output_file, *patterns):
         if not os.path.isfile(output_file):
             print(f"Creating {output_file} with only chromosomal DNA...")
             print(f"Omitting contigs containing {', '.join(patterns)}")
@@ -120,7 +144,7 @@ class VCFGenerator:
             print(f"Chromosomal fasta exists: {output_file}")
             print("Proceeding...")
     
-    def _cleanup_files(output_dir_path, cleanup_filetypes):
+    def _cleanup_files(self, output_dir_path, cleanup_filetypes):
         for file_type in cleanup_filetypes:
             if file_type == '*.table':
                 print("*.table not allowed in cleanup_filetypes. This is the point of running VCF_gen in the first place. Continuing...")

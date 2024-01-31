@@ -44,7 +44,7 @@ class BSA:
                 line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
             if bsa_vars.snpmask_path: #Mask background snps if provided
                 line.snpmask_df = bsa_vars.load_vcf_table(line.snpmask_path)
-                line.vcf_df = data_filter.mask_known_snps(line.snpmask_df, vcf_df)
+                line.vcf_df = data_filter.mask_known_snps(line.snpmask_df, line.vcf_df)
             
             ## Feature production
             feature_prod = FeatureProduction(line.name, self.log)
@@ -216,7 +216,6 @@ class DataFiltering:
         # Filter the vcf_df to only include rows not in the known_snps_set
         return vcf_df[~vcf_df[['chrom', 'pos', 'ref', 'alt']]
                               .apply(tuple, axis=1).isin(known_snps_set)]
-
 
 class FeatureProduction:
     def __init__(self, name, logger):
