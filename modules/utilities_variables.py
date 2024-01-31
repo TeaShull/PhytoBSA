@@ -66,7 +66,6 @@ class Lines:
            'wt_input'
         ]
         self.ref_path_variables=[
-           'known_snps_path'
         ]
 
     def _process_input(self, key, details):
@@ -178,45 +177,45 @@ class AutomaticLineVariableDetector:
 class VCFGenVariables:
     def __init__(self, logger,
                  lines, 
-                 reference_genome_name=None, 
-                 snpEff_species_db=None,
-                 reference_genome_source=None,
-                 threads_limit=None, 
-                 call_variants_in_parallel=None, 
-                 cleanup=None 
+                 reference_genome_path, 
+                 reference_genome_source,
+                 snpEff_species_db,
+                 threads_limit, 
+                 call_variants_in_parallel, 
+                 cleanup, 
+                 cleanup_filetypes
                  ):
         
         self.log = logger
         self.lines=lines
 
-        self.reference_genome_name = reference_genome_name
+        self.reference_genome_path = reference_genome_path
         self.reference_genome_source = reference_genome_source
-        self.cleanup = cleanup
-        self.threads_limit = threads_limit
-        self.known_snps_path = known_snps_path
-        self.call_variants_in_parallel = call_variants_in_parallel
+        self.omit_chrs_patterns = omit_chrs_patterns
         self.snpEff_species_db = snpEff_species_db
+        self.threads_limit = threads_limit
+        self.call_variants_in_parallel = call_variants_in_parallel
+        self.cleanup = cleanup
 
-    def make_vcfgen_command(self, line):
-        rgp = os.path.join(REFERENCE_DIR, self.reference_genome_name)
+        self.get_genome_name(self.reference_genome_path)
+        rgp = os.path.join(REFERENCE_DIR, ref_genome_name)
         reference_genome_prefix = rgp
+        
+        self.reference_chrs_path = (f"{rgp}.chrs.fa")
+    
+    def make_vcfgen_command(self, line):
         args = (
             line.vcf_ulid,
             line.name, 
-            INPUT_DIR,
             line.wt_input,
             line.mu_input,
             line.pairedness,
-            line.vcf_output_dir,
             line.vcf_output_prefix,
             line.vcf_table_path,
             line.snpeff_dir,
             line.snpeff_out_filename,
-            REFERENCE_DIR,
-            self.reference_genome_source, 
-            reference_genome_prefix, 
+            reference_chrs_path, 
             self.snpEff_species_db,
-            self.known_snps_path,
             self.threads_limit,
             self.call_variants_in_parallel,
             self.cleanup
@@ -228,7 +227,7 @@ class VCFGenVariables:
         output_name = f"{vcf_ulid}-_{name}"
         vcf_output_dir_path = os.path.join(OUTPUT_DIR, output_name)
         vcf_output_prefix = os.path.join(vcf_output_dir_path, output_name) 
-        vcf_table_path= f"{vcf_output_prefix}.noknownsnps.table"
+        vcf_table_path= f"{vcf_output_prefix}.table"
         
         snpeff_dir= os.path.join(OUTPUT_DIR, 'snpEff')
         snpeff_out_filename=os.path.join(snpeff_dir, output_name)
@@ -236,6 +235,20 @@ class VCFGenVariables:
         return (vcf_output_dir_path, vcf_output_prefix, 
             vcf_table_path, snpeff_dir, snpeff_out_filename
         )
+
+        def get_genome_name(file_path):
+            # Get the file name without the path
+            file_name = os.path.basename(file_path)
+            
+            # Remove the file extension(s)
+            base_name = Path(file_name).stem
+            if base_name.endswith('.fa'):
+                base_name = Path(base_name).stem
+            if base_name.endswith('.fasta'):
+                base_name = Path(base_name).stem
+            
+            return base_name
+    
 
 class BSAVariables:
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 

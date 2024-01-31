@@ -83,10 +83,9 @@ def main():
 
         vcf_vars = VCFGenVariables(core_log, 
             lines=auto_vars.lines,
+            reference_genome_name=args.reference_genome_name, 
             reference_genome_source=args.reference_genome_source, 
             snpEff_species_db=args.snpEff_species_db,
-            reference_genome_name=args.reference_genome_name, 
-            known_snps=args.known_snps, 
             threads_limit=args.threads_limit, 
             call_variants_in_parallel=args.call_variants_in_parallel,
             cleanup=args.cleanup
