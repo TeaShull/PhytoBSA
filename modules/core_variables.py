@@ -184,17 +184,18 @@ class VCFGenVariables:
     ]
     
     def __init__(self, logger,
-                 lines, 
-                 reference_genome_path, 
-                 reference_genome_source,
-                 omit_chrs_patterns,
-                 snpEff_species_db,
-                 threads_limit, 
-                 call_variants_in_parallel, 
-                 cleanup, 
-                 cleanup_filetypes
-                 ):
+        lines, 
+        reference_genome_path, 
+        reference_genome_source,
+        omit_chrs_patterns,
+        snpEff_species_db,
+        threads_limit, 
+        call_variants_in_parallel, 
+        cleanup, 
+        cleanup_filetypes
+        ):
         self.log = logger
+        
         self.lines = lines
         self.reference_genome_path = reference_genome_path
         self.reference_genome_source = reference_genome_source
@@ -288,15 +289,16 @@ class BSAVariables:
     ]
     
     def __init__(self, logger,
-             lines, 
-             loess_span, 
-             smooth_edges_bounds, 
-             shuffle_iterations,
-             filter_indels,
-             filter_ems, 
-             snpmask_path):
-        
+        lines, 
+        loess_span, 
+        smooth_edges_bounds, 
+        shuffle_iterations,
+        filter_indels,
+        filter_ems, 
+        snpmask_path
+        ):
         self.log = logger
+        
         self.lines = lines
         self.loess_span = loess_span
         self.smooth_edges_bounds = smooth_edges_bounds 
