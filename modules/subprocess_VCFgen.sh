@@ -8,10 +8,10 @@ main() {
         ["mu_input"]=${4}
         ["pairedness"]=${5}
         ["output_prefix"]=${6}
-        ["vcf_table_path"]=${7}
-        ["snpeff_dir"]=${8}
-        ["snpeff_out_filename"]=${9}
-        ["reference_genome_prefix"]=${10}
+        ["snpeff_dir"]=${7}
+        ["snpeff_out_path"]=${8}
+        ["snpsift_out_path"]=${9}
+        ["reference_chrs_fa_path"]=${10}
         ["snpEff_species_db"]=${11}
         ["threads_limit"]=${12}
         ["call_variants_in_parallel"]=${13}
@@ -22,9 +22,6 @@ main() {
 
     declare -A generated_variables=(
         ["threads_halfed"]=$((threads_limit / 2))
-        ["reference_genome_path"]="${reference_genome_prefix}.fa"
-        ["reference_chrs_path"]="${reference_genome_prefix}.chrs"
-        ["reference_chrs_fa_path"]="${reference_genome_prefix}.chrs.fa"
         ["bwa_output_sam_wt"]="${output_prefix}_wt.sam"
         ["bwa_output_sam_mu"]="${output_prefix}_mu.sam"
         ["samtools_output_bam_wt"]="${output_prefix}_wt.bam"
@@ -41,8 +38,6 @@ main() {
         ["picard_buildbamindex_output_mu"]="${output_prefix}_mu.sort.md.rg.bai"
         ["gatk_haplotypecaller_output"]="${output_prefix}.hc.vcf"
         ["snpeff_output"]="${output_prefix}.se.vcf"
-        ["snpsift_output"]="${output_prefix}.snpsift.table.tmp"
-        ["tmp_table_file_name"]="${output_prefix}.table.tmp"
     )
     print_variable_info generated_variables "Variables generated in subprocess_VCFgen.sh"
     assign_values generated_variables
@@ -179,7 +174,7 @@ main() {
     # databases assembled from annotated reference files 
     # (gff, transcriptomes and genomes). 
     snpEff $snpEff_species_db \
-        -s $snpeff_out_filename \
+        -s $snpeff_out_path \
         $gatk_haplotypecaller_output > $snpeff_output
     wait
     print_message "Haplotypes called and SNPs labeled. Cleaning data."
@@ -188,7 +183,7 @@ main() {
     # built in data processing of snpEff labels... 
     extract_fields_snpSift \
         $snpeff_output \
-        $snpsift_output \
+        $snpsift_out_path \
         $current_line_name
 }
 

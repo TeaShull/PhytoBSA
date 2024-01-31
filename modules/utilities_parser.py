@@ -1,6 +1,7 @@
 import os
 import argparse
 import configparser
+import ast
 
 class ArgumentParser:
     def __init__(self):
@@ -30,12 +31,15 @@ class ArgumentParser:
                 print(f'{value}:{config_key}')
                 for section in self.config.sections():
                     if self.config.has_option(section, config_key):
-                        # Convert lists to comma-separated strings
                         if isinstance(value, list):
                             value = ', '.join(value)
+                        elif isinstance(value, bool):
+                            value = str(value)
+                        elif isinstance(value, int) or isinstance(value, float):
+                            value = str(value)
                         print(f'Default updated |{section}|{config_key} = {value}')
                         self.config.set(section, config_key, str(value))
-                        break  # break after finding the option in the section
+                        break
         with open(self.config_ini, 'w') as configfile:
             self.config.write(configfile)
         quit()
@@ -44,6 +48,10 @@ class ArgumentParser:
         for arg in vars(self.args).keys():
             if getattr(self.args, arg) is None and self.config.has_option(section, arg):
                 value = self.config.get(section, arg)
+                try:
+                    value = ast.literal_eval(value)
+                except (ValueError, SyntaxError):
+                    pass
                 print(f'Default applied: {arg}:{value}')
                 setattr(self.args, arg, value)
 
@@ -58,14 +66,15 @@ class ArgumentParser:
 
     def add_vcf_gen_arguments(self, parser):
         vcf_gen_options = parser.add_argument_group('VCF generation options', 'Options for VCF generation. Defaults can be changed using the settings positional argument phytobsa settings -h for more info')
-        vcf_gen_options.add_argument('-rgn', '--reference_genome_name', required=False, default=None, type=str, help='Reference genome name')
+        vcf_gen_options.add_argument('-rgn', '--reference_genome_path', required=False, default=None, type=str, help='Reference genome name')
         vcf_gen_options.add_argument('-ssdb', '--snpEff_species_db', default=None, type=str, help = 'The name of your snpEff database name.')
         vcf_gen_options.add_argument('-rgs', '--reference_genome_source', default=None, type=str, help = 'Optional, if you wish the pipeline to download your reference from a url')
         vcf_gen_options.add_argument('-ks','--known_snps', default=None, type=str, help = 'VCF file containing background SNPs. Helps improve output quality')
         vcf_gen_options.add_argument('-t', '--threads_limit', default=None, type=str, help='Maximum threads you wish to use for analysis')
         vcf_gen_options.add_argument('-p', '--call_variants_in_parallel', default=None, type=bool, help='Run gatk haplotype caller in parallel')
         vcf_gen_options.add_argument('-c','--cleanup', default=None, type=bool, help='If true, intermediate files will de deleted. False for troubleshooting and archiving files.' )
-        vcf_gen_options.add_argument('-cft', '--cleanup_filetypes', default=None, type=str, help="Filetypes to clean out after VCF generation is complete. format - ['*file_suffix', exc] example - ['*.tmp', '*.metrics']")
+        vcf_gen_options.add_argument('-cft', '--cleanup_filetypes', default=None, type=list, help="Filetypes to clean out after VCF generation is complete. format - ['*file_suffix', exc] example - ['*.tmp', '*.metrics']")
+        vcf_gen_options.add_argument('-ocp', '--omit_chrs_patterns', default=None, type=list, help='Header patterns to omit from reference chromosomes. Useful for removing >mt(mitochondrial) and other unneeded reference sequences')
     def parse_program_arguments(self):
         
         # Main parser
@@ -103,13 +112,15 @@ class ArgumentParser:
         parser_settings.add_argument('--set_data_dir', default=None, type=str, help='set Data directory. This must be set for program to run')
         #vcf_gen default run settings. 
         vcf_settings = parser_settings.add_argument_group('VCF generation default settings' 'These settings will be automatically applied if not explicity provided in automatic or VCF generation mode')
-        vcf_settings.add_argument('--set_reference_genome_name', required=False, default=None, type=str, help='Set default reference genome name')
+        vcf_settings.add_argument('--set_reference_genome_path', required=False, default=None, type=str, help='Set default reference genome name')
         vcf_settings.add_argument('--set_snpEff_species_db', default=None, type=str, help = 'Set default snpEff database name.')
         vcf_settings.add_argument('--set_reference_genome_source', default=None, type=str, help = 'Set default reference genome source')
         vcf_settings.add_argument('--set_known_snps', default=None, type=str, help = 'Set default VCF file containing background SNPs.')
         vcf_settings.add_argument('--set_threads_limit', default=None, type=str, help='Set default maximum threads for analysis')
         vcf_settings.add_argument('--set_call_variants_in_parallel', default=None, type=bool, help='Set default for running gatk haplotype caller in parallel')
         vcf_settings.add_argument('--set_cleanup', default=None, type=bool, help='Set default for cleanup. If true, intermediate files will de deleted. False for troubleshooting and archiving files.' )
+        vcf_settings.add_argument('--set_cleanup_filetypes', default=None, type=list, help="set default for cleanup filetypes. ordered list of globs for files you wish to clear out after vcf generation process")
+        vcf_settings.add_argument('--set_omit_chrs_patterns', default=None, type=list, help="set defaults for filtering reference chromosome contigs. Useful for filtering non-genomic reference contigs to speed up vcf generation")
         #BSA default run settings.
         bsa_settings = parser_settings.add_argument_group('BSA default settings', 'These settings will be automatically applied if not explicitly passed to automatic or BSA mode.')
         bsa_settings.add_argument('--set_loess_span', type=float, help="Set default loess_span.")

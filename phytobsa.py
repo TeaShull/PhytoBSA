@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from modules.arg_parser import ArgumentParser
+from modules.utilities_parser import ArgumentParser
 arg_parser = ArgumentParser()
 args = arg_parser.args
 
@@ -60,18 +60,19 @@ def main():
     elif args.command == 'vcf_generator':
         line = Lines(core_log, args.name)
 
-        line.usr_in_line_variables(args.reference_genome_name, 
+        line.usr_in_line_variables(args.reference_genome_path, 
             args.wt_input, args.mu_input
         )
-        vcf_gen_vars = VCFGenVariables(core_log, 
+        vcf_vars = VCFGenVariables(core_log, 
             lines=line,
-            reference_genome_source=args.reference_genome_source, 
+            reference_genome_path=args.reference_genome_path, 
+            reference_genome_source=args.reference_genome_source,
+            omit_chrs_patterns=args.omit_chrs_patterns,
             snpEff_species_db=args.snpEff_species_db,
-            reference_genome_name=args.reference_genome_source, 
-            known_snps=args.known_snps, 
             threads_limit=args.threads_limit, 
             call_variants_in_parallel=args.call_variants_in_parallel,
-            cleanup=args.cleanup
+            cleanup=args.cleanup,
+            cleanup_filetypes=args.cleanup_filetypes
         )
 
         vcf_gen = VCFGenerator(core_log, vcf_gen_vars)
@@ -83,12 +84,14 @@ def main():
 
         vcf_vars = VCFGenVariables(core_log, 
             lines=auto_vars.lines,
-            reference_genome_name=args.reference_genome_name, 
-            reference_genome_source=args.reference_genome_source, 
+            reference_genome_path=args.reference_genome_path, 
+            reference_genome_source=args.reference_genome_source,
+            omit_chrs_patterns=args.omit_chrs_patterns,
             snpEff_species_db=args.snpEff_species_db,
             threads_limit=args.threads_limit, 
             call_variants_in_parallel=args.call_variants_in_parallel,
-            cleanup=args.cleanup
+            cleanup=args.cleanup,
+            cleanup_filetypes=args.cleanup_filetypes
         )
         vcf_gen = VCFGenerator(core_log, vcf_vars)
         vcf_gen.run_subprocess()
