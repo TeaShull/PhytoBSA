@@ -38,3 +38,5 @@
 *_test.py
 #ignore vscode
 *.vscode
+#Ignore config.ini
+*config.ini
