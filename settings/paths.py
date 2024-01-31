@@ -6,8 +6,8 @@ def check_data_dir(config_ini):
     config = configparser.ConfigParser()
     config.read(config_ini)
 
-    if 'data_dir' in config['Settings']:
-        data_dir_prefix = config.get('Settings', 'data_dir')
+    if 'data_dir' in config['PATHS']:
+        data_dir_prefix = config.get('PATHS', 'data_dir')
         
         if data_dir_prefix == 'None':
             raise ValueError("DATA_DIR is not set. Set the data directory using the command: ./phytobsa --data_dir <path-to-dir>")
@@ -31,8 +31,9 @@ def setup_data_dir():
                 print(f"Error creating directory {directory}: {e}")
 
 
-CONFIG_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+CONFIG_DIR = os.path.dirname(os.path.realpath(__file__))
 CONFIG_INI =  os.path.join(CONFIG_DIR, 'config.ini')
+print(CONFIG_INI)
 BASE_DIR =  os.path.dirname(CONFIG_DIR)
 MODULES_DIR = os.path.join(BASE_DIR, 'modules')
 VCF_GEN_SCRIPT = os.path.join(MODULES_DIR, 'subprocess_VCFgen.sh')     
