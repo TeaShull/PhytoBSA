@@ -36,16 +36,6 @@ class VCFGenerator:
         Returns: updated line_dict containing the paths to 
         the noknownsnps.table.
         """
-        #Parse reference genome path. Check if hard-coded. If not, will return
-        self.vcf_vars.reference_genome_path = self.vcf_vars.get_ref_path(
-            self.vcf_vars.reference_genome_path
-        )
-        # Retrieve the base name of the reference genome
-        ref_name = self.vcf_vars.get_ref_name(self.vcf_vars.reference_genome_path
-        )
-        #Reference genome prefix for .chrs.fa file
-        ref_genome_prefix = os.path.join(REFERENCE_DIR, ref_name)
-        self.vcf_vars.reference_chrs_path = (f"{ref_genome_prefix}.chrs.fa")
         
         # Parse reference genome path. If exists - proceed. 
         # If compressed, decompress. 
@@ -57,7 +47,7 @@ class VCFGenerator:
         # Create a new fasta file, with unneeded contigs filtered based on 
         # user defaults. (mitochondria, exc)
         self._create_chromosomal_fasta(self.vcf_vars.reference_genome_path, 
-            self.vcf_vars.reference_chrs_path, self.vcf_vars.omit_chrs_patterns
+            self.vcf_vars.reference_chrs_fa_path, *self.vcf_vars.omit_chrs_patterns
         )
 
         for line in self.vcf_vars.lines:
@@ -111,38 +101,50 @@ class VCFGenerator:
                 self._cleanup_files(line.vcf_output_dir)
             
     def _parse_reference_genome(self, ref_genome_path, ref_genome_source):
-        # Parse the source URL to get the file extension
-        parsed_url = urlparse(ref_genome_source)
-        source_extension = os.path.splitext(parsed_url.path)[1]
+        self.log.attempt("Attempting to parse reference genome...")
+        try:
+            if not os.path.isfile(ref_genome_path) and ref_genome_source:
+                self.log.attempt(f"Reference genome doesn't exist, sourcing from: {ref_genome_source}")
+                parsed_url = urlparse(ref_genome_source)
+                source_extension = os.path.splitext(parsed_url.path)[1]
+                
+                if ref_genome_path.endswith(source_extension) is False:
+                    self.log.note(f"Source extension {source_extension} and reference genome name extension don't match. Attempting to fix...")
+                    ref_genome_path += source_extension
+                
+                self.log.attempt(f"Downloading from URL: {ref_genome_source}")
+                urllib.request.urlretrieve(ref_genome_source, ref_genome_path)
+                self.log.success(f"Reference genome downloaded and saved at {ref_genome_path}")
+            
+            if os.path.isfile(ref_genome_path) and ref_genome_path.endswith('.gz'):
+                self.log.attempt(f"Attempting to unzip {ref_genome_path}")
+                with gzip.open(ref_genome_path, 'rb') as f_in:
+                    with open(ref_genome_path[:-3], 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                ref_genome_path = ref_genome_path[:-3]
+                self.log.success(f"File unzipped to {ref_genome_path}")
 
-        # Adjust the local file path if necessary
-        local_extension = os.path.splitext(ref_genome_path)[1]
-        if source_extension != local_extension:
-            ref_genome_path += source_extension
+            return ref_genome_path
+        
+        except Exception as e:
+            self.log.error("Parsing reference genome failed.")
+            self.log.error(e)
+            return None
 
-        if not os.path.isfile(ref_genome_path):
-            urllib.request.urlretrieve(ref_genome_source, ref_genome_path)
 
-        # If the file is compressed, uncompress it
-        if ref_genome_path.endswith('.gz'):
-            with gzip.open(ref_genome_path, 'rb') as f_in:
-                with open(ref_genome_path[:-3], 'wb') as f_out:  # Remove '.gz' from the end of the path
-                    shutil.copyfileobj(f_in, f_out)
-            ref_genome_path = ref_genome_path[:-3]  # Update ref_genome_path to the uncompressed file
 
-        return ref_genome_path
 
     def _create_chromosomal_fasta(self, input_file, output_file, *patterns):
         if not os.path.isfile(output_file):
-            print(f"Creating {output_file} with only chromosomal DNA...")
+            self.log.attempt(f"Creating {output_file} with only chromosomal DNA...")
             print(f"Omitting contigs containing {', '.join(patterns)}")
             with open(input_file, "r") as in_handle, open(output_file, "w") as out_handle:
                 for record in SeqIO.parse(in_handle, "fasta"):
                     if not any(re.search(pattern, record.id) for pattern in patterns):
                         SeqIO.write(record, out_handle, "fasta")
         else:
-            print(f"Chromosomal fasta exists: {output_file}")
-            print("Proceeding...")
+            self.log.note(f"Chromosomal fasta exists: {output_file}")
+            self.log.note("Proceeding...")
     
     def _cleanup_files(self, output_dir_path, cleanup_filetypes):
         for file_type in cleanup_filetypes:

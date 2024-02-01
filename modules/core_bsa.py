@@ -110,7 +110,6 @@ class DataFiltering:
             self.log.fail("'ref' and 'alt' columns should only contain strings. VCF may not be properly formatted. Aborting...")
         except KeyError:
             self.log.fail("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
-        
     
     def drop_na(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
@@ -190,9 +189,9 @@ class DataFiltering:
         '''
         Removes those genotypes that give rise to negative delta SNP ratios.
         These genotypes are nearly always the result of 0/1:0/1 situations, 
-        which exist only because GATK haplotype caller sometimes doesn't genotype 
-        everything perfectly and data that is useful for fitting LOESS or GAM 
-        models get cleaned out if 0/1:0/1 genotypes aren't included. 
+        which I retain only because GATK haplotype caller sometimes doesn't 
+        genotype everything perfectly and data that is useful for fitting LOESS 
+        or GAM models get cleaned out if 0/1:0/1 genotypes aren't included. 
         '''
         self.log.attempt('Trying to remove Genotypes that produce negative delta SNP ratios')
         try: 

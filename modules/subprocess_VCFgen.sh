@@ -12,10 +12,11 @@ main() {
         ["snpeff_out_path"]=${8}
         ["snpsift_out_path"]=${9}
         ["reference_chrs_fa_path"]=${10}
-        ["snpEff_species_db"]=${11}
-        ["threads_limit"]=${12}
-        ["call_variants_in_parallel"]=${13}
-        ["cleanup"]=${14}
+        ["reference_chrs_dict_path"]=${11}
+        ["snpEff_species_db"]=${12}
+        ["threads_limit"]=${13}
+        ["call_variants_in_parallel"]=${14}
+        ["cleanup"]=${15}
     )
     print_variable_info passed_variables "Variables passed to subprocess_VCFgen.sh"
     assign_values passed_variables #assign variables based on keys for easy access
@@ -43,7 +44,7 @@ main() {
     assign_values generated_variables
 
     create_fai_and_index "${reference_genome_path}" "${reference_chrs_fa_path}"
-    create_sequence_dictionary "${reference_chrs_fa_path}"
+    create_sequence_dictionary "${reference_chrs_fa_path}" "${reference_chrs_dict_path}"
     echo "References and directories prepared. Proceeding with mapping...."
 
     print_message "Mapping"
@@ -157,7 +158,7 @@ main() {
     # Time consuming but accurate. Calling variants in parallel allows faster
     # processing time. 
     if [ $call_variants_in_parallel = True ]; then
-        split_and_call_haplotype $output_prefix $output_dir_path $reference_chrs_fa_path $threads_limit
+        split_and_call_haplotypes $output_prefix $output_dir_path $reference_chrs_fa_path $threads_limit
     else
         gatk HaplotypeCaller \
             -R $reference_chrs_fa_path \
