@@ -64,10 +64,10 @@ create_fai_and_index() {
 # Create a dictionary for GATK haplotype caller if it doesn't exist
 create_sequence_dictionary() {
     local reference_chrs_fa_path="$1"
-    local reference_chrs_path="$2"
+ 
 
     if [ ! -f "${reference_chrs_path}.dict" ]; then
-        picard CreateSequenceDictionary -R "${reference_chrs_fa_path}" -O "${reference_chrs_path}.dict"
+        picard CreateSequenceDictionary -R "${reference_chrs_fa_path}" -O "${reference_chrs_fa_path}.dict"
     fi
 }
 
