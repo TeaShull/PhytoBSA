@@ -64,12 +64,58 @@ create_fai_and_index() {
 # Create a dictionary for GATK haplotype caller if it doesn't exist
 create_sequence_dictionary() {
     local reference_chrs_fa_path="$1"
- 
+    local reference_chrs_dict_path="$2"
 
-    if [ ! -f "${reference_chrs_path}.dict" ]; then
-        picard CreateSequenceDictionary -R "${reference_chrs_fa_path}" -O "${reference_chrs_fa_path}.dict"
+    if [ ! -f "${reference_chrs_dict_path}" ]; then
+        echo "Dictory doesn't exist yet - creating ${reference_chrs_dict_path}"
+        picard CreateSequenceDictionary -R "${reference_chrs_fa_path}" -O "${reference_chrs_dict_path}"
     fi
 }
+
+split_and_call_haplotypes() {
+    local output_prefix=$1
+    local reference_chrs_fa_path=$2
+    local threads_limit=$3
+
+    # Create an array of chromosome names (assuming the reference fasta file is indexed)
+    chrs=($(samtools idxstats $reference_chrs_fa_path | cut -f 1))
+
+    # Calculate threads per chromosome
+    local threads_per_chr=$((threads_limit / ${#chrs[@]}))
+
+    # Create an array to hold output file names
+    declare -a output_files
+
+    # Loop over chromosomes
+    for chr in "${chrs[@]}"; do
+        # Generate output file name
+        local output_file="${output_prefix}_${chr}.vcf"
+        output_files+=($output_file)
+
+        # Call HaplotypeCaller for each chromosome
+        gatk HaplotypeCaller \
+            -R $reference_chrs_fa_path \
+            -I $picard_addorreplacereadgroups_output_mu \
+            -I $picard_addorreplacereadgroups_output_wt \
+            -O $output_file \
+            -L $chr \
+            -output-mode EMIT_ALL_CONFIDENT_SITES \
+            --native-pair-hmm-threads "$threads_per_chr" &
+    done
+
+    # Wait for all background jobs to finish
+    wait
+    echo "Haplotypes called chromosome by chromosomes. Merging VCF files..."
+
+    # Merge VCF files
+    gatk MergeVcfs -I ${output_files[@]} -O $gatk_haplotypecaller_output
+
+    # Remove individual chromosome VCF files
+    for output_file in "${output_files[@]}"; do
+        rm -f $output_file
+    done
+}
+
 
 extract_fields_snpSift() {
     local input_file="$1"
