@@ -38,9 +38,9 @@ class BSA:
             line.vcf_df = data_filter.filter_genotypes(line.segregation_type, line.vcf_df)
             line.vcf_df = data_filter.drop_na(line.vcf_df)
             
-            if bsa_vars.filter_indels: #default True
+            if bsa_vars.filter_indels: 
                 line.vcf_df = data_filter.drop_indels(line.vcf_df)
-            if bsa_vars.filter_ems: #default True (for EMS mutants)
+            if bsa_vars.filter_ems: #for EMS mutants
                 line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
             if bsa_vars.snpmask_path: #Mask background snps if provided
                 line.snpmask_df = bsa_vars.load_vcf_table(line.snpmask_path)

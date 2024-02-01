@@ -76,11 +76,13 @@ create_sequence_dictionary() {
 split_and_call_haplotypes() {
     local output_prefix=$1
     local reference_chrs_fa_path=$2
-    local threads_limit=$3
+    local picard_addorreplacereadgroups_output_wt=$3
+    local picard_addorreplacereadgroups_output_mu=$4
+    local threads_limit=$5
+    local gatk_haplotypecaller_output=$6
 
     # Create an array of chromosome names (assuming the reference fasta file is indexed)
-    chrs=($(samtools idxstats $reference_chrs_fa_path | cut -f 1))
-
+    mapfile -t chrs < <(awk '{print $1}' "${reference_chrs_fa_path}.fai")
     # Calculate threads per chromosome
     local threads_per_chr=$((threads_limit / ${#chrs[@]}))
 
@@ -91,15 +93,15 @@ split_and_call_haplotypes() {
     for chr in "${chrs[@]}"; do
         # Generate output file name
         local output_file="${output_prefix}_${chr}.vcf"
-        output_files+=($output_file)
+        output_files+=("$output_file")
 
         # Call HaplotypeCaller for each chromosome
         gatk HaplotypeCaller \
-            -R $reference_chrs_fa_path \
-            -I $picard_addorreplacereadgroups_output_mu \
-            -I $picard_addorreplacereadgroups_output_wt \
-            -O $output_file \
-            -L $chr \
+            -R "$reference_chrs_fa_path" \
+            -I "$picard_addorreplacereadgroups_output_mu" \
+            -I "$picard_addorreplacereadgroups_output_wt" \
+            -O "$output_file" \
+            -L "$chr" \
             -output-mode EMIT_ALL_CONFIDENT_SITES \
             --native-pair-hmm-threads "$threads_per_chr" &
     done
@@ -109,19 +111,18 @@ split_and_call_haplotypes() {
     echo "Haplotypes called chromosome by chromosomes. Merging VCF files..."
 
     # Merge VCF files
-    gatk MergeVcfs -I ${output_files[@]} -O $gatk_haplotypecaller_output
+    gatk MergeVcfs -I "${output_files[@]}" -O "$gatk_haplotypecaller_output"
 
     # Remove individual chromosome VCF files
     for output_file in "${output_files[@]}"; do
-        rm -f $output_file
+        rm -f "$output_file"
     done
 }
-
 
 extract_fields_snpSift() {
     local input_file="$1"
     local output_file="$2"
     local line_name="$3"
     local extract_fields="CHROM POS REF ALT ANN[*].GENE ANN[*].EFFECT ANN[*].HGVS_P ANN[*].IMPACT GEN[*].GT GEN[${line_name}_mu].AD GEN[${line_name}_wt].AD"
-    SnpSift extractFields -s ":" -e "NaN" "${input_file}" $extract_fields > "${output_file}"
+    SnpSift extractFields -s ":" -e "NaN" "$input_file" "$extract_fields" >"$output_file"
 }
