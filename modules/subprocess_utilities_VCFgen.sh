@@ -95,7 +95,7 @@ split_and_call_haplotypes() {
         local output_file="${output_prefix}_${chr}.vcf"
         output_files+=("$output_file")
 
-        # Call HaplotypeCaller for each chromosome
+        Call HaplotypeCaller for each chromosome
         gatk HaplotypeCaller \
             -R "$reference_chrs_fa_path" \
             -I "$picard_addorreplacereadgroups_output_mu" \
@@ -111,11 +111,15 @@ split_and_call_haplotypes() {
     echo "Haplotypes called chromosome by chromosomes. Merging VCF files..."
 
     # Merge VCF files
-    gatk MergeVcfs -I "${output_files[@]}" -O "$gatk_haplotypecaller_output"
+    for vcf in "${output_files[@]}"; do
+        merge_files+="-I $vcf "
+    done 
+    
+    gatk MergeVcfs $merge_files -O "$gatk_haplotypecaller_output"
 
     # Remove individual chromosome VCF files
     for output_file in "${output_files[@]}"; do
-        rm -f "$output_file"
+        rm -f "${output_file}*"
     done
 }
 

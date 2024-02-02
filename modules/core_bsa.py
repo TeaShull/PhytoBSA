@@ -116,36 +116,39 @@ class DataFiltering:
         Drops rows with NaN values from VCF dataframe.
         
         Args: 
-        vcf_df(pd.DataFrame)
-        VCF dataframe
+            vcf_df(pd.DataFrame)
+            VCF dataframe
         
         Produces: 
-        VCF dataframe with no NaN values
+            VCF dataframe with no NaN values
         """
         
         return vcf_df.dropna(axis=0, how='any', subset=["ratio"])
 
-    def filter_genotypes(self, segregation_type: str):
+    def filter_genotypes(self, segregation_type: str, vcf_dir: pd.DataFrame)-> pd.DataFrame:
         """
         Filter genotypes in the 'mu:wt_GTpred' column of a DataFrame based on 
         the specified allele.
+        
         Args:
-            allele (str): The allele value to filter the genotypes. Filters: 
-                          R = Recessive seg '1/1:0/1', '0/1:0/0', '0/1:0/1'.
-                          D = Dominant seg '0/1:0/0', '1/1:0/0', '0/1:0/1'.
-            df (pd.DataFrame): The input DataFrame containing the genotypes.
+            segregation_type (str): The allele value to filter the genotypes. 
+                Filters: 
+                        R = Recessive seg '1/1:0/1', '0/1:0/0', '0/1:0/1'.
+                        D = Dominant seg '0/1:0/0', '1/1:0/0', '0/1:0/1'.
+            
+            vcf_df (pd.DataFrame): The input DataFrame containing the genotypes.
 
         Returns:
-            pandas.DataFrame: A filtered DataFrame containing only the rows with 
+            pd.DataFrame: Filtered DataFrame containing only the rows with 
             matching genotypes.
 
-            [IMPORTANT NOTE]
-            #0/1:0/1 is included because of occasianal leaky genotypying by GATK 
-            haplotype caller. Nearly 100% of negative delta SNP values arise from 
-            0/1:0/1 situations. To retain information without losing data that
-            may help fit GAM or LOESS, we will retain 0/1:0/1 loci and instead 
-            cut the negative values out after calculating the delta allele
-            see: self.drop_genos_with_negative_ratios
+        [EXTRA INFO]
+        #0/1:0/1 is included because of occasianal leaky genotypying by GATK 
+        haplotype caller. Nearly 100% of negative delta SNP values arise from 
+        0/1:0/1 situations. To retain information without losing data that
+        may help fit GAM or LOESS, we will retain 0/1:0/1 loci and instead 
+        cut the negative values out after calculating the delta allele
+        see: self.drop_genos_with_negative_ratios
         """
         self.log.attempt('Attempting to filter genotypes based on segregation pattern...')
         try:
@@ -177,7 +180,7 @@ class DataFiltering:
         Filter mutations likely to be from EMS for analysis and return a filtered DataFrame.
 
         Args:
-            df (pd.DataFrame): The input DataFrame containing the mutations.
+            vcf_df (pd.DataFrame): The input DataFrame containing the mutations.
 
         Returns:
             pd.DataFrame: A filtered DataFrame containing the mutations.
@@ -188,10 +191,19 @@ class DataFiltering:
     def drop_genos_with_negative_ratios(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         '''
         Removes those genotypes that give rise to negative delta SNP ratios.
-        These genotypes are nearly always the result of 0/1:0/1 situations, 
-        which I retain only because GATK haplotype caller sometimes doesn't 
-        genotype everything perfectly and data that is useful for fitting LOESS 
-        or GAM models get cleaned out if 0/1:0/1 genotypes aren't included. 
+        args:
+            vcf_df: pd.DataFrame - VCF dataframe
+        
+        Returns:
+            vcf_df: pd.DataFrame - Filtered dataframe with no negative delta-snp
+            values
+
+        [EXTRA INFO]
+        Negative delta-snps are mainly the result of 0/1:0/1 (both bulks are 
+        heterozygous), which I retain only because GATK haplotype caller 
+        sometimes doesn't genotype everything perfectly and data that is useful 
+        for fitting LOESS or GAM models get cleaned out if 0/1:0/1 genotypes 
+        aren't included. 
         '''
         self.log.attempt('Trying to remove Genotypes that produce negative delta SNP ratios')
         try: 
@@ -203,7 +215,23 @@ class DataFiltering:
         except Exception as e:
             self.log.fail(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
 
-    def mask_known_snps(self, snpmask_df, vcf_df):
+    def mask_known_snps(self, snpmask_df: pd.DataFrame, vcf_df: pd.DataFrame) -> pd.DataFrame:
+        '''
+        This fuction applys the SNP mask. If the user has provided a collection
+        of background snps in a suitable format, (headers aren't case sensitive
+        but they must exists between the two VCFs) those background snps will
+        be removed before analysis proceeds. This leads a much cleaner output, 
+        and is particularly useful if aligning EMS mutants in an background that
+        diverges from the reference genome, as there will be many spurious 
+        background variants that are mostly irrelevant to your analysis. 
+
+        args: 
+            snpmask_df: pd.DataFrame - df containing background snps
+            vcf_df: pd.DataFrame - VCF dataframe
+        returns:
+            vcf_df: pd.DataFrame - Filtered dataframe without background snps
+        '''
+        
         # Convert column names to lower case
         snpmask_df.columns = snpmask_df.columns.str.lower()
         vcf_df.columns = vcf_df.columns.str.lower()
@@ -256,7 +284,7 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail( f"An error occurred during calculation: {e}")
 
-    def _delta_snp_array(self, wtr: np.ndarray, wta: np.ndarray, mur: np.ndarray, mua: np.ndarray, suppress: bool)-> np.ndarray:
+    def _delta_snp_array(self, wtr: np.ndarray, wta:np.ndarray, mur: np.ndarray, mua: np.ndarray, suppress: bool)-> np.ndarray:
         """
         Calculates delta SNP feature, which quantifies divergence in 
             read depths between the two bulks.
@@ -286,7 +314,7 @@ class FeatureProduction:
             self.log.fail(f"Error in delta_snp_array for {self.name}: {e}")
             return None
 
-    def _g_statistic_array(self, wtr, wta, mur, mua, suppress)->np.ndarray:
+    def _g_statistic_array(self, wtr: np.ndarray, wta: np.ndarray, mur: np.ndarray, mua: np.ndarray, suppress: bool)->np.ndarray:
         """
         Calculates g-statistic feature, which is a more statistically driven 
         approach to calculating read-depth divergence from expected values. 
@@ -322,7 +350,7 @@ class FeatureProduction:
             self.log.fail(f"Error in g_statistic_array for {self.name}: {e}")
             return None
 
-    def loess_smoothing(self, vcf_df, loess_span, smooth_edges_bounds)->pd.DataFrame:
+    def loess_smoothing(self, vcf_df: pd.DataFrame, loess_span: float, smooth_edges_bounds: int)->pd.DataFrame:
         line.vcf_df, bsa_vars.loess_span, bsa_vars.smooth_edges_bounds
         """
         LOESS smoothing of ratio and G-stat by chromosome
@@ -343,7 +371,7 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
-    def _smooth_chr_facets(self, vcf_df, loess_span, smooth_edges_bounds)->pd.DataFrame:
+    def _smooth_chr_facets(self, vcf_df:pd.DataFrame, loess_span: float, smooth_edges_bounds: int)->pd.DataFrame:
         """
         Internal Function for smoothing chromosome facets using LOESS. 
         Uses function "smooth_single_chr" to interate over chromosomes as facets
@@ -425,7 +453,7 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail(f'There was an error during LOESS smoothing of chromosome facets:{e}')
 
-    def _empirical_cutoff(self, vcf_df_position, vcf_df_wt, vcf_df_mu, loess_span, shuffle_iterations):
+    def _empirical_cutoff(self, vcf_df_position: np.ndarray, vcf_df_wt: np.ndarray, vcf_df_mu: np.ndarray, loess_span: float, shuffle_iterations: int):
         """
         randomizes the input read_depths, breaking the position/feature link.
         this allows the generation of a large dataset which has no linkage 
@@ -488,7 +516,7 @@ class FeatureProduction:
             self.log.fail(f"Error in bootstrapping calculations: {e}")
             return None, None, None        
 
-    def calculate_empirical_cutoffs(self, vcf_df, loess_span, shuffle_iterations):
+    def calculate_empirical_cutoffs(self, vcf_df: pd.DataFrame, loess_span: float, shuffle_iterations: int)->pd.DataFrame:
         self.log.attempt('Bootstrapping to generate empirical cutoffs...')
         try:
             vcf_df_position = vcf_df[['pos']].copy()
@@ -506,7 +534,7 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail(f'Bootstrapping to generate empirical cutoffs failed:{e}')
 
-    def label_df_with_cutoffs(self, vcf_df, gs_cutoff, rsg_cutoff, rsg_y_cutoff):
+    def label_df_with_cutoffs(self, vcf_df: pd.DataFrame, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff:float)->pd.DataFrame:
         try:
             vcf_df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) 
                 or (x > gs_cutoff)) else 0 for x in vcf_df['G_S']

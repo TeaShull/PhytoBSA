@@ -60,11 +60,12 @@ class VCFGenerator:
             vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
                 line.name, line.vcf_ulid
             )
+
             (
                 line.vcf_output_dir, 
                 line.vcf_output_prefix, 
                 line.vcf_table_path,
-                line.snpeff_dir,
+                line.snpeff_report_path,
                 line.snpeff_out_path, 
                 line.snpsift_out_path
             ) = vcf_out_paths
@@ -100,7 +101,7 @@ class VCFGenerator:
             if cleanup:
                 self._cleanup_files(line.vcf_output_dir)
             
-    def _parse_reference_genome(self, ref_genome_path, ref_genome_source):
+    def _parse_reference_genome(self, ref_genome_path: str, ref_genome_source: str)-> str:
         self.log.attempt("Attempting to parse reference genome...")
         try:
             if not os.path.isfile(ref_genome_path) and ref_genome_source:
@@ -131,10 +132,7 @@ class VCFGenerator:
             self.log.error(e)
             return None
 
-
-
-
-    def _create_chromosomal_fasta(self, input_file, output_file, *patterns):
+    def _create_chromosomal_fasta(self, input_file: str, output_file: str, *patterns: list):
         if not os.path.isfile(output_file):
             self.log.attempt(f"Creating {output_file} with only chromosomal DNA...")
             print(f"Omitting contigs containing {', '.join(patterns)}")
@@ -146,7 +144,7 @@ class VCFGenerator:
             self.log.note(f"Chromosomal fasta exists: {output_file}")
             self.log.note("Proceeding...")
     
-    def _cleanup_files(self, output_dir_path, cleanup_filetypes):
+    def _cleanup_files(self, output_dir_path: str, cleanup_filetypes: bool):
         for file_type in cleanup_filetypes:
             if file_type == '*.table':
                 print("*.table not allowed in cleanup_filetypes. This is the point of running VCF_gen in the first place. Continuing...")
@@ -160,8 +158,8 @@ class VCFFormat:
     def __init__(self, vcf_table_path):
         self.vcf_table_path = vcf_table_path
     
-    def remove_repetitive_nan(self, input):
-        with open(input, 'r') as f_in, open(self.vcf_table_path, 'w') as f_out:
+    def remove_repetitive_nan(self):
+        with open(self.vcf_table_path, 'r') as f_in, open(self.vcf_table_path, 'w') as f_out:
             for line in f_in:
                 f_out.write(line.replace('NaN:', ''))
 

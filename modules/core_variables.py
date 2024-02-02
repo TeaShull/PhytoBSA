@@ -24,7 +24,7 @@ class Lines:
         'analysis_out_prefix', 'analysis_out_path', 'gs_cutoff', 
         'rsg_cutoff', 'rsg_y_cutoff', 'analysis_ulid', 
         'in_path_variables', 'ref_path_variables', 'snpeff_dir', 
-        'snpeff_out_filename', 'snpeff_out_path', 'snpsift_out_path'
+        'snpeff_out_path', 'snpsift_out_path', 'snpeff_report_path'
     ]
 
     def __init__(self, name, logger):
@@ -42,7 +42,7 @@ class Lines:
         self.vcf_output_prefix = None
         self.vcf_output_dir = None
         self.vcf_ulid = None
-        self.snpeff_dir = None
+        self.snpeff_report_path = None
         self.snpeff_out_path = None
         self.snpsift_out_path = None
 
@@ -137,11 +137,10 @@ class AutomaticLineVariableDetector:
             line.mu_input.append(file_path)
 
     def _process_file(self, filename):
-        self.log.attempt(f'Parsing {filename}')
         details = self._parse_filename(filename)
         name, segregation_type, bulk_type, pairedness = details
         
-        self.log.success(f"""{filename} parsed. 
+        self.log.note(f""" 
         name:{name}
         segregation_type:{segregation_type}
         bulk_type:{bulk_type}
@@ -167,11 +166,14 @@ class AutomaticLineVariableDetector:
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
         try:
             for filename in os.listdir(INPUT_DIR):
+                self.log.attempt(f"Parsing {filename}....")
                 self._process_file(filename)
-
+                self.log.success(f"{filename} parsed!")
+            
+            self.log.note("Sorting file paths...")
             self._sort_file_paths()
-
             self.log.success(f'Line and run details generated.')
+        
         except Exception as e:
             self.log.fail(f"Error while detecting line and run details: {e}")
 
@@ -211,7 +213,7 @@ class VCFGenVariables:
         self.reference_chrs_dict_path = None
         #Generate chrs paths
         self._gen_reference_chrs_paths()
-    
+
     def make_vcfgen_command(self, line):
         args = (
             line.vcf_ulid, #
@@ -220,7 +222,7 @@ class VCFGenVariables:
             line.mu_input,
             line.pairedness,
             line.vcf_output_prefix,
-            line.snpeff_dir,
+            line.snpeff_report_path,
             line.snpeff_out_path,
             line.snpsift_out_path,
             self.reference_chrs_fa_path, #made in modules.core_vcf_gen
@@ -236,6 +238,7 @@ class VCFGenVariables:
     def gen_vcf_output_paths(self, name, vcf_ulid):
         self.log.attempt(f"Generating output paths and directories for line {name} with ulid:{vcf_ulid}")
         try:
+
             file_utils = FileUtilities(self.log)
             
             output_name = f"{vcf_ulid}-_{name}"
@@ -243,15 +246,19 @@ class VCFGenVariables:
             file_utils.setup_directory(vcf_output_dir_path)
             
             vcf_output_prefix = os.path.join(vcf_output_dir_path, output_name) 
-            vcf_table_path= f"{vcf_output_prefix}.table"
+            snpeff_out_path=f"{vcf_output_prefix}.se.vcf"
             snpsift_out_path=f"{vcf_output_prefix}.snpsift"
+            vcf_table_path= f"{vcf_output_prefix}.table"
             
-            snpeff_dir= os.path.join(OUTPUT_DIR, 'snpEff')
-            snpeff_out_path=os.path.join(snpeff_dir, output_name)
-            file_utils.setup_directory(snpeff_out_path)
+            
+            snpeff_report_dir=os.path.join(vcf_output_dir_path, 'snpEff')
+            file_utils.setup_directory(snpeff_report_dir)
+            snpeff_report_path = os.path.join(snpeff_report_dir, output_name)
+            
             self.log.success("File paths and directories created sucessfully")
             return (vcf_output_dir_path, vcf_output_prefix, 
-                vcf_table_path, snpeff_dir, snpeff_out_path, snpsift_out_path
+                vcf_table_path, snpeff_report_path, snpeff_out_path, 
+                snpsift_out_path
             )
         except Exception as e:
             self.log.error(f"Error generating VCF output paths: {e}")

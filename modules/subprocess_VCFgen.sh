@@ -9,9 +9,9 @@ main() {
         ["mu_input"]="${4}"
         ["pairedness"]="${5}"
         ["output_prefix"]="${6}"
-        ["snpeff_dir"]="${7}"
+        ["snpeff_report_path"]="${7}"
         ["snpeff_out_path"]="${8}"
-        ["snpsift_out_path"]="${9}"
+        ["snpsift_out_name"]="${9}"
         ["reference_chrs_fa_path"]="${10}"
         ["reference_chrs_dict_path"]="${11}"
         ["snpEff_species_db"]="${12}"
@@ -39,7 +39,6 @@ main() {
         ["picard_buildbamindex_output_wt"]="${output_prefix}_wt.sort.md.rg.bai"
         ["picard_buildbamindex_output_mu"]="${output_prefix}_mu.sort.md.rg.bai"
         ["gatk_haplotypecaller_output"]="${output_prefix}.hc.vcf"
-        ["snpeff_output"]="${output_prefix}.se.vcf"
     )
     print_variable_info generated_variables "Variables generated in subprocess_VCFgen.sh"
     assign_values generated_variables
@@ -65,6 +64,7 @@ main() {
 
     print_message "Converting sam to bam"
     #Create binary alignment map for more efficient processing
+
     samtools view \
         -bSh \
         -@ $threads_halfed \
@@ -182,17 +182,17 @@ main() {
     # databases assembled from annotated reference files 
     # (gff, transcriptomes and genomes). 
     snpEff $snpEff_species_db \
-        -s $snpeff_out_path \
-        $gatk_haplotypecaller_output > $snpeff_output
+        -s $snpeff_report_path \
+        $gatk_haplotypecaller_output > $snpeff_out_path
     wait
     print_message "Haplotypes called and SNPs labeled. Cleaning data."
 
     # Extracting SNPeff data and variant information into a table
     # built-in data processing of snpEff labels... 
     extract_fields_snpSift \
-        $snpeff_output \
-        ${snpsift_out_path} \
-        ${current_line_name}
+        $snpeff_out_path \
+        $snpsift_out_path \
+        $current_line_name
 }
 
 # Execute the main function
