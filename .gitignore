@@ -39,4 +39,4 @@
 #ignore vscode
 *.vscode
 #Ignore config.ini
-*settings/config.ini
+settings/config.ini
