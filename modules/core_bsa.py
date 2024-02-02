@@ -6,12 +6,12 @@ from plotnine import (
     ggplot, aes, geom_point, geom_line, theme_linedraw,
     facet_grid, theme, ggtitle, xlab, ylab, geom_hline
 )
-
 """
 Core module for bsa analysis
 Input variable class: BSA_variables from utilities_variables module.
 The read-depth analysis between the wild-type and mutant bulks are stored here.
 """
+
 
 class BSA:
     def __init__(self, bsa_vars, logger):
@@ -83,12 +83,14 @@ class BSA:
                 line.rsg_y_cutoff
             )
 
+
 class DataFiltering:
     def __init__ (self, name, logger):
         self.log = logger
         
         self.name = name
     
+
     def drop_indels(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Drops insertion/deletions from VCF dataframe.
@@ -111,6 +113,7 @@ class DataFiltering:
         except KeyError:
             self.log.fail("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
     
+
     def drop_na(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Drops rows with NaN values from VCF dataframe.
@@ -124,6 +127,7 @@ class DataFiltering:
         """
         
         return vcf_df.dropna(axis=0, how='any', subset=["ratio"])
+
 
     def filter_genotypes(self, segregation_type: str, vcf_dir: pd.DataFrame)-> pd.DataFrame:
         """
@@ -175,6 +179,7 @@ class DataFiltering:
         except Exception as e:
             self.log.fail(f'There was an error while filtering genotypes:{e}')        
 
+
     def filter_ems_mutations(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Filter mutations likely to be from EMS for analysis and return a filtered DataFrame.
@@ -187,6 +192,7 @@ class DataFiltering:
         """
         vcf_df[(vcf_df['ref'].isin(['G', 'C', 'A', 'T'])) & (vcf_df['alt'].isin(['A', 'T', 'G', 'C']))]
         return vcf_df
+
 
     def drop_genos_with_negative_ratios(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         '''
@@ -214,6 +220,7 @@ class DataFiltering:
 
         except Exception as e:
             self.log.fail(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
+
 
     def mask_known_snps(self, snpmask_df: pd.DataFrame, vcf_df: pd.DataFrame) -> pd.DataFrame:
         '''
@@ -244,11 +251,13 @@ class DataFiltering:
         return vcf_df[~vcf_df[['chrom', 'pos', 'ref', 'alt']]
                               .apply(tuple, axis=1).isin(known_snps_set)]
 
+
 class FeatureProduction:
     def __init__(self, name, logger):
         self.log = logger
         
         self.name = name
+
 
     def calculate_delta_snp_and_g_statistic(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
@@ -261,11 +270,9 @@ class FeatureProduction:
         Returns: 
         pd.DataFrame VCF with delta-snp and g-stat calculated
         """
-        
         self.log.attempt(f"Initialize calculations for delta-SNP ratios and G-statistics")
         try:
             suppress = False
-            
             vcf_df['ratio'] = self._delta_snp_array(
                 vcf_df['wt_ref'], vcf_df['wt_alt'], 
                 vcf_df['mu_ref'], vcf_df['mu_alt'],
@@ -278,11 +285,13 @@ class FeatureProduction:
             )
             vcf_df['RS_G'] = vcf_df['ratio'] * vcf_df['G_S']
             
-            self.log.success("Calculation of delta-SNP ratios and G-statistics were successful.")
+            self.log.success("Calculation of delta-SNP ratios and G-statistics were successful.")            
+            
             return vcf_df
         
         except Exception as e:
             self.log.fail( f"An error occurred during calculation: {e}")
+
 
     def _delta_snp_array(self, wtr: np.ndarray, wta:np.ndarray, mur: np.ndarray, mua: np.ndarray, suppress: bool)-> np.ndarray:
         """
@@ -304,15 +313,19 @@ class FeatureProduction:
 
         if not suppress:
             self.log.attempt(f"Calculate delta-SNP ratios for {self.name}...")
+        
         try:
             result = ((wtr) / (wtr + wta)) - ((mur) / (mur + mua))
             if not suppress:
                 self.log.success(f"Delta-SNP calculation successful for {self.name}")
+            
             return result
         
         except Exception as e:
             self.log.fail(f"Error in delta_snp_array for {self.name}: {e}")
+        
             return None
+
 
     def _g_statistic_array(self, wtr: np.ndarray, wta: np.ndarray, mur: np.ndarray, mua: np.ndarray, suppress: bool)->np.ndarray:
         """
@@ -322,9 +335,9 @@ class FeatureProduction:
         """ 
         if not suppress:
             self.log.attempt(f"Calculate G-statistics for {self.name}....")
+        
         try:
             np.seterr(all='ignore')
-
             zero_mask = wtr + mur + wta + mua != 0
             denominator = wtr + mur + wta + mua
 
@@ -341,14 +354,17 @@ class FeatureProduction:
             result = np.where(
                 e1 * e2 * e3 * e4 == 0, 0.0, llr1 + llr2 + llr3 + llr4
             )
+            
             if not suppress:
-                self.log.success(f"G-statistic calculation complete for {self.name}"
-                )
+                self.log.success(f"G-statistic calculation complete for {self.name}")
+            
             return result
 
         except Exception as e:
             self.log.fail(f"Error in g_statistic_array for {self.name}: {e}")
+            
             return None
+
 
     def loess_smoothing(self, vcf_df: pd.DataFrame, loess_span: float, smooth_edges_bounds: int)->pd.DataFrame:
         line.vcf_df, bsa_vars.loess_span, bsa_vars.smooth_edges_bounds
@@ -360,17 +376,21 @@ class FeatureProduction:
         Returns: Dataframe containing LOESS fitted values for ratio, g-stat and 
         ratio-scaled g-stat
         """
+
         self.log.attempt("Initialize LOESS smoothing calculations.")
         self.log.attempt(f"span: {loess_span}, Edge bias correction: {smooth_edges_bounds}") 
         try:
 
             vcf_df = self._smooth_chr_facets(vcf_df)
-            self.log.success("LOESS smoothing calculations successful.")
+        
+            self.log.success("LOESS smoothing calculations successful.")    
+            
             return vcf_df
         
         except Exception as e:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
+
     def _smooth_chr_facets(self, vcf_df:pd.DataFrame, loess_span: float, smooth_edges_bounds: int)->pd.DataFrame:
         """
         Internal Function for smoothing chromosome facets using LOESS. 
@@ -381,6 +401,7 @@ class FeatureProduction:
         
         output: vcf_df updated with gs, ratio, and gs-ratio yhat values
         """        
+        
         df_list = []
         chr_facets = df["chr"].unique()
 
@@ -391,67 +412,82 @@ class FeatureProduction:
             subsequently removes the extended data. 
             Returns: df with fitted values included.
             """
+        
             self.log.attempt(f"LOESS of chr:{chr} for {self.name}...")
+            try:
+                positions = df_chr['pos'].to_numpy()
+                
+                deltas = ([pos - positions[i - 1]
+                        if i > 0 else pos for i, pos in enumerate(positions)]
+                        )
+                deltas_pos_inv = deltas[::-1][-smooth_edges_bounds:-1]
+                deltas_neg_inv = deltas[::-1][1:smooth_edges_bounds]
+                deltas_mirrored_ends = deltas_pos_inv + deltas + deltas_neg_inv
 
-            positions = df_chr['pos'].to_numpy()
+                psuedo_pos = []
+                for i, pos in enumerate(deltas_mirrored_ends):
+                    if i == 0:
+                        psuedo_pos.append(0)
+                    
+                    if i > 0:
+                        psuedo_pos.append(pos + psuedo_pos[i - 1])
+
+                df_chr_inv_neg = df_chr[::-1].iloc[-smooth_edges_bounds:-1]
+                df_chr_inv_pos = df_chr[::-1].iloc[1:smooth_edges_bounds]
+                df_chr_smooth_list = [df_chr_inv_neg, df_chr, df_chr_inv_pos]
+                df_chr = pd.concat(df_chr_smooth_list, ignore_index=False)
+
+                df_chr['pseudo_pos'] = psuedo_pos
+                X = df_chr['pseudo_pos'].values
+
+                ratio_Y = df_chr['ratio'].values
+                df_chr['ratio_yhat'] = (
+                    self.smoothing_function(ratio_Y, X, frac=loess_span)[:, 1]
+                )
+
+                G_S_Y = df_chr['G_S'].values
+                df_chr['GS_yhat'] = (
+                    self.smoothing_function(G_S_Y, X, frac=loess_span)[:, 1]
+                )
+
+                df_chr['RS_G'] = df_chr['G_S'] * df_chr['ratio']
+                RS_G_Y = df_chr['RS_G'].values
+                
+                df_chr['RS_G_yhat'] = (
+                    self.smoothing_function(RS_G_Y, X, frac=loess_span)[:, 1]
+                )
+
+                df_chr = df_chr[smooth_edges_bounds:-smooth_edges_bounds].drop(
+                    columns='pseudo_pos'
+                )
+
+                self.log.success(f"LOESS of chr:{chr} for {self.name} complete")
             
-            deltas = ([pos - positions[i - 1]
-                       if i > 0 else pos for i, pos in enumerate(positions)]
-                      )
-            deltas_pos_inv = deltas[::-1][-smooth_edges_bounds:-1]
-            deltas_neg_inv = deltas[::-1][1:smooth_edges_bounds]
-            deltas_mirrored_ends = deltas_pos_inv + deltas + deltas_neg_inv
+                return df_chr
 
-            psuedo_pos = []
-            for i, pos in enumerate(deltas_mirrored_ends):
-                if i == 0:
-                    psuedo_pos.append(0)
-                if i > 0:
-                    psuedo_pos.append(pos + psuedo_pos[i - 1])
+            except Exception as e:
+                self.log.fail(f"There was an error while smoothing chr:{chr} for {self.name}:{e}")
 
-            df_chr_inv_neg = df_chr[::-1].iloc[-smooth_edges_bounds:-1]
-            df_chr_inv_pos = df_chr[::-1].iloc[1:smooth_edges_bounds]
-            df_chr_smooth_list = [df_chr_inv_neg, df_chr, df_chr_inv_pos]
-            df_chr = pd.concat(df_chr_smooth_list, ignore_index=False)
-
-            df_chr['pseudo_pos'] = psuedo_pos
-            X = df_chr['pseudo_pos'].values
-
-            ratio_Y = df_chr['ratio'].values
-            df_chr['ratio_yhat'] = (
-                self.smoothing_function(ratio_Y, X, frac=loess_span)[:, 1]
-            )
-
-            G_S_Y = df_chr['G_S'].values
-            df_chr['GS_yhat'] = (
-                self.smoothing_function(G_S_Y, X, frac=loess_span)[:, 1]
-            )
-
-            df_chr['RS_G'] = df_chr['G_S'] * df_chr['ratio']
-            RS_G_Y = df_chr['RS_G'].values
-            df_chr['RS_G_yhat'] = (
-                self.smoothing_function(RS_G_Y, X, frac=loess_span)[:, 1]
-            )
-
-            df_chr = df_chr[smooth_edges_bounds:-smooth_edges_bounds].drop(
-                columns='pseudo_pos'
-            )
-
-            self.log.success(f"LOESS of chr:{chr} for {self.name} complete"
-            )
-            return df_chr
+            return None
 
         self.log.attempt('Smoothing chromosome facets')
         try:
             for i in chr_facets:
                 df_chr = df[df['chr'] == i]
                 result = smooth_single_chr(df_chr, i,  loess_span, smooth_edges_bounds)
+        
                 if result is not None:
                     df_list.append(result)
+            
             self.log.success('Chromosome facets LOESS smoothed')
+            
             return pd.concat(df_list)
+        
         except Exception as e:
             self.log.fail(f'There was an error during LOESS smoothing of chromosome facets:{e}')
+
+            return None
+
 
     def _empirical_cutoff(self, vcf_df_position: np.ndarray, vcf_df_wt: np.ndarray, vcf_df_mu: np.ndarray, loess_span: float, shuffle_iterations: int):
         """
@@ -473,10 +509,12 @@ class FeatureProduction:
                 [More = More consistancy, more compute 
                 Less = less consistancy, less compute]
         """
+        
         self.log.attempt('Initializing bootstrapping for empirical cutoff estimation...')
         try:
             smGstatAll, smRatioAll, RS_GAll, smRS_G_yhatAll = [], [], [], []
             suppress = True
+        
             for _ in range(shuffle_iterations):
                 dfShPos = vcf_df_position.sample(frac=self.bsa_vars.loess_span)
                 dfShwt = vcf_df_wt.sample(frac=self.bsa_vars.loess_span)
@@ -510,13 +548,17 @@ class FeatureProduction:
             result = G_S_95p, RS_G_95p, RS_G_Y_99p
 
             self.log.success(f"Calculations completed successfully")
+        
             return result
         
         except Exception as e:
             self.log.fail(f"Error in bootstrapping calculations: {e}")
+            
             return None, None, None        
 
+
     def calculate_empirical_cutoffs(self, vcf_df: pd.DataFrame, loess_span: float, shuffle_iterations: int)->pd.DataFrame:
+        
         self.log.attempt('Bootstrapping to generate empirical cutoffs...')
         try:
             vcf_df_position = vcf_df[['pos']].copy()
@@ -530,11 +572,17 @@ class FeatureProduction:
             self.log.note(f"G-statistic cutoff = {self.gs_cutoff}.")
             self.log.note(f"Ratio-scaled G-statistic cutoff = {self.rsg_cutoff}.")
             self.log.note(f"LOESS smoothed Ratio-scaled G-statistic cutoff = {self.rsg_y_cutoff}.")
+        
             return gs_cutoff, rsg_cutoff, rsg_y_cutoff
+        
         except Exception as e:
             self.log.fail(f'Bootstrapping to generate empirical cutoffs failed:{e}')
 
+            return None, None, None
+
+
     def label_df_with_cutoffs(self, vcf_df: pd.DataFrame, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff:float)->pd.DataFrame:
+        
         try:
             vcf_df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) 
                 or (x > gs_cutoff)) else 0 for x in vcf_df['G_S']
@@ -545,17 +593,23 @@ class FeatureProduction:
             vcf_df['RS_G_yhat_01p'] = [1 if (np.isclose(x, rsg_y_cutoff) 
                 or (x > rsg_y_cutoff)) else 0 for x in vcf_df['RS_G_yhat']
             ]
+        
             return vcf_df
+        
         except Exception as e:
             self.log.fail(f"An error while labeling dataframe with cutoffs: {e}")
 
+            Return None
+
+
 class TableAndPlots:
+    
     def __init__(self, name, vcf_df, analysis_out_prefix, logger):
         self.log = logger
-        
         self.name = name
         self.vcf_df = vcf_df
         self.analysis_out_prefix = analysis_out_prefix
+
 
     def _identify_likely_candidates(self):
         try:
@@ -567,17 +621,14 @@ class TableAndPlots:
         except KeyError as e:
             self.log.fail(f"Column {e} not found in DataFrame. Please ensure column names are correct.")
 
+
     def sort_save_likely_candidates(self):
         vcf_df_likely_cands = self._identify_likely_candidates()
         likely_cands_sorted = self._sort_likely_candidates(vcf_df_likely_cands)
         self._save_candidates(likely_cands_sorted)
 
+
     def generate_plots(self, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff: float, plot_path: str):
-        """
-        Generate and save plots. Plot scenarios are below
-        Plot scenarios format:
-        ('y_column', 'title_text', 'ylab_text', cutoff_value=None, lines=False)
-        """
         plot_scenarios = [
             ('G_S', 'G-statistic', 'G-statistic', gs_cutoff, False),
             ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', None, True),
@@ -586,15 +637,19 @@ class TableAndPlots:
             ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
             ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True)
         ]
+
         for plot_scenario in plot_scenarios:
             plot_created = self._create_plot(*plot_scenario)
+
             if plot_created is not None:
                 self._save_plot(plot_created, *plot_scenario)
+
 
     def _create_plot(self, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
         try:
             mb_conversion_constant = 0.000001
             self.vcf_df['pos_mb'] = self.vcf_df['pos'] * mb_conversion_constant
+
             chart = ggplot(self.vcf_df, aes('pos_mb', y=y_column))
             title = ggtitle(title_text)
             axis_x = xlab("Position (Mb)")
@@ -602,8 +657,8 @@ class TableAndPlots:
 
             if cutoff_value is not None:
                 cutoff = geom_hline(yintercept=cutoff_value, color='red',
-                                    linetype="dashed", size=0.3
-                                    )
+                                    linetype="dashed", size=0.3)
+
                 plot = (chart
                         + geom_point(color='goldenrod', size=0.8)
                         + theme_linedraw()
@@ -613,7 +668,8 @@ class TableAndPlots:
                         + axis_y
                         + theme(panel_spacing=0.025)
                         + cutoff
-                        )
+                )
+
             else:
                 plot = (chart
                         + geom_point(color='goldenrod', size=0.8)
@@ -623,14 +679,17 @@ class TableAndPlots:
                         + axis_x
                         + axis_y
                         + theme(panel_spacing=0.025)
-                        )
+                )
 
             if lines:
                 plot += geom_line(color='blue')
+
             return plot
+
         except Exception as e:
             self.log.fail(f"Plot creation failed for {self.name}, column {y_column}: {e}")
             return None
+
 
     def _save_plot(self, plot, y_column, *args):
         try:
@@ -638,7 +697,7 @@ class TableAndPlots:
             plot.save(filename=plot_path, height=6, width=8, units='in', dpi=500)
             self.log.success(f"Plot saved {plot_path}")
             return True
+
         except Exception as e:
             self.log.fail(f"Saving plot failed for {self.name}, column {y_column}: {e}")
             return False
-
