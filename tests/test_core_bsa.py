@@ -4,7 +4,7 @@ import random
 
 
 import unittest
-from your_module import BSA, DataFiltering, FeatureProduction, TableAndPlots
+from modules.core_bsa import BSA, DataFiltering, FeatureProduction, TableAndPlots
 
 class TestYourFunctions(unittest.TestCase):
 
@@ -39,11 +39,13 @@ class TestYourFunctions(unittest.TestCase):
         # Clean up after testing
         pass
 
+
     def test_data_filtering(self):
         # Test the DataFiltering class methods
         df_filter = DataFiltering('test_line', logger)
         filtered_df = df_filter.drop_indels(compact_df.copy())
         # Add more assertions based on your expectations
+
 
     def test_feature_production(self):
         # Test the FeatureProduction class methods
@@ -51,13 +53,13 @@ class TestYourFunctions(unittest.TestCase):
         result_df = feature_prod.calculate_delta_snp_and_g_statistic(compact_df.copy())
         # Add more assertions based on your expectations
 
+
     def test_table_and_plots(self):
         # Test the TableAndPlots class methods
         table_plots = TableAndPlots('test_line', compact_df.copy(), 'test_prefix', logger)
         likely_candidates = table_plots._identify_likely_candidates()
         # Add more assertions based on your expectations
 
-    # Add more tests for other classes and methods in your module
 
 if __name__ == '__main__':
     unittest.main()

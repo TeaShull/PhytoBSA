@@ -7,6 +7,7 @@ import shutil
 import re
 
 from Bio import SeqIO
+import pandas as pd
 
 from modules.utilities_logging import LogHandler
 from settings.paths import MODULES_DIR, REFERENCE_DIR
@@ -18,10 +19,12 @@ Input variable class: vcf_vars from utilities_variables module.
 This module processes bulk segregant fasta files, and formats them for BSA. 
 """
 
+
 class VCFGenerator:
     def __init__(self, logger, vcf_vars):
         self.vcf_vars = vcf_vars
         self.log = logger
+
 
     def run_subprocess(self):
         """
@@ -53,7 +56,7 @@ class VCFGenerator:
         for line in self.vcf_vars.lines:
             self.log.note(f'Initializing vcf_generation subprocess log for {line.name}')
             vcf_log = LogHandler(f'vcf_{line.name}')
-            line.vcf_ulid = vcf_log.ulid
+            line.vcf_ulid = '01HNXGS1MV412ZYXV940YF10YA'
             vcf_log.add_db_record(line.name, line.vcf_ulid)
 
             #Generate output paths for process
@@ -74,33 +77,35 @@ class VCFGenerator:
             line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
             
             # Run vcfgen shell subprocess.
-            process = subprocess.Popen(
-                line.vcf_gen_cmd, 
-                cwd=MODULES_DIR, 
-                shell=True, 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT, 
-                text=True
-            )
-            # Iterate over stdout from process and log
-            for line in process.stdout:
-                vcf_log.bash(line.strip())
-            process.wait()
+            # process = subprocess.Popen(
+            #     line.vcf_gen_cmd, 
+            #     cwd=MODULES_DIR, 
+            #     shell=True, 
+            #     stdout=subprocess.PIPE, 
+            #     stderr=subprocess.STDOUT, 
+            #     text=True
+            # )
+            # # Iterate over stdout from process and log
+            # for stdout_line in process.stdout:
+            #     vcf_log.bash(stdout_line.strip())
+            # process.wait()
 
-            vcf_log.note(f"VCF file generated for {line}.") 
-            vcf_log.success("VCF file generation process complete")
+            # vcf_log.note(f"VCF file generated for {line.name}.") 
+            # vcf_log.success("VCF file generation process complete")
             
             # Formatting VCF output to make it dataframe friendly
-            vcf_format = VCFFormat(line.vcf_table_path)
-            vcf_format.remove_repetitive_nan(line.snpsift_out_path)
+            vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path)
+            vcf_format.remove_repetitive_nan() #vcf_table_path file created here
             vcf_format.format_fields()
             vcf_format.remove_complex_genotypes()
-            vcf_format.add_headers()
+            vcf_format.add_header() #pd.DataFrame created
+            vcf_format.remove_repetitive_snpeff_labels()#pd.DataFrame saved as csv 
             
             #Cleanup files if cleanup = True
-            if cleanup:
+            if self.vcf_vars.cleanup:
                 self._cleanup_files(line.vcf_output_dir)
             
+
     def _parse_reference_genome(self, ref_genome_path: str, ref_genome_source: str)-> str:
         self.log.attempt("Attempting to parse reference genome...")
         try:
@@ -132,6 +137,7 @@ class VCFGenerator:
             self.log.error(e)
             return None
 
+
     def _create_chromosomal_fasta(self, input_file: str, output_file: str, *patterns: list):
         if not os.path.isfile(output_file):
             self.log.attempt(f"Creating {output_file} with only chromosomal DNA...")
@@ -144,6 +150,7 @@ class VCFGenerator:
             self.log.note(f"Chromosomal fasta exists: {output_file}")
             self.log.note("Proceeding...")
     
+
     def _cleanup_files(self, output_dir_path: str, cleanup_filetypes: bool):
         for file_type in cleanup_filetypes:
             if file_type == '*.table':
@@ -154,14 +161,18 @@ class VCFGenerator:
                 if os.path.isfile(file):
                     os.remove(file)
 
+
 class VCFFormat:
-    def __init__(self, vcf_table_path):
+    def __init__(self, snpsift_out_path, vcf_table_path):
+        self.snpsift_out_path = snpsift_out_path
         self.vcf_table_path = vcf_table_path
+        self.vcf_df = None
     
     def remove_repetitive_nan(self):
-        with open(self.vcf_table_path, 'r') as f_in, open(self.vcf_table_path, 'w') as f_out:
+        with open(self.snpsift_out_path, 'r') as f_in, open(self.vcf_table_path, 'w') as f_out:
             for line in f_in:
                 f_out.write(line.replace('NaN:', ''))
+
 
     def format_fields(self):
         with open(self.vcf_table_path, 'r') as f:
@@ -173,6 +184,7 @@ class VCFFormat:
                 for i in [8, 9, 10]:
                     fields[i] = fields[i].replace(',', '\t')
                 f.write('\t'.join(fields))
+
 
     def remove_complex_genotypes(self):
         complex_geno_tablename = f"{self.vcf_table_path}.complex_genos"
@@ -186,13 +198,13 @@ class VCFFormat:
                 else:
                     f_too_complex.write(line)
 
-    def add_headers(self):
-        # Read the file into a pandas DataFrame
-        df = pd.read_csv(self.vcf_table_path, sep='\t', header=None)
-    
+
+    def add_header(self):
+        self.vcf_df = pd.read_csv(self.vcf_table_path, sep='\t', header=None)
+
         # Add the header
-        df.columns = [
-            'chr', 
+        self.vcf_df.columns = [
+            'chrom', 
             'pos', 
             'ref', 
             'alt', 
@@ -207,7 +219,17 @@ class VCFFormat:
             'wt_alt'
         ]
     
-        # Write the DataFrame back to the file
-        df.to_csv(self.vcf_table_path, sep='\t', index=False)
     
+    def remove_repetitive_snpeff_labels(self):
 
+        columns_to_process = ["gene", "snpEffect", "snpVariant", "snpImpact"]
+        # Iterate over snpEff columns and use "set" to get unique labels only
+        for column in columns_to_process:
+            self.vcf_df[column] = (
+                self.vcf_df[column].astype(str)
+                                .str.split(":")
+                                .apply(lambda x: ":".join(set(x)))
+            )
+
+        # Write the DataFrame back to the file
+        self.vcf_df.to_csv(self.vcf_table_path, sep='\t', index=False)

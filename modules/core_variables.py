@@ -1,4 +1,6 @@
 import os
+import vcf
+import csv
 import pandas as pd
 from pathlib import Path
 
@@ -21,10 +23,10 @@ class Lines:
     __slots__ = ['log', 'name', 'segregation_type', 'vcf_table_path', 
         'mu_input', 'wt_input', 'pairedness', 'vcf_gen_cmd', 
         'vcf_output_prefix', 'vcf_output_dir', 'vcf_ulid', 'vcf_df', 
-        'analysis_out_prefix', 'analysis_out_path', 'gs_cutoff', 
-        'rsg_cutoff', 'rsg_y_cutoff', 'analysis_ulid', 
-        'in_path_variables', 'ref_path_variables', 'snpeff_dir', 
-        'snpeff_out_path', 'snpsift_out_path', 'snpeff_report_path'
+        'analysis_out_prefix', 'gs_cutoff', 'rsg_cutoff', 'rsg_y_cutoff', 
+        'analysis_ulid', 'in_path_variables', 'ref_path_variables', 
+        'snpeff_dir', 'snpeff_out_path', 'snpsift_out_path', 
+        'snpeff_report_path', 'rs_cutoff', 'snpmask_df'
     ]
 
     def __init__(self, name, logger):
@@ -50,34 +52,34 @@ class Lines:
         # BSA variables
         self.segregation_type = None
         self.vcf_df = None
+        self.snpmask_df = None
         self.analysis_out_prefix = None
-        self.analysis_out_path = None
         self.gs_cutoff = None
+        self.rs_cutoff = None
         self.rsg_cutoff = None
         self.rsg_y_cutoff = None
         self.analysis_ulid = None
 
-        '''
-        Variables that require path parsing. Variables in in_path_variables
-        will be double checked - first if they are hard-coded, or if they 
-        are in ./data/inputs. Same deal with ref_path_variables, but for 
-        the ./data/references folder.
-        '''  
+        
+        # Input Variables that require path parsing. _process_input checks if 
+        # hard-coded or if in the /inputs folder  
         self.in_path_variables=[
            'vcf_table_path',
            'mu_input',
            'wt_input'
         ]
 
+
     def _process_input(self, key, details):
-        file_utils = self.FileUtilities(self.log)
+        file_utils = FileUtilities(self.log)
         if key in self.in_path_variables or key in self.ref_path_variables:
-            paths = details.split()
+            paths = details.split() #for space seperated lists mu_input and wt_input
             dir = INPUT_DIR if key in self.in_path_variables else REFERENCE_DIR
-            processed_paths = [file_utils.process_path(path, dir) for path in paths]
+            processed_paths = [file_utils.process_path([path], dir) for path in paths]
             return ' '.join(processed_paths)
             return details
     
+
     def usr_in_line_variables(self, **kwargs):
         self.log.attempt('Attempting to organize inputs into Line data class...')
         
@@ -105,9 +107,9 @@ class AutomaticLineVariableDetector:
         self.log = logger
         self.lines = []
 
+
     def _parse_filename(self, filename):
         parts = filename.split('.')
-        self.log.attempt(f'Parsing {filename}')
         name = parts[0]
         segregation_type = parts[1]
 
@@ -121,6 +123,7 @@ class AutomaticLineVariableDetector:
 
         return name, segregation_type, bulk_type, pairedness
 
+
     def _get_line(self, name):
         for l in self.lines:
             if l.name == name:
@@ -130,22 +133,27 @@ class AutomaticLineVariableDetector:
         self.lines.append(line)
         return line
 
+
     def _append_file_path(self, bulk_type, line, file_path):
         if bulk_type == 'wt':
             line.wt_input.append(file_path)
         elif bulk_type == 'mu':
             line.mu_input.append(file_path)
 
+
     def _process_file(self, filename):
         details = self._parse_filename(filename)
         name, segregation_type, bulk_type, pairedness = details
         
         self.log.note(f""" 
+        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+                  Details Detected
+        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         name:{name}
         segregation_type:{segregation_type}
         bulk_type:{bulk_type}
         pairedness:{pairedness}
-        """)
+        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=""")
 
         line = self._get_line(name)
         
@@ -155,6 +163,7 @@ class AutomaticLineVariableDetector:
         
         self._append_file_path(bulk_type, line, file_path)
     
+
     def _sort_file_paths(self):
         for line in self.lines:
             sorted_wt_inputs = "' '".join(sorted(line.wt_input))
@@ -162,10 +171,12 @@ class AutomaticLineVariableDetector:
             line.wt_input = sorted_wt_inputs
             line.mu_input = sorted_mu_inputs
 
+
     def automatic_line_variables(self):
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
         try:
             for filename in os.listdir(INPUT_DIR):
+                print(" ")
                 self.log.attempt(f"Parsing {filename}....")
                 self._process_file(filename)
                 self.log.success(f"{filename} parsed!")
@@ -214,6 +225,7 @@ class VCFGenVariables:
         #Generate chrs paths
         self._gen_reference_chrs_paths()
 
+
     def make_vcfgen_command(self, line):
         args = (
             line.vcf_ulid, #
@@ -235,6 +247,7 @@ class VCFGenVariables:
         cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
         return cmd
 
+
     def gen_vcf_output_paths(self, name, vcf_ulid):
         self.log.attempt(f"Generating output paths and directories for line {name} with ulid:{vcf_ulid}")
         try:
@@ -242,27 +255,42 @@ class VCFGenVariables:
             file_utils = FileUtilities(self.log)
             
             output_name = f"{vcf_ulid}-_{name}"
+            self.log.note(f"Output path variable generated:{output_name}")
+            
             vcf_output_dir_path = os.path.join(OUTPUT_DIR, output_name)
-            file_utils.setup_directory(vcf_output_dir_path)
+            self.log.note(f"Output path variable generated:{vcf_output_dir_path}")
+            
+            file_utils.setup_directory(vcf_output_dir_path) #setup vcf_gen output directory
             
             vcf_output_prefix = os.path.join(vcf_output_dir_path, output_name) 
+            self.log.note(f"Output path variable generated:{vcf_output_prefix}")
+
             snpeff_out_path=f"{vcf_output_prefix}.se.vcf"
-            snpsift_out_path=f"{vcf_output_prefix}.snpsift"
-            vcf_table_path= f"{vcf_output_prefix}.table"
+            self.log.note(f"Output path variable generated:{snpeff_out_path}")
             
+            snpsift_out_path=f"{vcf_output_prefix}.snpsift"
+            self.log.note(f"Output path variable generated:{snpsift_out_path}")
+            
+            vcf_table_path= f"{vcf_output_prefix}.table"
+            self.log.note(f"Output path variable generated:{vcf_table_path}")
             
             snpeff_report_dir=os.path.join(vcf_output_dir_path, 'snpEff')
-            file_utils.setup_directory(snpeff_report_dir)
-            snpeff_report_path = os.path.join(snpeff_report_dir, output_name)
+            self.log.note(f"Output path variable generated:{snpeff_report_dir}")
             
+            file_utils.setup_directory(snpeff_report_dir) #setup snpeff_report directory
+            
+            snpeff_report_path = os.path.join(snpeff_report_dir, output_name)
+            self.log.note(f"Output path variable generated:{snpeff_report_path}")
+
             self.log.success("File paths and directories created sucessfully")
             return (vcf_output_dir_path, vcf_output_prefix, 
                 vcf_table_path, snpeff_report_path, snpeff_out_path, 
                 snpsift_out_path
             )
         except Exception as e:
-            self.log.error(f"Error generating VCF output paths: {e}")
-            raise
+            self.log.fail(f"Error generating VCF output paths: {e}")
+
+
     def _get_ref_name(self, file_path):
         self.log.attempt('Attempting to retrieve reference base name from inputs...')
         try: 
@@ -280,34 +308,44 @@ class VCFGenVariables:
             self.log.fail(f"There as an error retrieving reference base name from inputs...")
         return base_name
     
+
     def _check_ref_path(self, ref_genome_path):
         self.log.attempt(f"Checking reference genome path for completeness:{ref_genome_path}")
-        try:
-            # Make sure we weren't just fed a directory
-            if os.path.isdir(ref_genome_path):
-                raise ValueError(f"Expected file, got directory: '{ref_genome_path}'")
-            #Check extensions
-            ext = os.path.splitext(ref_genome_path)[1]
-            gz_ext = os.path.splitext(os.path.splitext(ref_genome_path)[0])[1]
-            if ext not in ['.fa', '.fasta', '.gz'] or (ext == '.gz' and gz_ext not in ['.fa', '.fasta']):
-                raise ValueError(f"Invalid extension: '{gz_ext+ext}'. Expected '.fa', '.fasta', '.fa.gz' or '.fasta.gz'.")
 
-            #Check if the file already exists as a hard-coded path
-            if os.path.isfile(ref_genome_path):
-                self.log.note(f"Hard-coded path exists: {ref_genome_path}")
-                return ref_genome_path
-            else:
-            # If file doesn't exist already, the base name shall be used when 
-            # downloading from ref_genome_source in core_vcf_gen.py
-                if self.reference_genome_source:
-                    self.log.note(f"Assuming reference genome path is not hard coded. using {ref_genome_path} as base reference genome name")
-                    self.log.note(f"Later we will attempt to source reference from user provided URL: {self.reference_genome_source}")
-                    ref_file_path = os.path.join(REFERENCE_DIR, ref_genome_path)
-                    return ref_file_path
-                else:
-                    self.log.fail(f"Reference genome path {ref_genome_path} does not exist, and reference genome source (a URL to download the reference from) was not provided. Aborting...")
-        except Exception as e:
-            self.log.fail(f"There was a critical failure while checking reference genome path:{e}")
+        # Raise error if we were fed a directory
+        if os.path.isdir(ref_genome_path):
+            self.log.fail(f"Expected file, got directory: '{ref_genome_path}'")
+            return
+
+        # Check extensions
+        ext = os.path.splitext(ref_genome_path)[1]
+        gz_ext = os.path.splitext(os.path.splitext(ref_genome_path)[0])[1]
+        if ext not in ['.fa', '.fasta', '.gz'] or (ext == '.gz' and gz_ext not in ['.fa', '.fasta']):
+            self.log.fail(f"Invalid extension: '{gz_ext+ext}'. Expected '.fa', '.fasta', '.fa.gz' or '.fasta.gz'")
+            return
+
+        # Check if the file already exists as a hard-coded path
+        if os.path.isfile(ref_genome_path):
+            self.log.note(f"Hard-coded path exists: {ref_genome_path}")
+            return ref_genome_path
+
+        # If file doesn't exist already, the base name shall be used when 
+        # downloading from ref_genome_source in core_vcf_gen.py
+        self.log.note(f"Assuming reference genome path is not hard coded. Using {ref_genome_path} as base reference genome name")
+        ref_file_path = os.path.join(REFERENCE_DIR, ref_genome_path)
+
+        if os.path.isfile(ref_file_path):
+            self.log.note(f"Found {ref_genome_path} in the references directory. Proceeding...")
+            return ref_file_path
+
+        if not self.reference_genome_source:
+            self.log.fail(f"Reference genome path {ref_genome_path} does not exist, and reference genome source (a URL to download the reference from) was not provided. Aborting...")
+            return
+
+        self.log.note(f"{ref_genome_path} is not the full path or found in ./references.") 
+        self.log.note(f"Later we will attempt to source reference from user provided URL: {self.reference_genome_source}")
+
+
 
     def _gen_reference_chrs_paths(self):
         self.reference_genome_path = self._check_ref_path(
@@ -346,28 +384,102 @@ class BSAVariables:
         self.snpmask_path = snpmask_path
         self.snpmask_df = None
 
+
     def load_vcf_table(self, vcf_table_path)->pd.DataFrame:
         """
         Loads VCF table into a pandas dataframe.
-        
+
         Args:  
         vcf_table_path - path to the vcf table to be loaded into df
-        
+
         Returns: 
-        Pandas dataframe containing the information loaded from current_line_table_path
+        Pandas dataframe containing the information loaded from vcf_table_path
         """
         file_utils = FileUtilities(self.log)
-        self.log.attempt(f"Attempting to load {vcf_table_path} for line {current_line_name}")
+        self.log.attempt(f"Attempting to load {vcf_table_path}")
         try:
-            directories = [INPUT_DIR, REFERENCE_DIR] 
-            vcf_table_path = file_utils.process_path(vcf_table_path, directories)
-            vcf_df = pd.read_csv(current_line_table_path, sep="\t", comment='#')
-            self.log.success(f"vcf_df loaded: {vcf_table_path}")
+            directories = [INPUT_DIR] 
+            vcf_table_path = file_utils.process_path(directories, vcf_table_path)
+            df = pd.read_csv(vcf_table_path, sep="\t")
+            self.log.note(f"{vcf_table_path} loaded. Proceeding...")
+            return df
         except pd.errors.EmptyDataError:
-            self.log.fail(f"Error: File '{current_line_table_path}' is empty.")
-        
+            self.log.fail(f"Error: File '{vcf_table_path}' is empty.")
         except Exception as e:
             self.log.fail(f"An unexpected error occurred: {e}")
+
+
+    def load_snpmask(self, snpmask_path)->pd.DataFrame:
+        """
+        Handles SNP mask and converts it into a pandas dataframe.
+        Probably a bit convoluted, but seems to work OK. 
+
+        Args:  
+        snpmask_path - path to the vcf table to be loaded into df
+
+        Returns: 
+        Pandas dataframe containing the information loaded from vcf_table_path
+        """
+        file_utils = FileUtilities(self.log)
+        self.log.attempt(f"Attempting to load {snpmask_path}")
+        try:
+            directories = [REFERENCE_DIR] 
+            snpmask_path = file_utils.process_path(directories, snpmask_path)
+            df = pd.read_csv(snpmask_path, sep="\t")
+            
+            return df
+
+        except pd.errors.ParserError:
+            self.log.note(f"snpmask file doesn't appear to be formatted for pandas. Formatting....")
+            headers = ['CHROM','POS','REF','ALT' ]
+            temp_table_path = f"{snpmask_path}.temp"
+            backup_table_path = f"{snpmask_path}.backup"
+
+            with open(snpmask_path, 'r') as file:
+                vcf_reader = vcf.Reader(file, strict_whitespace=True)
+                with open(temp_table_path, 'w', newline='') as f:
+                    writer = csv.writer(f, delimiter='\t')
+                    writer.writerow(headers)
+                    while True:
+                        try:
+                            record = next(vcf_reader)
+                        except StopIteration:
+                            break
+                        except IndexError:
+                            self.log.warning(f"Skipping record due to incorrect number of fields:{record}")
+                            continue
+
+                        try:
+                            chrom = record.CHROM
+                            pos = record.POS
+                            ref = record.REF
+                            alt = ','.join(str(a) for a in record.ALT) 
+                            writer.writerow([chrom, pos, ref, alt])
+                        except AttributeError:
+                            self.log.warning(f"Skipping record due to missing field(s): {record}")
+
+            # Save original file as backup
+            os.rename(snpmask_path, backup_table_path)
+            self.log.note(f"{backup_table_path} saved. Formatting {snpmask_path}...")
+
+            # Replace original file with the new one
+            os.rename(temp_table_path, snpmask_path)
+            self.log.note(f"{snpmask_path} converted to friendlier format for masking...")
+
+            # Load the newly written file into a DataFrame
+            df = pd.read_csv(snpmask_path, sep="\t", names=headers)
+
+            self.log.success(f"vcf_df loaded and saved: {snpmask_path}")
+
+            return df
+
+        except pd.errors.EmptyDataError:
+            self.log.fail(f"Error: File '{snpmask_path}' is empty.")
+
+        except Exception as e:
+            self.log.fail(f"An unexpected error occurred: {e}")
+
+
 
     def gen_bsa_out_prefix(self, name, ulid, vcf_ulid): #called in core_bsa.py
         analysis_out_prefix = f'{ulid}_-{name}'
@@ -375,11 +487,13 @@ class BSAVariables:
             out_path = os.path.join(
                 OUTPUT_DIR, 
                 f'{vcf_ulid}_-{name}',
+                analysis_out_prefix, 
                 analysis_out_prefix
             )
         else:
             out_path = os.path.join(
                 OUTPUT_DIR,
+                analysis_out_prefix,
                 analysis_out_prefix
             )
         file_utils = FileUtilities(self.log)
