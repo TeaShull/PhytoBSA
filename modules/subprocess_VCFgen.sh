@@ -11,7 +11,7 @@ main() {
         ["output_prefix"]="${6}"
         ["snpeff_report_path"]="${7}"
         ["snpeff_out_path"]="${8}"
-        ["snpsift_out_name"]="${9}"
+        ["snpsift_out_path"]="${9}"
         ["reference_chrs_fa_path"]="${10}"
         ["reference_chrs_dict_path"]="${11}"
         ["snpEff_species_db"]="${12}"
@@ -185,7 +185,7 @@ main() {
         -s $snpeff_report_path \
         $gatk_haplotypecaller_output > $snpeff_out_path
     wait
-    print_message "Haplotypes called and SNPs labeled. Cleaning data."
+    print_message "Haplotypes called and SNPs labeled. Extracting feilds with snpSift."
 
     # Extracting SNPeff data and variant information into a table
     # built-in data processing of snpEff labels... 

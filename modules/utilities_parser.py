@@ -3,6 +3,7 @@ import argparse
 import configparser
 import ast
 
+
 class ArgumentParser:
     def __init__(self):
         self.parse_program_arguments()
@@ -23,26 +24,23 @@ class ArgumentParser:
         elif 'analysis' in self.args:
             self.apply_defaults_from_config('BSA')
  
+
     def apply_settings_to_config(self):
         for arg in vars(self.args):
             if arg.startswith('set_') and getattr(self.args, arg) is not None:
-                value = getattr(self.args, arg)
+                value = str(getattr(self.args, arg))
                 config_key = arg.replace('set_', '')
                 print(f'{value}:{config_key}')
                 for section in self.config.sections():
                     if self.config.has_option(section, config_key):
-                        if isinstance(value, list):
-                            value = ', '.join(value)
-                        elif isinstance(value, bool):
-                            value = str(value)
-                        elif isinstance(value, int) or isinstance(value, float):
-                            value = str(value)
                         print(f'Default updated |{section}|{config_key} = {value}')
-                        self.config.set(section, config_key, str(value))
+                        self.config.set(section, config_key, value)
                         break
         with open(self.config_ini, 'w') as configfile:
             self.config.write(configfile)
         quit()
+
+
 
     def apply_defaults_from_config(self, section):
         for arg in vars(self.args).keys():
@@ -55,6 +53,7 @@ class ArgumentParser:
                 print(f'Default applied: {arg}:{value}')
                 setattr(self.args, arg, value)
 
+
     def add_bsa_arguments(self, parser):
         bsa_options = parser.add_argument_group('BSA analysis options', 'Options for BSA analysis. Defaults can be changed using the settings positional argument. phytobsa settings -h for for info')
         bsa_options.add_argument('-ls', '--loess_span', type=float, default=None, help="Influences smoothing parameters.")
@@ -63,6 +62,7 @@ class ArgumentParser:
         bsa_options.add_argument('-fin', '--filter_indels', default=None, type=str, help="Filter out insertion-deletion mutations.")
         bsa_options.add_argument('-fems', '--filter_ems', default=None, type=str, help="Filter results to only include mutations likely to arise from EMS treatment")
         bsa_options.add_argument('-snpmsk', '--snpmask_path', default=None, type=str, help="Path to VCF file containing background snps.")
+
 
     def add_vcf_gen_arguments(self, parser):
         vcf_gen_options = parser.add_argument_group('VCF generation options', 'Options for VCF generation. Defaults can be changed using the settings positional argument phytobsa settings -h for more info')
@@ -75,6 +75,8 @@ class ArgumentParser:
         vcf_gen_options.add_argument('-c','--cleanup', default=None, type=bool, help='If true, intermediate files will de deleted. False for troubleshooting and archiving files.' )
         vcf_gen_options.add_argument('-cft', '--cleanup_filetypes', default=None, type=list, help="Filetypes to clean out after VCF generation is complete. format - ['*file_suffix', exc] example - ['*.tmp', '*.metrics']")
         vcf_gen_options.add_argument('-ocp', '--omit_chrs_patterns', default=None, type=list, help='Header patterns to omit from reference chromosomes. Useful for removing >mt(mitochondrial) and other unneeded reference sequences')
+
+
     def parse_program_arguments(self):
         
         # Main parser

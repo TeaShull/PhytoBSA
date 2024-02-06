@@ -11,7 +11,8 @@ from modules.core_vcf_gen import VCFGenerator
 from modules.core_bsa import BSA
 from modules.core_variables import (
     Lines, AutomaticLineVariableDetector, VCFGenVariables, BSAVariables
-) # Paths are organized in settings.paths module and used mostly here 
+) # Paths are set in settings.paths and imported in modules.core_variables 
+
 
 def setup_vcf_variables(core_log, line, args):
     '''
@@ -33,6 +34,7 @@ def setup_vcf_variables(core_log, line, args):
     )
     return vcf_vars
 
+
 def setup_bsa_variables(core_log, line, args):
     '''
     Setup variables needed to run BSA. Args are either passed by user or sourced
@@ -50,6 +52,7 @@ def setup_bsa_variables(core_log, line, args):
         snpmask_path=args.snpmask_path
     )
     return bsa_vars
+
 
 def main():
     '''
@@ -119,7 +122,7 @@ def main():
         vcf_gen.run_subprocess()
         
         # Pass "Lines" used in vcf_gen instance to bsa_vars.
-        bsa_vars = setup_bsa_variables(core_log, vcf_gen.lines, args)
+        bsa_vars = setup_bsa_variables(core_log, vcf_gen.vcf_vars.lines, args)
         
         #Pass bsa_vars containing lines from vcf_gen step & run BSA pipeline
         bsa = BSA(core_log, bsa_vars)

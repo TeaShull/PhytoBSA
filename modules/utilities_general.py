@@ -49,6 +49,8 @@ class FileUtilities:
             self.log.fail(f'Path not found in any of the provided directories or the hard coded ({path}). Aborting')
             return None
 
+
+
     def extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')
         match = ulid_pattern.search(file_path)
