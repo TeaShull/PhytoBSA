@@ -68,14 +68,15 @@ class VCFGenerator:
                 line.snpsift_out_path
             ) = vcf_out_paths
             
-            #Generate line.vcf_gen_cmd
-            line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
             
             #Initialize vcf log for the current line name
             self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
             vcf_log = LogHandler(f'vcf_{line.name}')
             line.vcf_ulid = vcf_log.ulid
             vcf_log.add_db_record(line.name, line.vcf_ulid)
+
+            #Generate line.vcf_gen_cmd
+            line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
 
             #Run vcfgen shell subprocess.
             process = subprocess.Popen(
