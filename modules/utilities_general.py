@@ -6,10 +6,12 @@ import os
 import re
 import sqlite3
 
+
 class FileUtilities:
     # Utility class: Handling file operations and inputs. 
     def __init__(self, logger):
         self.log = logger 
+
 
     def setup_directory(self, directory):
         '''
@@ -34,6 +36,7 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
+
     def process_path(self, directories: list, path: str) -> str:
         if os.path.exists(path):
             self.log.note(f'Path found and assigned: {path}')
@@ -50,7 +53,6 @@ class FileUtilities:
             return None
 
 
-
     def extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')
         match = ulid_pattern.search(file_path)
@@ -59,10 +61,12 @@ class FileUtilities:
         else:
             return None
 
+
 class LogDbUtilites:
     # Utility class: retrieving log information from the log database
     def __init__(self):
         self.conn = sqlite3.connect(LOG_DATABASE_PATH)
+
 
     def print_analysis_log_data(self, ulid):
         """Retrieve the paths based on the analysis ID"""
@@ -84,6 +88,7 @@ class LogDbUtilites:
         else:
             print(f"No database entry found for {ulid}")
 
+
     def print_vcf_log_data(self, ulid):
         cursor = self.conn.execute('''
         SELECT vcf_ulid, line_name, core_ulid, vcf_log_path, vcf_timestamp 
@@ -99,6 +104,7 @@ class LogDbUtilites:
             print(f"VCF Timestamp: {result[4]}")
         else:
             print(f"No database entry found for {ulid}")
+
 
     def print_line_name_data(self, line_name):
         """Retrieve all entries based on the line name"""
@@ -126,6 +132,7 @@ class LogDbUtilites:
                 print("\n")  # for separating different entries
         else:
             print("No results found for this line name.")
+
 
     def print_core_ulid_data(self, core_ulid):
         """Retrieve all entries based on the core ulid"""

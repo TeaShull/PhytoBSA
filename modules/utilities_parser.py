@@ -41,7 +41,6 @@ class ArgumentParser:
         quit()
 
 
-
     def apply_defaults_from_config(self, section):
         for arg in vars(self.args).keys():
             if getattr(self.args, arg) is None and self.config.has_option(section, arg):

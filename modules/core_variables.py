@@ -412,7 +412,6 @@ class BSAVariables:
     def load_snpmask(self, snpmask_path)->pd.DataFrame:
         """
         Handles SNP mask and converts it into a pandas dataframe.
-        Probably a bit convoluted, but seems to work OK. 
 
         Args:  
         snpmask_path - path to the vcf table to be loaded into df
@@ -460,11 +459,11 @@ class BSAVariables:
 
             # Save original file as backup
             os.rename(snpmask_path, backup_table_path)
-            self.log.note(f"{backup_table_path} saved. Formatting {snpmask_path}...")
+            self.log.note(f"Backup saved:{backup_table_path}")
 
             # Replace original file with the new one
             os.rename(temp_table_path, snpmask_path)
-            self.log.note(f"{snpmask_path} converted to friendlier format for masking...")
+            self.log.note(f"{snpmask_path} converted to friendlier format for masking. Original file can be found here: {backup_table_path}")
 
             # Load the newly written file into a DataFrame
             df = pd.read_csv(snpmask_path, sep="\t", names=headers)
@@ -482,11 +481,11 @@ class BSAVariables:
 
 
     def gen_bsa_out_prefix(self, name, ulid, vcf_ulid): #called in core_bsa.py
-        analysis_out_prefix = f'{ulid}_-{name}'
+        analysis_out_prefix = f'{ulid}-_{name}'
         if vcf_ulid:
             out_path = os.path.join(
                 OUTPUT_DIR, 
-                f'{vcf_ulid}_-{name}',
+                f'{vcf_ulid}-_{name}',
                 analysis_out_prefix, 
                 analysis_out_prefix
             )
