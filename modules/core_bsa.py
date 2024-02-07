@@ -266,9 +266,6 @@ class DataFiltering:
         snpmask_df.columns = snpmask_df.columns.str.lower()
         vcf_df.columns = vcf_df.columns.str.lower()
 
-        print("snpmask_df headers:", snpmask_df.columns.tolist())
-        print("vcf_df headers:", vcf_df.columns.tolist())
-
         # Create a set from the 'chrom', 'pos', 'ref', 'alt' columns
         known_snps_set = set(zip(snpmask_df['chrom'], snpmask_df['pos'], 
                                   snpmask_df['ref'], snpmask_df['alt']))
@@ -549,7 +546,7 @@ class FeatureProduction:
             
             else:
                 # Interpolation to scale subsampling from len(vcf_df_position)
-                frac = np.interp(n, [1000, 20000], [1, 0.05])
+                frac = round(np.interp(n, [1000, 20000], [1, 0.05]), 2)
             
             bootstrap_perc = frac*100
             self.log.note(f"{n} Variants left after filtering.") 
