@@ -23,7 +23,7 @@ This module processes bulk segregant fasta files, and formats them for BSA.
 class VCFGenerator:
     def __init__(self, logger, vcf_vars):
         self.vcf_vars = vcf_vars
-        self.log = logger
+        self.log = logger #pass core_log from main phytobsa script
 
 
     def run_subprocess(self):
@@ -54,11 +54,6 @@ class VCFGenerator:
         )
 
         for line in self.vcf_vars.lines:
-            self.log.note(f'Initializing vcf_generation subprocess log for {line.name}')
-            vcf_log = LogHandler(f'vcf_{line.name}')
-            line.vcf_ulid = '01HNXGS1MV412ZYXV940YF10YA'
-            vcf_log.add_db_record(line.name, line.vcf_ulid)
-
             #Generate output paths for process
             vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
                 line.name, line.vcf_ulid
@@ -76,22 +71,28 @@ class VCFGenerator:
             #Generate line.vcf_gen_cmd
             line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
             
-            # Run vcfgen shell subprocess.
-            # process = subprocess.Popen(
-            #     line.vcf_gen_cmd, 
-            #     cwd=MODULES_DIR, 
-            #     shell=True, 
-            #     stdout=subprocess.PIPE, 
-            #     stderr=subprocess.STDOUT, 
-            #     text=True
-            # )
-            # # Iterate over stdout from process and log
-            # for stdout_line in process.stdout:
-            #     vcf_log.bash(stdout_line.strip())
-            # process.wait()
+            #Initialize vcf log for the current line name
+            self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
+            vcf_log = LogHandler(f'vcf_{line.name}')
+            line.vcf_ulid = vcf_log.ulid
+            vcf_log.add_db_record(line.name, line.vcf_ulid)
 
-            # vcf_log.note(f"VCF file generated for {line.name}.") 
-            # vcf_log.success("VCF file generation process complete")
+            #Run vcfgen shell subprocess.
+            process = subprocess.Popen(
+                line.vcf_gen_cmd, 
+                cwd=MODULES_DIR, 
+                shell=True, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT, 
+                text=True
+            )
+            # Iterate over stdout from process and log
+            for stdout_line in process.stdout:
+                vcf_log.bash(stdout_line.strip())
+            process.wait()
+
+            vcf_log.note(f"VCF file generated for {line.name}.") 
+            vcf_log.success("VCF file generation process complete")
             
             # Formatting VCF output to make it dataframe friendly
             vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path)
@@ -168,6 +169,7 @@ class VCFFormat:
         self.vcf_table_path = vcf_table_path
         self.vcf_df = None
     
+
     def remove_repetitive_nan(self):
         with open(self.snpsift_out_path, 'r') as f_in, open(self.vcf_table_path, 'w') as f_out:
             for line in f_in:

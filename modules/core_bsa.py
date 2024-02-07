@@ -20,24 +20,27 @@ The read-depth analysis between the wild-type and mutant bulks are stored here.
 class BSA:
     def __init__(self, logger, bsa_vars):
         #AnalysisVariables class passed to function. 
-        self.log = logger
+        self.log = logger #pass core_log from main phytobsa script
         
         self.bsa_vars = bsa_vars
+
 
     def run_pipeline(self):
         smoothing_function = sm.nonparametric.lowess
 
         for line in self.bsa_vars.lines:
-            self.log = LogHandler(f'analysis_{line.name}')
-            self.log.add_db_record(line, self.log.ulid, line.vcf_ulid)
+
+            self.log.delimiter(f'Initializing BSA pipeline log for {line.name}')
+            bsa_log = LogHandler(f'analysis_{line.name}')
+            bsa_log.add_db_record(line, bsa_log.ulid, line.vcf_ulid)
             
-            line.analysis_ulid = self.log.ulid 
+            line.analysis_ulid = bsa_log.ulid 
 
             #Load VCF data table pandas dataframe vcf_df
             line.vcf_df = self.bsa_vars.load_vcf_table(line.vcf_table_path) #vcf_table_path generated in modules.core_vcf_gen or modules.utilities_lines
             
             ## data cleaning and orginization
-            data_filter = DataFiltering(self.log, line.name)
+            data_filter = DataFiltering(bsa_log, line.name)
             line.vcf_df = data_filter.filter_genotypes(line.segregation_type, line.vcf_df)
             
             
@@ -53,7 +56,7 @@ class BSA:
                 
             
             ## Feature production
-            feature_prod = FeatureProduction(self.log, line.name)
+            feature_prod = FeatureProduction(bsa_log, line.name)
             line.vcf_df = feature_prod.calculate_delta_snp_and_g_statistic(line.vcf_df)
             
             line.vcf_df = data_filter.drop_na(line.vcf_df)
@@ -82,7 +85,7 @@ class BSA:
 
             ## Saving and plotting outputs
             table_and_plots = TableAndPlots(
-                self.log,
+                bsa_log,
                 line.name,
                 line.vcf_df,
                 line.analysis_out_prefix
@@ -553,9 +556,8 @@ class FeatureProduction:
             self.log.note(f"Bootstrapping process will subsample {bootstrap_perc}% of data {shuffle_iterations} times")
             
             # Define the arguments for each process
-            args = [(vcf_df_position, vcf_df_wt, vcf_df_mu, frac, smoothing_function, 
-            loess_span    
-                ) 
+            args = [(vcf_df_position, vcf_df_wt, vcf_df_mu, frac, 
+            smoothing_function, loess_span) 
                 for _ in range(shuffle_iterations)
             ]
             
@@ -584,7 +586,7 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail(f'Bootstrapping to generate empirical cutoffs failed:{e}')
 
-            return None, None, None
+            return None, None, None, None
 
 
     def label_df_with_cutoffs(self, vcf_df: pd.DataFrame, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff:float)->pd.DataFrame:
