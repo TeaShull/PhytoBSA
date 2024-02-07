@@ -228,7 +228,6 @@ class VCFGenVariables:
 
     def make_vcfgen_command(self, line):
         args = (
-            line.vcf_ulid, #
             line.name, 
             line.wt_input,
             line.mu_input,
