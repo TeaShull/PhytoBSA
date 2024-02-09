@@ -9,6 +9,7 @@ from plotnine import (
 from multiprocessing import Pool
 
 from modules.utilities_logging import LogHandler
+from modules.utilities_general import FileUtilities
 
 
 """
@@ -36,6 +37,11 @@ class BSA:
             
             line.analysis_ulid = bsa_log.ulid 
 
+            #Extract vcf ulid from filename if needed. For standalone analysis runs
+            if not line.vcf_ulid:
+                file_utils = FileUtilities(self.log)
+                line.vcf_ulid = file_utils.extract_ulid_from_file_path(line.vcf_table_path)
+
             #Load VCF data table pandas dataframe vcf_df
             line.vcf_df = self.bsa_vars.load_vcf_table(line.vcf_table_path) #vcf_table_path generated in modules.core_vcf_gen or modules.utilities_lines
             
@@ -60,7 +66,7 @@ class BSA:
             line.vcf_df = feature_prod.calculate_delta_snp_and_g_statistic(line.vcf_df)
             
             line.vcf_df = data_filter.drop_na(line.vcf_df)
-            line.vcf_df = data_filter.drop_genos_with_negative_ratios(line.vcf_df)
+            line.vcf_df = data_filter.drop_genos_below_ratio_cutoff(line.vcf_df, self.bsa_vars.ratio_cutoff)
             
             line.vcf_df = feature_prod.fit_model(
                 line.vcf_df, smoothing_function, self.bsa_vars.loess_span, 
@@ -68,9 +74,9 @@ class BSA:
             )
             
             ### Use bootstrapping to produce cutoffs for features
-            cutoffs = feature_prod.calculate_empirical_cutoffs(
+            cutoffs = feature_prod.calculate_null_model(
                 line.vcf_df, smoothing_function, self.bsa_vars.loess_span, 
-                self.bsa_vars.shuffle_iterations
+                self.bsa_vars.shuffle_iterations, self.bsa_vars.ratio_cutoff
             )
             line.gs_cutoff, line.rs_cutoff, line.rsg_cutoff, line.rsg_y_cutoff = cutoffs
             
@@ -87,12 +93,14 @@ class BSA:
             table_and_plots = TableAndPlots(
                 bsa_log,
                 line.name,
-                line.vcf_df,
                 line.analysis_out_prefix
             )
-            table_and_plots.sort_save_likely_candidates()
+            line.vcf_df = table_and_plots.sort_save_likely_candidates(line.vcf_df)
+            
             table_and_plots.generate_plots(
-                line.gs_cutoff, 
+                line.vcf_df,
+                line.gs_cutoff,
+                line.rs_cutoff, 
                 line.rsg_cutoff, 
                 line.rsg_y_cutoff
             )
@@ -141,9 +149,14 @@ class DataFiltering:
         Produces: 
             VCF dataframe with no NaN values
         """
+
+        self.log.note(f'Input dataframe length: {len(vcf_df)}')
         self.log.attempt('Attempting to drop NaN values...')
+        
         vcf_df = vcf_df.dropna(axis=0, how='any', subset=["ratio"])
+        
         self.log.success('NaN values dropped')
+        self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
         
         return vcf_df
 
@@ -156,8 +169,8 @@ class DataFiltering:
         Args:
             segregation_type (str): The allele value to filter the genotypes. 
                 Filters: 
-                        R = Recessive seg '1/1:0/1', '0/1:0/0', '0/1:0/1'.
-                        D = Dominant seg '0/1:0/0', '1/1:0/0', '0/1:0/1'.
+                        R = Recessive seg '1/1:0/1', '0/1:0/1'.
+                        D = Dominant seg '0/1:0/0', '0/1:0/1'.
             
             vcf_df (pd.DataFrame): The input DataFrame containing the genotypes.
 
@@ -166,8 +179,7 @@ class DataFiltering:
             matching genotypes.
 
         [EXTRA INFO]
-        0/1:0/1 is included because of occasianal leaky genotypying by GATK 
-        haplotype caller. Nearly 100% of negative delta SNP values arise from 
+        Nearly 100% of negative delta SNP values arise from 
         0/1:0/1 situations. To retain information without losing data that
         may help fit GAM or LOESS, we will retain 0/1:0/1 loci and instead 
         cut the negative values out after calculating the delta allele
@@ -178,15 +190,17 @@ class DataFiltering:
         try:
             if segregation_type == 'R':
                 self.log.note('Filtering genotypes based an a recessive segregation pattern')
-                seg_filter = ['1/1:0/1', '0/1:0/0','0/1:0/1']
+                seg_filter = ['1/1:0/1', '0/1:0/1']
             elif segregation_type == 'D':
                 self.log.note('Filtering genotypes based an a dominant segregation pattern')
-                seg_filter = ['0/1:0/0', '1/1:0/0','0/1:0/1']  
+                seg_filter = ['0/1:0/0', '0/1:0/1']  
             else: 
                 self.log.fail(f'Allele type:{segregation_type} is not a valid selection! Aborting.')
             
             try:
+                self.log.note(f'Input dataframe length: {len(vcf_df)}')
                 vcf_df = vcf_df[vcf_df['mu:wt_GTpred'].isin(seg_filter)]
+                self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
                 
                 self.log.success('Genotypes filtured based on segregation pattern')
                 
@@ -216,14 +230,18 @@ class DataFiltering:
         self.log.attempt('Filtering varients to only include those likely to arise through EMS exposure...')
         ems_snps = [('G', 'A'), ('C', 'T'), ('A', 'G'), ('T', 'C')]
         
-        # Filter
+        # Filter        self.log.note(f'Input dataframe length: {len(vcf_df)}')
+        self.log.note(f'Input dataframe length: {len(vcf_df)}')
+        
         vcf_df = vcf_df[vcf_df[['ref', 'alt']].apply(tuple, axis=1).isin(ems_snps)]
+        
         self.log.success('Varients filtered.')
+        self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
         
         return vcf_df
 
 
-    def drop_genos_with_negative_ratios(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
+    def drop_genos_below_ratio_cutoff(self, vcf_df: pd.DataFrame, ratio_cutoff)-> pd.DataFrame:
         '''
         Removes those genotypes that give rise to negative delta SNP ratios.
         args:
@@ -234,11 +252,15 @@ class DataFiltering:
             values
         '''
 
-        self.log.attempt('Trying to remove Genotypes that produce negative delta SNP ratios')
+        self.log.attempt(f'Removing Genotypes that produce delta SNP ratios below cutoff:{ratio_cutoff}')
         try: 
-            vcf_df = vcf_df[vcf_df['ratio'] >= 0]
-            self.log.success('Genotypes that produce negative delta SNP ratios removed.')
+            self.log.note(f'Input dataframe length: {len(vcf_df)}')
+
+            vcf_df = vcf_df[vcf_df['ratio'] >= ratio_cutoff]
             
+            self.log.success('Genotypes that produce negative delta SNP ratios removed.')
+            self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
+
             return vcf_df
 
         except Exception as e:
@@ -261,18 +283,28 @@ class DataFiltering:
         returns:
             vcf_df: pd.DataFrame - Filtered dataframe without background snps
         '''
-        
-        # Convert column names to lower case
-        snpmask_df.columns = snpmask_df.columns.str.lower()
-        vcf_df.columns = vcf_df.columns.str.lower()
+        self.log.attempt("Filtering known snps from provided snpmask file..")
+        try:        
+            # Convert column names to lower case
+            snpmask_df.columns = snpmask_df.columns.str.lower()
+            vcf_df.columns = vcf_df.columns.str.lower()
 
-        # Create a set from the 'chrom', 'pos', 'ref', 'alt' columns
-        known_snps_set = set(zip(snpmask_df['chrom'], snpmask_df['pos'], 
-                                  snpmask_df['ref'], snpmask_df['alt']))
+            # Create a set from the 'chrom', 'pos', 'ref', 'alt' columns
+            known_snps_set = set(zip(snpmask_df['chrom'], snpmask_df['pos'], 
+                                    snpmask_df['ref'], snpmask_df['alt']))
 
-        # Filter the vcf_df to only include rows not in the known_snps_set
-        return vcf_df[~vcf_df[['chrom', 'pos', 'ref', 'alt']]
-                              .apply(tuple, axis=1).isin(known_snps_set)]
+            # Filter the vcf_df to only include rows not in the known_snps_set
+            self.log.note(f'Input dataframe length: {len(vcf_df)}')
+
+            vcf_df = vcf_df[~vcf_df[['chrom', 'pos', 'ref', 'alt']]
+                                .apply(tuple, axis=1).isin(known_snps_set)]
+ 
+            self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
+
+            return vcf_df
+
+        except Exception as e:
+            self.log.error(f"There was an error while filtering known snps. {e}")
 
 
 class FeatureProduction:
@@ -285,7 +317,8 @@ class FeatureProduction:
     def _delta_snp_array(wtr: np.ndarray, wta:np.ndarray, mur: np.ndarray, mua: np.ndarray)-> np.ndarray:
         """
         Calculates delta SNP feature, which quantifies divergence in 
-            read depths between the two bulks.
+            read depths between the two bulks. More data driven than g-stat
+            method. 
 
         Args: 
             wtr, wta, mur, mua (numpy array)
@@ -301,9 +334,8 @@ class FeatureProduction:
     @staticmethod
     def _g_statistic_array(wtr: np.ndarray, wta: np.ndarray, mur: np.ndarray, mua: np.ndarray)->np.ndarray:
         """
-        Calculates g-statistic feature, which is a more statistically driven 
-        approach to calculating read-depth divergence from expected values. 
-        Chi square ish.
+        Calculates g-statistic feature, which is a Chi squared-ish approach to 
+        calculating read-depth divergence from expected values. 
         """ 
 
         np.seterr(all='ignore')
@@ -351,6 +383,14 @@ class FeatureProduction:
             vcf_df['G_S'] = FeatureProduction._g_statistic_array(
                    wt_ref, wt_alt, mu_ref, mu_alt
             )
+
+            # Calculate ratio-scaled g-statistic. (delata snp ratio x g-stat)
+            # RSG seems to be more stable than either on their own. The 
+            # math behind why this works so wellneeds to be articulated at some 
+            # point. G-stat tends to be all around better, but there is
+            # something about scaling it by the delta snp ratio that is pretty 
+            # effective, especially after this feature is fitted. the signal 
+            # becomes very clear
 
             vcf_df['RS_G'] = vcf_df['ratio'].values * vcf_df['G_S'].values
             self.log.success("Calculation of delta-SNP ratios and G-statistics was successful.")
@@ -487,7 +527,7 @@ class FeatureProduction:
     
 
     @staticmethod
-    def _empirical_cutoff(vcf_df_position: pd.DataFrame, vcf_df_wt: pd.DataFrame, vcf_df_mu: pd.DataFrame, frac: float, smoothing_function, loess_span: float):
+    def _null_model(vcf_df_position: pd.DataFrame, vcf_df_wt: pd.DataFrame, vcf_df_mu: pd.DataFrame, smoothing_function, loess_span: float, ratio_cutoff: float):
         """
         randomizes the input read_depths, breaking the position/feature link.
         this allows the generation of a large dataset which has no linkage 
@@ -505,9 +545,9 @@ class FeatureProduction:
 
         """
 
-        dfShPos = vcf_df_position.sample(frac=frac)
-        dfShwt = vcf_df_wt.sample(frac=frac)
-        dfShmu = vcf_df_mu.sample(frac=frac)
+        dfShPos = vcf_df_position.sample(frac=1)
+        dfShwt = vcf_df_wt.sample(frac=1)
+        dfShmu = vcf_df_mu.sample(frac=1)
 
         smPos = dfShPos['pos'].to_numpy()
         sm_wt_ref = dfShwt['wt_ref'].to_numpy()
@@ -515,12 +555,22 @@ class FeatureProduction:
         sm_mu_ref = dfShmu['mu_ref'].to_numpy()
         sm_mu_alt = dfShmu['mu_alt'].to_numpy()
 
-        smGstat = FeatureProduction._g_statistic_array(
-            sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt
-        )
         smRatio = FeatureProduction._delta_snp_array(
             sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt
         )
+        
+        smGstat = FeatureProduction._g_statistic_array(
+            sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt
+        )
+
+        # Create a mask for values in smRatio that are below the ratio_cutoff
+        # This makes the null model match the data filtering nicely
+        mask = smRatio >= ratio_cutoff
+
+        # Apply the mask to both smRatio and smGstat
+        smRatio = smRatio[mask]
+        smGstat = smGstat[mask]
+        smPos = smPos[mask]
 
         smRS_G = smRatio * smGstat
         smRS_G_y = smoothing_function(smRS_G, smPos, frac=loess_span)[:, 1]
@@ -528,50 +578,71 @@ class FeatureProduction:
         return smGstat, smRatio, smRS_G, smRS_G_y
 
 
-    def calculate_empirical_cutoffs(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int)->tuple:
-        self.log.attempt('Bootstrapping to generate empirical cutoffs...')
+
+    def calculate_null_model(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
+        self.log.attempt('Bootstrapping to generate null model...')
         try:
             vcf_df_position = vcf_df[['pos']].copy()
             vcf_df_wt = vcf_df[['wt_ref', 'wt_alt']].copy()
             vcf_df_mu = vcf_df[['mu_ref', 'mu_alt']].copy()
 
-            # Calculate the fraction to sample
-            # Keep subsampling from getting too wild with high variant #s
-            n = len(vcf_df_position)
-            if n > 20000:
-                frac = 0.05
-            
-            elif n < 1000:
-                frac = 1
-            
-            else:
-                # Interpolation to scale subsampling from len(vcf_df_position)
-                frac = round(np.interp(n, [1000, 20000], [1, 0.05]), 2)
-            
-            bootstrap_perc = frac*100
-            self.log.note(f"{n} Variants left after filtering.") 
-            self.log.note(f"Bootstrapping process will subsample {bootstrap_perc}% of data {shuffle_iterations} times")
-            
+            # Initialize empty lists
+            sm_g_stat_lst = []
+            sm_ratio_lst = []
+            sm_ratio_scaled_g_lst = []
+            sm_ratio_scaled_g_y_lst = []
+
             # Define the arguments for each process
-            args = [(vcf_df_position, vcf_df_wt, vcf_df_mu, frac, 
-            smoothing_function, loess_span) 
+            args = [(vcf_df_position, vcf_df_wt, vcf_df_mu, smoothing_function, 
+                loess_span, ratio_cutoff) 
                 for _ in range(shuffle_iterations)
             ]
-            
-            # Create a pool of processes
-            with Pool() as pool:
-                results = pool.starmap(FeatureProduction._empirical_cutoff, args)
 
-                sm_g_stat_lst = [result[0] for result in results if result is not None]
-                sm_ratio_lst = [result[1] for result in results if result is not None]
-                sm_ratio_scaled_g_lst = [result[2] for result in results if result is not None]
-                sm_ratio_scaled_g_y_lst = [result[3] for result in results if result is not None]
-            
+            # Initialize empty numpy arrays of the desired size
+            sm_g_stat_lst = np.empty(1000000)
+            sm_ratio_lst = np.empty(1000000)
+            sm_ratio_scaled_g_lst = np.empty(1000000)
+            sm_ratio_scaled_g_y_lst = np.empty(1000000)
+
+            # Keep track of the current index in each array
+            index = [0, 0, 0, 0]
+
+            # Create a pool of processes and keep subsampling until arrays are filled
+            with Pool() as pool:
+                while max(index) < 1000000:
+                    results = pool.starmap(FeatureProduction._null_model, args)
+
+                    for result in results:
+                        for i in range(4):
+                            # Calculate the number of elements to take from the result
+                            num_elements = min(result[i].size, 1000000 - index[i])
+
+                            # Take the elements from the result and put them in the array
+                            if i == 0:
+                                sm_g_stat_lst[index[i]:index[i]+num_elements] = result[i][:num_elements]
+                            elif i == 1:
+                                sm_ratio_lst[index[i]:index[i]+num_elements] = result[i][:num_elements]
+                            elif i == 2:
+                                sm_ratio_scaled_g_lst[index[i]:index[i]+num_elements] = result[i][:num_elements]
+                            else:
+                                sm_ratio_scaled_g_y_lst[index[i]:index[i]+num_elements] = result[i][:num_elements]
+
+                            # Update the current index
+                            index[i] += num_elements
+
+                        # Break the loop if the arrays are filled
+                        if max(index) >= 1000000:
+                            break
+
+                    # Break the outer loop if the arrays are filled
+                    if max(index) >= 1000000:
+                        break
+
             # Calculate the cutoffs from the results
             gs_cutoff = np.percentile(sm_g_stat_lst, 95)
             rs_cutoff = np.percentile(sm_ratio_lst, 95)
             rsg_cutoff = np.percentile(sm_ratio_scaled_g_lst, 95)
-            rsg_y_cutoff = np.percentile(sm_ratio_scaled_g_y_lst, 99.99)
+            rsg_y_cutoff = np.percentile(sm_ratio_scaled_g_y_lst, 95)
 
             self.log.success('Bootstrapping complete!')
             self.log.note(f"G-statistic cutoff = {gs_cutoff}.")
@@ -584,6 +655,7 @@ class FeatureProduction:
             self.log.fail(f'Bootstrapping to generate empirical cutoffs failed:{e}')
 
             return None, None, None, None
+
 
 
     def label_df_with_cutoffs(self, vcf_df: pd.DataFrame, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff:float)->pd.DataFrame:
@@ -609,20 +681,23 @@ class FeatureProduction:
 
 class TableAndPlots:
     
-    def __init__(self, logger, name, vcf_df, analysis_out_prefix):
+    def __init__(self, logger, name, analysis_out_prefix):
         self.log = logger
         self.name = name
-        self.vcf_df = vcf_df
         self.analysis_out_prefix = analysis_out_prefix
 
 
-    def _identify_likely_candidates(self):
+    def _identify_likely_candidates(self, vcf_df):
         try:
-            return self.vcf_df[
-                (self.vcf_df['RS_G_yhat_01p'] == 1) |
-                (self.vcf_df['G_S_05p'] == 1) |
-                (self.vcf_df['RS_G_05p'] == 1)
-            ]
+            likely_cands = vcf_df[
+                (vcf_df['RS_G_yhat_01p'] == 1) |
+                (vcf_df['G_S_05p'] == 1) |
+                (vcf_df['RS_G_05p'] == 1)
+            ].copy()
+
+
+            return likely_cands
+
         except KeyError as e:
             self.log.fail(f"Column {e} not found in DataFrame. Please ensure column names are correct.")
 
@@ -633,7 +708,22 @@ class TableAndPlots:
         with 'GS_G_yhat' being the top priority.
         """
         try:
-            sorted_df = df.sort_values(by=['RS_G_yhat_01p', 'G_S_05p', 'RS_G_05p'], ascending=False)
+            # Define the mapping
+            impact_mapping = {'HIGH': 4, 'MODERATE': 3, 'LOW': 2, 'MODIFIER': 1}
+
+            # 'impact_rank' maps top 'snpimpact' values using impact_mapping
+            df['impact_rank'] = df['snpimpact'].apply(
+                lambda x: max(impact_mapping.get(i, 0) for i in x.split(':')))
+
+            # Sort the DataFrame
+            sorted_df = df.sort_values(by=[
+                'impact_rank', 
+                'RS_G_yhat_01p', 
+                'G_S_05p', 
+                'RS_G_05p'], ascending=[False, False, False, False])
+
+            # Remove the 'impact_rank' column
+            sorted_df.drop('impact_rank', axis=1, inplace=True)
 
             return sorted_df
 
@@ -641,48 +731,50 @@ class TableAndPlots:
             self.log.fail(f"Column {e} not found in DataFrame. Please ensure column names are correct.")
 
 
-    def _save_candidates(self, df):
+    def _save_candidates(self, vcf_df, cands_df):
         """
         Saves the DataFrame of likely candidates to a CSV file.
         """
         try:
+            all_output_file = f"{self.analysis_out_prefix}_all.csv"
+            vcf_df.to_csv(all_output_file, index=False)
             output_file = f"{self.analysis_out_prefix}_likely_candidates.csv"
-            df.to_csv(output_file, index=False)
-        
-            self.log.success(f"Saved likely candidates to {output_file}")
+            cands_df.to_csv(output_file, index=False)
         
         except Exception as e:
             self.log.fail(f"Failed to save likely candidates: {e}")
         
 
-    def sort_save_likely_candidates(self):
-        vcf_df_likely_cands = self._identify_likely_candidates()
-        likely_cands_sorted = self._sort_likely_candidates(vcf_df_likely_cands)
-        self._save_candidates(likely_cands_sorted)
+    def sort_save_likely_candidates(self, vcf_df):
+        likely_cands = self._identify_likely_candidates(vcf_df)
+        likely_cands = self._sort_likely_candidates(likely_cands)
+        self._save_candidates(vcf_df, likely_cands)
+
+        return vcf_df
 
 
-    def generate_plots(self, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff: float):
+    def generate_plots(self, vcf_df, gs_cutoff: float, rs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff: float):
         plot_scenarios = [
             ('G_S', 'G-statistic', 'G-statistic', gs_cutoff, False),
-            ('GS_yhat', 'Lowess smoothed G-statistic', 'Fitted G-statistic', None, True),
+            ('GS_yhat', 'Fitted G-statistic', 'Fitted G-statistic', None, True),
             ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', rsg_cutoff, False),
-            ('ratio', 'Delta SNP ratio', 'Ratio', None, False),
+            ('ratio', 'Delta SNP ratio', 'Ratio', rs_cutoff, False),
             ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
-            ('RS_G_yhat', 'Lowess smoothed ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True)
+            ('RS_G_yhat', 'Fitted ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True)
         ]
 
         for plot_scenario in plot_scenarios:
-            plot_created = self._create_plot(*plot_scenario)
+            plot_created = self._create_plot(vcf_df, *plot_scenario)
 
             if plot_created is not None:
                 self._save_plot(plot_created, *plot_scenario)
 
 
-    def _create_plot(self, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
+    def _create_plot(self, vcf_df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
         try:
             mb_conversion_constant = 0.000001
-            self.vcf_df['pos_mb'] = self.vcf_df['pos'] * mb_conversion_constant
-            chart = ggplot(self.vcf_df, aes('pos_mb', y=y_column))
+            vcf_df['pos_mb'] = vcf_df['pos'] * mb_conversion_constant
+            chart = ggplot(vcf_df, aes('pos_mb', y=y_column))
             title = ggtitle(title_text)
             axis_x = xlab("Position (Mb)")
             axis_y = ylab(ylab_text)

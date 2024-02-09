@@ -35,7 +35,7 @@ def setup_vcf_variables(core_log, line, args):
     return vcf_vars
 
 
-def setup_bsa_variables(core_log, line, args):
+def setup_bsa_variables(core_log, lines, args):
     '''
     Setup variables needed to run BSA. Args are either passed by user or sourced
     from config.ini (check phytobsa settings -h to set defaults. One can also
@@ -43,13 +43,14 @@ def setup_bsa_variables(core_log, line, args):
     '''
     bsa_vars = BSAVariables(
         core_log, 
-        lines=line, 
+        lines=lines, 
         loess_span=args.loess_span, 
         smooth_edges_bounds=args.smooth_edges_bounds, 
         shuffle_iterations=args.shuffle_iterations,
         filter_indels=args.filter_indels,
         filter_ems=args.filter_ems,
-        snpmask_path=args.snpmask_path
+        snpmask_path=args.snpmask_path,
+        ratio_cutoff=args.ratio_cutoff
     )
     return bsa_vars
 
@@ -82,10 +83,14 @@ def main():
         line = Lines(core_log, args.name) # more info in modules.core_variables
 
         #Parse user input into Lines Class. Input checks are done here
-        line.usr_in_line_variables(args.vcf_table_path, arg.segregation_type)
-        
+        line.usr_in_line_variables(
+            vcf_table_path=args.vcf_table_path, 
+            segregation_type=args.segregation_type
+        )
+
         # Process line & args, prep variables needed for runtime + more checks
-        bsa_vars = setup_bsa_variables(core_log, line, args)
+        lines = [line]
+        bsa_vars = setup_bsa_variables(core_log, lines, args)
         
         # pass bsa_vars Class instance to the BSA pipeline, and run
         bsa = BSA(core_log, bsa_vars)    
@@ -97,13 +102,16 @@ def main():
         line = Lines(core_log, args.name) 
         
         #Parse user input into Lines Class. Input checks are done here
-        line.usr_in_line_variables(args.reference_genome_path, 
-            args.wt_input, args.mu_input
+        line.usr_in_line_variables(
+            reference_genome_path=args.reference_genome_path, 
+            wt_input=args.wt_input, 
+            mu_input=args.mu_input
         ) 
 
         # [modules.core_variables]
         #process line & args, prep variables needed for runtime + more checks
-        vcf_vars = setup_vcf_variables(core_log, line, args)
+        lines = [line]
+        vcf_vars = setup_vcf_variables(core_log, lines, args)
         
         #Pass vcf_vars Class instance to the VCF generater and run
         vcf_gen = VCFGenerator(core_log, vcf_vars)

@@ -54,11 +54,16 @@ class VCFGenerator:
         )
 
         for line in self.vcf_vars.lines:
+            #Initialize vcf log for the current line name
+            self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
+            vcf_log = LogHandler(f'vcf_{line.name}')
+            line.vcf_ulid = vcf_log.ulid
+            vcf_log.add_db_record(line.name, line.vcf_ulid)
+            
             #Generate output paths for process
             vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
                 line.name, line.vcf_ulid
             )
-
             (
                 line.vcf_output_dir, 
                 line.vcf_output_prefix, 
@@ -69,11 +74,6 @@ class VCFGenerator:
             ) = vcf_out_paths
             
             
-            #Initialize vcf log for the current line name
-            self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
-            vcf_log = LogHandler(f'vcf_{line.name}')
-            line.vcf_ulid = vcf_log.ulid
-            vcf_log.add_db_record(line.name, line.vcf_ulid)
 
             #Generate line.vcf_gen_cmd
             line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
