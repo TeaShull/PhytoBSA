@@ -9,6 +9,7 @@ from settings.paths import (INPUT_DIR, OUTPUT_DIR, REFERENCE_DIR, MODULES_DIR,
 )
 from modules.utilities_general import FileUtilities
 
+
 class Lines:
     '''
     This class contains information and methods pertaining to variables
@@ -29,7 +30,7 @@ class Lines:
         'snpeff_report_path', 'rs_cutoff', 'snpmask_df'
     ]
 
-    def __init__(self, name, logger):
+    def __init__(self, logger, name):
         self.log = logger
 
         # BSA and VCF_gen variables
@@ -72,35 +73,38 @@ class Lines:
 
     def _process_input(self, key, details):
         file_utils = FileUtilities(self.log)
-        if key in self.in_path_variables or key in self.ref_path_variables:
+        if key in self.in_path_variables:
             paths = details.split() #for space seperated lists mu_input and wt_input
-            dir = INPUT_DIR if key in self.in_path_variables else REFERENCE_DIR
-            processed_paths = [file_utils.process_path([path], dir) for path in paths]
+            dir = [INPUT_DIR]
+            processed_paths = [file_utils.process_path(dir, path) for path in paths]
             return ' '.join(processed_paths)
+        else:
             return details
     
 
     def usr_in_line_variables(self, **kwargs):
         self.log.attempt('Attempting to organize inputs into Line data class...')
-        
         try:
-            self.lines = Lines(name)
             for key, details in kwargs.items():
                 try:
                     processed_input = self._process_input(key, details)
+                
                 except KeyError as ke:
                     self.log.fail(f'Key not found: {ke}')
+                    
                     continue
                  
                 try:
-                    if hasattr(line, key):
-                        setattr(line, key, processed_input)
+                    if hasattr(self, key):
+                        setattr(self, key, processed_input)
+                        self.log.note(f'User input added: |{self.name}|{key}:{processed_input} ')
+
                 except AttributeError as ae:
                     self.log.fail(f'Attribute error: {ae}')
-        
-                self.log.note(f'User input added: |{name}|{key}:{processed_input} ')
+
         except Exception as e:
             self.log.fail(f'There was an error processing user inputs:{e}')
+
 
 class AutomaticLineVariableDetector:
     def __init__(self, logger):
@@ -187,6 +191,7 @@ class AutomaticLineVariableDetector:
         
         except Exception as e:
             self.log.fail(f"Error while detecting line and run details: {e}")
+
 
 class VCFGenVariables:
     __slots__ = ['log', 'lines', 'reference_genome_path', 
@@ -358,11 +363,14 @@ class VCFGenVariables:
         self.reference_chrs_dict_path = (f"{ref_genome_prefix}.chrs.dict")
         self.reference_chrs_fa_path = (f"{ref_genome_prefix}.chrs.fa")
 
+
 class BSAVariables:
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
-        'shuffle_iterations', 'filter_indels', 'filter_ems', 'snpmask_path', 'snpmask_df'
+        'shuffle_iterations', 'filter_indels', 'filter_ems', 'snpmask_path', 
+        'snpmask_df', 'ratio_cutoff'
     ]
     
+
     def __init__(self, logger,
         lines, 
         loess_span, 
@@ -370,7 +378,8 @@ class BSAVariables:
         shuffle_iterations,
         filter_indels,
         filter_ems, 
-        snpmask_path
+        snpmask_path,
+        ratio_cutoff
         ):
         self.log = logger
         
@@ -381,6 +390,7 @@ class BSAVariables:
         self.filter_indels = filter_indels
         self.filter_ems = filter_ems
         self.snpmask_path = snpmask_path
+        self.ratio_cutoff = ratio_cutoff
         self.snpmask_df = None
 
 
@@ -401,9 +411,12 @@ class BSAVariables:
             vcf_table_path = file_utils.process_path(directories, vcf_table_path)
             df = pd.read_csv(vcf_table_path, sep="\t")
             self.log.note(f"{vcf_table_path} loaded. Proceeding...")
+        
             return df
+        
         except pd.errors.EmptyDataError:
             self.log.fail(f"Error: File '{vcf_table_path}' is empty.")
+        
         except Exception as e:
             self.log.fail(f"An unexpected error occurred: {e}")
 
@@ -429,9 +442,9 @@ class BSAVariables:
 
         except pd.errors.ParserError:
             self.log.note(f"snpmask file doesn't appear to be formatted for pandas. Formatting....")
-            headers = ['CHROM','POS','REF','ALT' ]
             temp_table_path = f"{snpmask_path}.temp"
             backup_table_path = f"{snpmask_path}.backup"
+            headers = ['CHROM','POS','REF','ALT' ]
 
             with open(snpmask_path, 'r') as file:
                 vcf_reader = vcf.Reader(file, strict_whitespace=True)
@@ -478,22 +491,28 @@ class BSAVariables:
             self.log.fail(f"An unexpected error occurred: {e}")
 
 
-
     def gen_bsa_out_prefix(self, name, ulid, vcf_ulid): #called in core_bsa.py
-        analysis_out_prefix = f'{ulid}-_{name}'
-        if vcf_ulid:
-            out_path = os.path.join(
-                OUTPUT_DIR, 
-                f'{vcf_ulid}-_{name}',
-                analysis_out_prefix, 
-                analysis_out_prefix
-            )
-        else:
-            out_path = os.path.join(
-                OUTPUT_DIR,
-                analysis_out_prefix,
-                analysis_out_prefix
-            )
-        file_utils = FileUtilities(self.log)
-        file_utils.setup_directory(out_path)
-        return out_path
+        try:
+            analysis_out_prefix = f'{ulid}-_{name}'
+            if vcf_ulid:
+                out_path = os.path.join(
+                        OUTPUT_DIR, 
+                        f'{vcf_ulid}-_{name}',
+                        analysis_out_prefix, 
+                    analysis_out_prefix
+                )
+            else:
+                out_path = os.path.join(
+                    OUTPUT_DIR,
+                    analysis_out_prefix
+                )
+            file_utils = FileUtilities(self.log)
+            file_utils.setup_directory(out_path)
+        
+            return out_path
+        
+        except Exception as e:
+            self.log.error(f"Error generating BSA output prefix: {e}")
+            
+            return None
+

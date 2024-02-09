@@ -119,7 +119,8 @@ split_and_call_haplotypes() {
 
     # Remove individual chromosome VCF files
     for output_file in "${output_files[@]}"; do
-        rm -f "${output_file}*"
+        rm -f ${output_file}
+        rm -f ${output_file}.idx
     done
 }
 
