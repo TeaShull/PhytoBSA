@@ -294,7 +294,6 @@ class VCFGenVariables:
         except Exception as e:
             self.log.fail(f"Error generating VCF output paths: {e}")
 
-
     def _get_ref_name(self, file_path):
         self.log.attempt('Attempting to retrieve reference base name from inputs...')
         try: 
@@ -309,7 +308,7 @@ class VCFGenVariables:
                 base_name = Path(base_name).stem
             self.log.success(f"Base name: {base_name}")
         except Exception as e:
-            self.log.fail(f"There as an error retrieving reference base name from inputs...")
+            self.log.fail(f"There as an error retrieving reference base name from inputs:{e}")
         return base_name
     
 
