@@ -25,7 +25,6 @@ class VCFGenerator:
         self.vcf_vars = vcf_vars
         self.log = logger #pass core_log from main phytobsa script
 
-
     def run_subprocess(self):
         """
         Input: Subprocess VCFgen.sh takes raw reads(wild-type(wt) 
@@ -72,8 +71,6 @@ class VCFGenerator:
                 line.snpeff_out_path, 
                 line.snpsift_out_path
             ) = vcf_out_paths
-            
-            
 
             #Generate line.vcf_gen_cmd
             line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
@@ -137,6 +134,7 @@ class VCFGenerator:
         except Exception as e:
             self.log.error("Parsing reference genome failed.")
             self.log.error(e)
+            
             return None
 
 

@@ -133,7 +133,7 @@ class AutomaticLineVariableDetector:
             if l.name == name:
                 return l
                 
-        line = Lines(name, self.log)
+        line = Lines(self.log, name)
         self.lines.append(line)
         return line
 

@@ -2,23 +2,30 @@
 import os
 import configparser
 
+
 def check_data_dir(config_ini):
+    '''
+    Checks if the data direcory is set. This needs to be done the first time the
+    program is run. Will make the conda package a lot easier to make...
+    '''
     config = configparser.ConfigParser()
     config.read(config_ini)
 
-    if 'data_dir' in config['PATHS']:
-        data_dir_prefix = config.get('PATHS', 'data_dir')
+    data_dir_prefix = config.get('PATHS', 'data_dir')
         
-        if data_dir_prefix == 'None':
-            raise ValueError("DATA_DIR is not set. Set the data directory using the command: ./phytobsa --data_dir <path-to-dir>")
-        elif not os.path.exists(data_dir_prefix):
-            raise ValueError(f"Path {data_dir_prefix} does not exist. Set the data directory using the command: ./phytobsa settings --set_data_dir <path-to-dir>")
-        else:
-            data_dir = os.path.join(data_dir_prefix, 'data')
-            return data_dir
+    if data_dir_prefix == 'None':
+        raise ValueError("DATA_DIR is not set. Set the data directory using the command: ./phytobsa --set_data_dir <path-to-dir>")
+    elif not os.path.exists(data_dir_prefix):
+        raise ValueError(f"Path {data_dir_prefix} does not exist. Set the data directory using the command: ./phytobsa settings --set_data_dir <path-to-dir>")
     else:
-        raise ValueError("DATA_DIR is not set. Set the data directory using the command: ./phytobsa --data_dir <path-to-dir>")
-def setup_data_dir():
+        data_dir = os.path.join(data_dir_prefix, 'data')
+        return data_dir
+
+
+def setup_data_dir(): # Doesn't FileUtilities.setup_directory because of circular import...
+    '''
+    Sets up the data direcotry based on the path set in ./settings/config.ini
+    '''
     required_directories = (
         DATA_DIR, REFERENCE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR
     )
