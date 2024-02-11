@@ -21,7 +21,7 @@ def setup_vcf_variables(core_log, line, args):
     One can also directly edit config.ini in a text editor)
     '''
     vcf_vars = VCFGenVariables(
-        core_log, 
+        logger=core_log, 
         lines=line,
         reference_genome_path=args.reference_genome_path, 
         reference_genome_source=args.reference_genome_source,
@@ -42,7 +42,7 @@ def setup_bsa_variables(core_log, lines, args):
     directly edit config.ini in a text editor)
     '''
     bsa_vars = BSAVariables(
-        core_log, 
+        logger=core_log, 
         lines=lines, 
         loess_span=args.loess_span, 
         smooth_edges_bounds=args.smooth_edges_bounds, 
@@ -121,12 +121,11 @@ def main():
         #automatically generate Lines from files in Input, if formatted properly
         auto_vars = AutomaticLineVariableDetector(core_log)
         auto_vars.automatic_line_variables()
-
         #process line & args, prep variables needed for runtime + more checks
         vcf_vars = setup_vcf_variables(core_log, auto_vars.lines, args)
-        
         #Pass vcf_vars Class instance to the VCF generater & run
         vcf_gen = VCFGenerator(core_log, vcf_vars)
+
         vcf_gen.run_subprocess()
         
         # Pass "Lines" used in vcf_gen instance to bsa_vars.
