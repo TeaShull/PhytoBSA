@@ -8,10 +8,8 @@ import sqlite3
 
 
 class FileUtilities:
-    
     def __init__(self, logger):
         self.log = logger 
-
 
     def setup_directory(self, directory):
         '''
@@ -36,7 +34,6 @@ class FileUtilities:
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
-
     def process_path(self, directories: list, path: str) -> str:
         if os.path.exists(path):
             self.log.note(f'Path found and assigned: {path}')
@@ -52,7 +49,6 @@ class FileUtilities:
             self.log.fail(f'Path not found in any of the provided directories or the hard coded ({path}). Aborting')
             return None
 
-
     def extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')
         match = ulid_pattern.search(file_path)
@@ -63,10 +59,8 @@ class FileUtilities:
 
 
 class LogDbUtilites:
-
     def __init__(self):
         self.conn = sqlite3.connect(LOG_DATABASE_PATH)
-
 
     def print_analysis_log_data(self, ulid):
         """Retrieve the paths based on the analysis ID"""
@@ -92,7 +86,6 @@ class LogDbUtilites:
         else:
             print(f"No database entry found for {ulid}")
 
-
     def print_vcf_log_data(self, ulid):
         cursor = self.conn.execute('''
         SELECT * FROM vcf 
@@ -112,48 +105,58 @@ class LogDbUtilites:
         else:
             print(f"No database entry found for {ulid}")
 
-
     def print_line_name_data(self, line_name):
         """Retrieve all entries based on the line name"""
         cursor = self.conn.execute('''
         SELECT vcf.*, analysis.* 
             FROM vcf 
-            INNER JOIN analysis 
+            LEFT JOIN analysis 
             ON vcf.name = analysis.name 
             WHERE vcf.name = ?
-        ''', (line_name,))
+        UNION ALL
+        SELECT vcf.*, analysis.* 
+            FROM analysis 
+            LEFT JOIN vcf 
+            ON analysis.name = vcf.name 
+            WHERE analysis.name = ?
+        ''', (line_name, line_name,))
         results = cursor.fetchall()
 
         if results:
             for result in results:
                 print("\nVCF Data:")
-                print(f"vcf_ulid: {result[0]}")
-                print(f"vcf_log_path: {result[1]}")
-                print(f"vcf_timestamp: {result[2]}")
-                print(f"name: {result[3]}")
-                print(f"core_ulid: {result[4]}")
-                print(f"reference_genome_path: {result[5]}")
-                print(f"snpeff_species_db: {result[6]}")
-                print(f"reference_genome_source: {result[7]}")
-                print(f"threads_limit: {result[8]}")
+                if result[0] is not None:
+                    print(f"vcf_ulid: {result[0]}")
+                    print(f"vcf_log_path: {result[1]}")
+                    print(f"vcf_timestamp: {result[2]}")
+                    print(f"name: {result[3]}")
+                    print(f"core_ulid: {result[4]}")
+                    print(f"reference_genome_path: {result[5]}")
+                    print(f"snpeff_species_db: {result[6]}")
+                    print(f"reference_genome_source: {result[7]}")
+                    print(f"threads_limit: {result[8]}")
+                else:
+                    print("No VCF data found for this line name.")
 
                 print("\nAnalysis Data:")
-                print(f"analysis_ulid: {result[9]}")
-                print(f"analysis_log_path: {result[10]}")
-                print(f"analysis_timestamp: {result[11]}")
-                print(f"name: {result[12]}")
-                print(f"core_ulid: {result[13]}")
-                print(f"vcf_ulid: {result[14]}")
-                print(f"ratio_cutoff: {result[15]}")
-                print(f"loess_span: {result[16]}")
-                print(f"smooth_edges_bounds: {result[17]}")
-                print(f"filter_indels: {result[18]}")
-                print(f"filter_ems: {result[19]}")
-                print(f"snpmask_path: {result[20]}")
+                if result[9] is not None:
+                    print(f"analysis_ulid: {result[9]}")
+                    print(f"analysis_log_path: {result[10]}")
+                    print(f"analysis_timestamp: {result[11]}")
+                    print(f"name: {result[12]}")
+                    print(f"core_ulid: {result[13]}")
+                    print(f"vcf_ulid: {result[14]}")
+                    print(f"ratio_cutoff: {result[15]}")
+                    print(f"loess_span: {result[16]}")
+                    print(f"smooth_edges_bounds: {result[17]}")
+                    print(f"filter_indels: {result[18]}")
+                    print(f"filter_ems: {result[19]}")
+                    print(f"snpmask_path: {result[20]}")
+                else:
+                    print("No analysis data found for this line name.")
                 print("\n")  # for separating different entries
         else:
             print("No results found for this line name.")
-
 
     def print_core_ulid_data(self, core_ulid):
         """Retrieve all entries based on the core ulid"""
@@ -164,7 +167,7 @@ class LogDbUtilites:
             ON core.core_ulid = vcf.core_ulid 
             LEFT JOIN analysis 
             ON core.core_ulid = analysis.core_ulid 
-            WHERE core.core_ulid =
+            WHERE core.core_ulid = ?
         ''', (core_ulid,))
         results = cursor.fetchall()
 
@@ -181,24 +184,26 @@ class LogDbUtilites:
                     print(f"vcf_log_path: {result[4]}")
                     print(f"vcf_timestamp: {result[5]}")
                     print(f"name: {result[6]}")
-                    print(f"reference_genome_path: {result[7]}")
-                    print(f"snpeff_species_db: {result[8]}")
-                    print(f"reference_genome_source: {result[9]}")
-                    print(f"threads_limit: {result[10]}")
+                    print(f"core_ulid: {result[7]}")
+                    print(f"reference_genome_path: {result[8]}")
+                    print(f"snpeff_species_db: {result[9]}")
+                    print(f"reference_genome_source: {result[10]}")
+                    print(f"threads_limit: {result[11]}")
 
-                if result[11] is not None:
+                if result[12] is not None:
                     print("\nAnalysis Data:")
-                    print(f"analysis_ulid: {result[11]}")
-                    print(f"analysis_log_path: {result[12]}")
-                    print(f"analysis_timestamp: {result[13]}")
-                    print(f"name: {result[14]}")
-                    print(f"vcf_ulid: {result[15]}")
-                    print(f"ratio_cutoff: {result[16]}")
-                    print(f"loess_span: {result[17]}")
-                    print(f"smooth_edges_bounds: {result[18]}")
-                    print(f"filter_indels: {result[19]}")
-                    print(f"filter_ems: {result[20]}")
-                    print(f"snpmask_path: {result[21]}")
+                    print(f"analysis_ulid: {result[12]}")
+                    print(f"analysis_log_path: {result[13]}")
+                    print(f"analysis_timestamp: {result[14]}")
+                    print(f"name: {result[15]}")
+                    print(f"core_ulid:{result[16]}")
+                    print(f"vcf_ulid: {result[17]}")
+                    print(f"ratio_cutoff: {result[18]}")
+                    print(f"loess_span: {result[19]}")
+                    print(f"smooth_edges_bounds: {result[20]}")
+                    print(f"filter_indels: {result[21]}")
+                    print(f"filter_ems: {result[22]}")
+                    print(f"snpmask_path: {result[23]}")
 
                 print("\n")  # for separating different entries
         else:

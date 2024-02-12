@@ -20,7 +20,6 @@ class ULID:
     def __init__(self):
         self.PY3 = sys.version_info[0] == 3
         
-
     def encode_time_10bytes(self, x):
         s = ''
         while len(s) < 10:
@@ -28,7 +27,6 @@ class ULID:
             s = self.ENCODING[i] + s
         return s
     
-
     def encode_random_16bytes(self):
         b = os.urandom(10)
         x = int(codecs.encode(b, 'hex') if self.PY3 else b.encode('hex'), 16)
@@ -38,7 +36,6 @@ class ULID:
             s = self.ENCODING[i] + s
         return s
     
-
     def convert(self, chars):
         i = 0
         n = len(chars)-1
@@ -46,17 +43,14 @@ class ULID:
             i = i + 32**(n-k) * self.ENCODING.index(c)
         return i
     
-
     def seconds(self, ulid):
         """ return the timestamp from a ulid """
         return 0.001*self.convert(ulid[:10])
-    
 
     def sharding(self, ulid, partitions):
         """ return a sharting partition where to store the ulid"""
         return self.convert(ulid[-16:]) % partitions
     
-
     def generate_ulid(self):
         timestamp = int(time.time()*1000)
         encoded_time = self.encode_time_10bytes(timestamp)
@@ -65,7 +59,6 @@ class ULID:
 
 
 class LogHandler:
-    
     def __init__(self, log_name):
         # Initialize log file parameters
         self.log_name = log_name 
@@ -92,7 +85,6 @@ class LogHandler:
         log path: {self.log_path}
                 """)
 
-
     def setup_logger(self):
         """Initialize logger, which is designed to be passed to class instances 
         so that logging can be passed around to new functionalities as the program expands."""
@@ -111,7 +103,6 @@ class LogHandler:
         logger.addHandler(file_handler)
 
         return logger
-
 
     def _obtain_execution_frames(self)->tuple:
         """
@@ -135,7 +126,6 @@ class LogHandler:
         
         return script_name, function_name
 
-
     def _construct_message(self, prefix, script_name, function_name, message_in)->str:
         """
         Constructs the log messages. 
@@ -156,7 +146,6 @@ class LogHandler:
         else:
             message_out = f"{log_handler_timestamp} {prefix} ({script_name}> module) {message_in}"
         return message_out 
-
     ## LOG MESSAGE TYPES
     def trigger(self, message):
         """
@@ -179,7 +168,6 @@ class LogHandler:
         self.logger.info(log_message)
         print(log_message)
 
-
     def attempt(self, message):
         script_name, function_name = self._obtain_execution_frames()
         log_message = self._construct_message(
@@ -187,7 +175,6 @@ class LogHandler:
         )
         self.logger.info(log_message)
         print(log_message)
-
 
     def success(self, message):
         script_name, function_name = self._obtain_execution_frames()
@@ -197,7 +184,6 @@ class LogHandler:
         self.logger.info(log_message)
         print(log_message)
 
-
     def note(self, message):
         script_name, function_name = self._obtain_execution_frames()
         log_message = self._construct_message(
@@ -205,7 +191,6 @@ class LogHandler:
         )
         self.logger.info(log_message)
         print(log_message)
-
 
     def fail(self, message):
         script_name, function_name = self._obtain_execution_frames()
@@ -216,7 +201,6 @@ class LogHandler:
         print(log_message)
         quit()
 
-
     def warning(self, message):
         script_name, function_name = self._obtain_execution_frames()
         log_message = self._construct_message(
@@ -224,7 +208,6 @@ class LogHandler:
         )
         self.logger.info(log_message)
         print(log_message)
-
 
     def bash(self, message):
         script_name, function_name = self._obtain_execution_frames()
@@ -234,11 +217,9 @@ class LogHandler:
         self.logger.info(log_message)
         print(log_message)
 
-
     def print(self,message):
         self.logger.info(message)
         print(message)
-
 
     def delimiter(self, message):
         delimiter_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
@@ -312,7 +293,6 @@ class LogHandler:
         
         except Exception as e:
             print(f'There was an error during table creation: {e}')
-
 
     def add_db_record(self, **kwargs):
         """

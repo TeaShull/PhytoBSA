@@ -11,7 +11,6 @@ from multiprocessing import Pool
 from modules.utilities_logging import LogHandler
 from modules.utilities_general import FileUtilities
 
-
 """
 Core module for bsa analysis
 Input variable class: BSA_variables from utilities_variables module.
@@ -19,12 +18,10 @@ The read-depth analysis between the wild-type and mutant bulks are stored here.
 """
     
 class BSA:
-    
     def __init__(self, logger, bsa_vars):
         #AnalysisVariables class passed to function. 
         self.log = logger #pass core_log from main phytobsa script
         self.bsa_vars = bsa_vars
-
 
     def __call__(self):
         smoothing_function = sm.nonparametric.lowess
@@ -118,12 +115,10 @@ class BSA:
 
 
 class DataFiltering:
-    
     def __init__ (self, logger, name):
         self.log = logger
         self.name = name
     
-
     def drop_indels(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Drops insertion/deletions from VCF dataframe.
@@ -150,7 +145,6 @@ class DataFiltering:
         except KeyError:
             self.log.fail("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
     
-
     def drop_na(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Drops rows with NaN values from VCF dataframe.
@@ -172,7 +166,6 @@ class DataFiltering:
         self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
         
         return vcf_df
-
 
     def filter_genotypes(self, segregation_type: str, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
@@ -230,7 +223,6 @@ class DataFiltering:
         except Exception as e:
             self.log.fail(f'There was an error while filtering genotypes:{e}')        
 
-
     def filter_ems_mutations(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Filter mutations likely to be from EMS for analysis and return a filtered DataFrame.
@@ -254,7 +246,6 @@ class DataFiltering:
         self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
         
         return vcf_df
-
 
     def drop_genos_below_ratio_cutoff(self, vcf_df: pd.DataFrame, ratio_cutoff)-> pd.DataFrame:
         '''
@@ -280,7 +271,6 @@ class DataFiltering:
 
         except Exception as e:
             self.log.fail(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
-
 
     def mask_known_snps(self, snpmask_df: pd.DataFrame, vcf_df: pd.DataFrame) -> pd.DataFrame:
         '''
@@ -322,12 +312,12 @@ class DataFiltering:
             self.log.error(f"There was an error while filtering known snps. {e}")
 
 
-class FeatureProduction:
+class FeatureProduction:    
     def __init__(self, logger, name):
         self.log = logger
         
         self.name = name
-
+    
     @staticmethod
     def _delta_snp_array(wtr: np.ndarray, wta:np.ndarray, mur: np.ndarray, mua: np.ndarray)-> np.ndarray:
         """
@@ -345,7 +335,7 @@ class FeatureProduction:
         """ 
 
         return ((wtr) / (wtr + wta)) - ((mur) / (mur + mua))
-
+    
     @staticmethod
     def _g_statistic_array(wtr: np.ndarray, wta: np.ndarray, mur: np.ndarray, mua: np.ndarray)->np.ndarray:
         """
@@ -368,7 +358,6 @@ class FeatureProduction:
         llr4 = np.where(mua / e4 > 0, 2 * mua * np.log(mua / e4), 0.0)
 
         return np.where(e1 * e2 * e3 * e4 == 0, 0.0, llr1 + llr2 + llr3 + llr4)
-   
 
     def calculate_delta_snp_and_g_statistic(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
@@ -414,7 +403,6 @@ class FeatureProduction:
         
         except Exception as e:
             self.log.fail(f"An error occurred during calculation: {e}")
-
 
     def _fit_chr_facets(self, vcf_df:pd.DataFrame, smoothing_function, loess_span: float, smooth_edges_bounds: int)->pd.DataFrame:
         """
@@ -514,8 +502,7 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail(f'There was an error during LOESS smoothing of chromosome facets:{e}')
 
-            return None
-    
+            return None    
     
     def fit_model(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, smooth_edges_bounds: int)->pd.DataFrame:
         """
@@ -540,7 +527,6 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
-
     @staticmethod
     def _null_model(vcf_df_position: pd.DataFrame, vcf_df_wt: pd.DataFrame, vcf_df_mu: pd.DataFrame, smoothing_function, loess_span: float, ratio_cutoff: float):
         """
@@ -591,8 +577,6 @@ class FeatureProduction:
         smRS_G_y = smoothing_function(smRS_G, smPos, frac=loess_span)[:, 1]
 
         return smGstat, smRatio, smRS_G, smRS_G_y
-
-
 
     def calculate_null_model(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
         self.log.attempt('Bootstrapping to generate null model...')
@@ -671,8 +655,6 @@ class FeatureProduction:
 
             return None, None, None, None
 
-
-
     def label_df_with_cutoffs(self, vcf_df: pd.DataFrame, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff:float)->pd.DataFrame:
         
         try:
@@ -695,12 +677,10 @@ class FeatureProduction:
 
 
 class TableAndPlots:
-    
     def __init__(self, logger, name, analysis_out_prefix):
         self.log = logger
         self.name = name
         self.analysis_out_prefix = analysis_out_prefix
-
 
     def _identify_likely_candidates(self, vcf_df):
         try:
@@ -715,7 +695,6 @@ class TableAndPlots:
 
         except KeyError as e:
             self.log.fail(f"Column {e} not found in DataFrame. Please ensure column names are correct.")
-
 
     def _sort_likely_candidates(self, df):
         """
@@ -745,7 +724,6 @@ class TableAndPlots:
         except KeyError as e:
             self.log.fail(f"Column {e} not found in DataFrame. Please ensure column names are correct.")
 
-
     def _save_candidates(self, vcf_df, cands_df):
         """
         Saves the DataFrame of likely candidates to a CSV file.
@@ -759,31 +737,12 @@ class TableAndPlots:
         except Exception as e:
             self.log.fail(f"Failed to save likely candidates: {e}")
         
-
     def sort_save_likely_candidates(self, vcf_df):
         likely_cands = self._identify_likely_candidates(vcf_df)
         likely_cands = self._sort_likely_candidates(likely_cands)
         self._save_candidates(vcf_df, likely_cands)
 
         return vcf_df
-
-
-    def generate_plots(self, vcf_df, gs_cutoff: float, rs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff: float):
-        plot_scenarios = [
-            ('G_S', 'G-statistic', 'G-statistic', gs_cutoff, False),
-            ('GS_yhat', 'Fitted G-statistic', 'Fitted G-statistic', None, True),
-            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', rsg_cutoff, False),
-            ('ratio', 'Delta SNP ratio', 'Ratio', rs_cutoff, False),
-            ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
-            ('RS_G_yhat', 'Fitted ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True)
-        ]
-
-        for plot_scenario in plot_scenarios:
-            plot_created = self._create_plot(vcf_df, *plot_scenario)
-
-            if plot_created is not None:
-                self._save_plot(plot_created, *plot_scenario)
-
 
     def _create_plot(self, vcf_df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
         try:
@@ -829,7 +788,6 @@ class TableAndPlots:
             self.log.fail(f"Plot creation failed for {self.name}, column {y_column}: {e}")
             return None
 
-
     def _save_plot(self, plot, y_column, *args):
         try:
             plot_path = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
@@ -840,3 +798,19 @@ class TableAndPlots:
         except Exception as e:
             self.log.fail(f"Saving plot failed for {self.name}, column {y_column}: {e}")
             return False
+
+    def generate_plots(self, vcf_df, gs_cutoff: float, rs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff: float):
+        plot_scenarios = [
+            ('G_S', 'G-statistic', 'G-statistic', gs_cutoff, False),
+            ('GS_yhat', 'Fitted G-statistic', 'Fitted G-statistic', None, True),
+            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', rsg_cutoff, False),
+            ('ratio', 'Delta SNP ratio', 'Ratio', rs_cutoff, False),
+            ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
+            ('RS_G_yhat', 'Fitted ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', rsg_y_cutoff, True)
+        ]
+
+        for plot_scenario in plot_scenarios:
+            plot_created = self._create_plot(vcf_df, *plot_scenario)
+
+            if plot_created is not None:
+                self._save_plot(plot_created, *plot_scenario)
