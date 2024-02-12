@@ -125,7 +125,7 @@ class AutomaticLineVariableDetector:
             
             self.log.note("Sorting file paths...")
             self._sort_file_paths()
-            self.log.success(f'Line and run details generated.')
+            self.log.success(f'Line and run details generated from input directory:{INPUT_DIR}.')
         
         except Exception as e:
             self.log.fail(f"Error while detecting line and run details: {e}")

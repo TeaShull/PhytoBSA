@@ -8,7 +8,7 @@ import sqlite3
 
 
 class FileUtilities:
-    # Utility class: Handling file operations and inputs. 
+    
     def __init__(self, logger):
         self.log = logger 
 
@@ -63,7 +63,7 @@ class FileUtilities:
 
 
 class LogDbUtilites:
-    # Utility class: retrieving log information from the log database
+
     def __init__(self):
         self.conn = sqlite3.connect(LOG_DATABASE_PATH)
 
