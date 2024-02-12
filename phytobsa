@@ -26,7 +26,7 @@ def setup_vcf_variables(core_log, line, args):
         reference_genome_path=args.reference_genome_path, 
         reference_genome_source=args.reference_genome_source,
         omit_chrs_patterns=args.omit_chrs_patterns,
-        snpEff_species_db=args.snpEff_species_db,
+        snpeff_species_db=args.snpeff_species_db,
         threads_limit=args.threads_limit, 
         call_variants_in_parallel=args.call_variants_in_parallel,
         cleanup=args.cleanup,
@@ -94,7 +94,7 @@ def main():
         
         # pass bsa_vars Class instance to the BSA pipeline, and run
         bsa = BSA(core_log, bsa_vars)    
-        bsa.run_pipeline()
+        bsa() #run pipeline
     
     elif args.command == 'vcf_generator':
         
@@ -115,25 +115,26 @@ def main():
         
         #Pass vcf_vars Class instance to the VCF generater and run
         vcf_gen = VCFGenerator(core_log, vcf_vars)
-        vcf_gen.run_subprocess()
+        vcf_gen() #run subprocess
 
     elif args.automatic:
         #automatically generate Lines from files in Input, if formatted properly
         auto_vars = AutomaticLineVariableDetector(core_log)
-        auto_vars.automatic_line_variables()
+        auto_vars() #Generate variables
+        
         #process line & args, prep variables needed for runtime + more checks
         vcf_vars = setup_vcf_variables(core_log, auto_vars.lines, args)
+        
         #Pass vcf_vars Class instance to the VCF generater & run
         vcf_gen = VCFGenerator(core_log, vcf_vars)
-
-        vcf_gen.run_subprocess()
+        vcf_gen()#run subprocess
         
         # Pass "Lines" used in vcf_gen instance to bsa_vars.
         bsa_vars = setup_bsa_variables(core_log, vcf_gen.vcf_vars.lines, args)
         
         #Pass bsa_vars containing lines from vcf_gen step & run BSA pipeline
         bsa = BSA(core_log, bsa_vars)
-        bsa.run_pipeline()
+        bsa() #run pipeline
 
     elif args.command == 'logdb':
         logdb_utils = LogDbUtilites()

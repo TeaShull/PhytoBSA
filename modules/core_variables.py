@@ -30,6 +30,7 @@ class Lines:
         'snpeff_report_path', 'rs_cutoff', 'snpmask_df'
     ]
 
+
     def __init__(self, logger, name):
         self.log = logger
 
@@ -112,6 +113,23 @@ class AutomaticLineVariableDetector:
         self.lines = []
 
 
+    def __call__(self):
+        self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
+        try:
+            for filename in os.listdir(INPUT_DIR):
+                print(" ")
+                self.log.attempt(f"Parsing {filename}....")
+                self._process_file(filename)
+                self.log.success(f"{filename} parsed!")
+            
+            self.log.note("Sorting file paths...")
+            self._sort_file_paths()
+            self.log.success(f'Line and run details generated.')
+        
+        except Exception as e:
+            self.log.fail(f"Error while detecting line and run details: {e}")
+
+
     def _parse_filename(self, filename):
         parts = filename.split('.')
         name = parts[0]
@@ -175,38 +193,21 @@ class AutomaticLineVariableDetector:
             line.wt_input = sorted_wt_inputs
             line.mu_input = sorted_mu_inputs
 
-
-    def automatic_line_variables(self):
-        self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
-        try:
-            for filename in os.listdir(INPUT_DIR):
-                print(" ")
-                self.log.attempt(f"Parsing {filename}....")
-                self._process_file(filename)
-                self.log.success(f"{filename} parsed!")
-            
-            self.log.note("Sorting file paths...")
-            self._sort_file_paths()
-            self.log.success(f'Line and run details generated.')
-        
-        except Exception as e:
-            self.log.fail(f"Error while detecting line and run details: {e}")
-
-
 class VCFGenVariables:
     __slots__ = ['log', 'lines', 'reference_genome_path', 
-        'reference_genome_source', 'omit_chrs_patterns', 'snpEff_species_db', 
+        'reference_genome_source', 'omit_chrs_patterns', 'snpeff_species_db', 
         'threads_limit', 'call_variants_in_parallel', 'cleanup', 
         'cleanup_filetypes', 'reference_chrs_fa_path', 
         'reference_chrs_dict_path'
     ]
     
+
     def __init__(self, logger,
         lines, 
         reference_genome_path, 
         reference_genome_source,
         omit_chrs_patterns,
-        snpEff_species_db,
+        snpeff_species_db,
         threads_limit, 
         call_variants_in_parallel, 
         cleanup, 
@@ -218,7 +219,7 @@ class VCFGenVariables:
         self.reference_genome_path = reference_genome_path
         self.reference_genome_source = reference_genome_source
         self.omit_chrs_patterns = omit_chrs_patterns
-        self.snpEff_species_db = snpEff_species_db
+        self.snpeff_species_db = snpeff_species_db
         self.threads_limit = threads_limit
         self.call_variants_in_parallel = call_variants_in_parallel
         self.cleanup = cleanup
@@ -243,7 +244,7 @@ class VCFGenVariables:
             line.snpsift_out_path,
             self.reference_chrs_fa_path, #made in modules.core_vcf_gen
             self.reference_chrs_dict_path, #made in modules.core_vcf_gen
-            self.snpEff_species_db,
+            self.snpeff_species_db,
             self.threads_limit,
             self.call_variants_in_parallel,
             self.cleanup
@@ -293,6 +294,7 @@ class VCFGenVariables:
             )
         except Exception as e:
             self.log.fail(f"Error generating VCF output paths: {e}")
+
 
     def _get_ref_name(self, file_path):
         self.log.attempt('Attempting to retrieve reference base name from inputs...')

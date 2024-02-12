@@ -65,16 +65,16 @@ class ULID:
 
 
 class LogHandler:
-    def __init__(self, name):
+    def __init__(self, log_name):
         # Initialize log file parameters
-        self.name = name 
+        self.log_name = log_name 
         self.init_timestamp = datetime.now().strftime("%Y.%m.%d-%H.%M")
         
         ulid_generator = ULID()
         self.ulid = ulid_generator.generate_ulid()
         
         # Construct log filename and spin up logger
-        self.log_filename = f'{self.init_timestamp}_{self.name}_{self.ulid}.log'
+        self.log_filename = f'{self.init_timestamp}_{self.log_name}_{self.ulid}.log'
         self.log_path = os.path.join(LOG_DIR, self.log_filename)
         self.logger = self.setup_logger()
 
@@ -85,7 +85,7 @@ class LogHandler:
         #Add some initilization notes at the beginning of every log
         self.print(
         f"""
-        log name: {name}
+        log name: {log_name}
         ulid: {self.ulid}
         log filename: {self.log_filename}
         log path: {self.log_path}
@@ -95,7 +95,7 @@ class LogHandler:
     def setup_logger(self):
         """Initialize logger, which is designed to be passed to class instances 
         so that logging can be passed around to new functionalities as the program expands."""
-        logger = logging.getLogger(self.name)
+        logger = logging.getLogger(self.log_name)
         logger.setLevel(logging.INFO)  # Set the default level for the logger
 
         # Create a FileHandler and set the level to INFO
@@ -258,42 +258,48 @@ class LogHandler:
     def _create_tables(self):
         """
         Creates the tables for the log database.
-
-        Args:
-        None
-
-        Returns:
-        None.
         """
         create_core = '''
             CREATE TABLE IF NOT EXISTS core (
-                core_ulid TEXT,
+                core_ulid TEXT PRIMARY KEY,
                 core_log_path TEXT,
-                core_timestamp TEXT,
-                PRIMARY KEY(core_ulid)
+                core_timestamp TEXT
             )
         '''
 
         create_vcf = '''
             CREATE TABLE IF NOT EXISTS vcf (
                 vcf_ulid TEXT,
-                line_name TEXT,
-                core_ulid TEXT,
                 vcf_log_path TEXT,
                 vcf_timestamp TEXT,
-                PRIMARY KEY (vcf_ulid, line_name)
+                name TEXT,
+                core_ulid TEXT,
+                reference_genome_path TEXT,
+                snpeff_species_db TEXT,
+                reference_genome_source TEXT,
+                threads_limit INT,
+                PRIMARY KEY (vcf_ulid, name),
+                FOREIGN KEY (core_ulid) REFERENCES core(core_ulid)
             )
         '''
 
         create_analysis = '''
             CREATE TABLE IF NOT EXISTS analysis (
                 analysis_ulid TEXT,
-                line_name TEXT,
-                core_ulid TEXT,
-                vcf_ulid TEXT,
                 analysis_log_path TEXT,
                 analysis_timestamp TEXT,
-                PRIMARY KEY (analysis_ulid, line_name)
+                name TEXT,
+                core_ulid TEXT,
+                vcf_ulid TEXT,
+                ratio_cutoff FLOAT,
+                loess_span FLOAT, 
+                smooth_edges_bounds INT,
+                filter_indels TEXT,
+                filter_ems TEXT,
+                snpmask_path TEXT,
+                PRIMARY KEY (analysis_ulid, name),
+                FOREIGN KEY (core_ulid) REFERENCES core(core_ulid),
+                FOREIGN KEY (vcf_ulid) REFERENCES vcf(vcf_ulid)
             )
         '''
 
@@ -307,69 +313,99 @@ class LogHandler:
             print(f'There was an error during table creation: {e}')
 
 
-    def add_db_record(
-        self, current_line_name=None, core_ulid=None, vcf_ulid=None
-    ):
+    def add_db_record(self, **kwargs):
         """
         Adds records to the log database. 
-
-        Args: 
-        for 'core', 
-            None  
-
-        for 'vcf', 
-            current_line_name(str)
-            core_ulid are necissary(str) 
-
-        for 'analysis', 
-            current_line_name(str)
-            core_ulid(str) 
-            vcf_ulid(str) 
-
-        Returns: 
-            None
-        It just adds logs with the inputted information, along with information
-        gathered from the current instance of the LogHandler class
         """
 
-        try:
-            if self.name == 'core':
-                add = '''
-                    INSERT INTO core (core_ulid, core_log_path, core_timestamp)
-                    VALUES(?, ?, ?)
-                '''
-                values = (self.ulid, self.log_path, self.init_timestamp)
-            
-            elif self.name == f'vcf_{current_line_name}':
-                add = '''
-                    INSERT INTO vcf (vcf_ulid, line_name, core_ulid, 
-                        vcf_log_path, vcf_timestamp
-                    )
-                    VALUES (?, ?, ?, ?, ?)
-                '''
-                values = (self.ulid, current_line_name, core_ulid, 
-                    self.log_path, self.init_timestamp
-                    )
-            
-            elif self.name == f'analysis_{current_line_name}':
-                add = '''
-                    INSERT INTO analysis (
-                        analysis_ulid, line_name, core_ulid, 
-                        vcf_ulid, analysis_log_path, analysis_timestamp
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                '''
-                values = (
-                    self.ulid, current_line_name, core_ulid, 
-                    vcf_ulid, self.log_path, self.init_timestamp
+        if self.log_name == 'core':
+            add = '''
+                INSERT INTO core (
+                    core_ulid, 
+                    core_log_path, 
+                    core_timestamp
                 )
-            
-            else:
-                raise ValueError("Invalid table name")
+                VALUES(?, ?, ?)
+            '''
+            values = (
+                self.ulid, 
+                self.log_path, 
+                self.init_timestamp)
 
+        elif self.log_name.startswith('vcf_'):
+            add = '''
+                INSERT INTO vcf (
+                    vcf_ulid, 
+                    vcf_log_path, 
+                    vcf_timestamp, 
+                    name, 
+                    core_ulid, 
+                    reference_genome_path, 
+                    snpeff_species_db, 
+                    reference_genome_source,
+                    threads_limit
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            '''
+
+            try:
+                values = (
+                    self.ulid, 
+                    self.log_path, 
+                    self.init_timestamp, 
+                    kwargs['name'], 
+                    kwargs['core_ulid'], 
+                    kwargs['reference_genome_path'], 
+                    kwargs['snpeff_species_db'], 
+                    kwargs['reference_genome_source'],
+                    kwargs['threads_limit']
+                )
+            except KeyError as e:
+                raise ValueError(f"Missing required argument: {e}")
+
+        elif self.log_name.startswith('analysis_'):
+            add = '''
+                INSERT INTO analysis (
+                    analysis_ulid, 
+                    analysis_log_path, 
+                    analysis_timestamp,
+                    name, 
+                    core_ulid, 
+                    vcf_ulid,  
+                    ratio_cutoff, 
+                    loess_span, 
+                    smooth_edges_bounds, 
+                    filter_indels, 
+                    filter_ems, 
+                    snpmask_path
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            '''
+
+            try:
+                values = (
+                    self.ulid, 
+                    self.log_path, 
+                    self.init_timestamp, 
+                    kwargs['name'], 
+                    kwargs['core_ulid'], 
+                    kwargs['vcf_ulid'], 
+                    kwargs['ratio_cutoff'], 
+                    kwargs['loess_span'], 
+                    kwargs['smooth_edges_bounds'], 
+                    kwargs['filter_indels'], 
+                    kwargs['filter_ems'], 
+                    kwargs['snpmask_path']
+                )
+            except KeyError as e:
+                raise ValueError(f"Missing required argument: {e}")
+
+        else:
+            raise ValueError("Invalid table name")
+
+        try:
             self.conn.execute(add, values)
             self.conn.commit()
-            self.conn.close()
-        
         except Exception as e:
-            print(f'There was an error adding entries to database:{e}')
+            print(f'There was an error adding entries to database: {e}')
+

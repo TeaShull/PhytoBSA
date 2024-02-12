@@ -25,7 +25,8 @@ class VCFGenerator:
         self.vcf_vars = vcf_vars
         self.log = logger #pass core_log from main phytobsa script
 
-    def run_subprocess(self):
+
+    def __call__(self):
         """
         Input: Subprocess VCFgen.sh takes raw reads(wild-type(wt) 
         and mutant(mu)), either single or paired end and generates VCF table 
@@ -57,7 +58,15 @@ class VCFGenerator:
             self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
             vcf_log = LogHandler(f'vcf_{line.name}')
             line.vcf_ulid = vcf_log.ulid
-            vcf_log.add_db_record(line.name, line.vcf_ulid)
+            vcf_log.add_db_record(
+                name=line.name, 
+                core_ulid=self.log.ulid,
+                reference_genome_path=self.vcf_vars.reference_genome_path,
+                snpeff_species_db=self.vcf_vars.snpeff_species_db,
+                reference_genome_source=self.vcf_vars.reference_genome_source,
+                omit_chrs_patterns=self.vcf_vars.omit_chrs_patterns,
+                threads_limit=self.vcf_vars.threads_limit
+            )
             
             #Generate output paths for process
             vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(

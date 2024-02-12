@@ -68,7 +68,7 @@ class ArgumentParser:
     def add_vcf_gen_arguments(self, parser):
         vcf_gen_options = parser.add_argument_group('VCF generation options', 'Options for VCF generation. Defaults can be changed using the settings positional argument phytobsa settings -h for more info')
         vcf_gen_options.add_argument('-rgn', '--reference_genome_path', required=False, default=None, type=str, help='Reference genome name')
-        vcf_gen_options.add_argument('-ssdb', '--snpEff_species_db', default=None, type=str, help = 'The name of your snpEff database name.')
+        vcf_gen_options.add_argument('-ssdb', '--snpeff_species_db', default=None, type=str, help = 'The name of your snpEff database name.')
         vcf_gen_options.add_argument('-rgs', '--reference_genome_source', default=None, type=str, help = 'Optional, if you wish the pipeline to download your reference from a url')
         vcf_gen_options.add_argument('-ks','--known_snps', default=None, type=str, help = 'VCF file containing background SNPs. Helps improve output quality')
         vcf_gen_options.add_argument('-t', '--threads_limit', default=None, type=str, help='Maximum threads you wish to use for analysis')
@@ -116,7 +116,7 @@ class ArgumentParser:
         #vcf_gen default run settings. 
         vcf_settings = parser_settings.add_argument_group('VCF generation default settings' 'These settings will be automatically applied if not explicity provided in automatic or VCF generation mode')
         vcf_settings.add_argument('--set_reference_genome_path', required=False, default=None, type=str, help='Set default reference genome name')
-        vcf_settings.add_argument('--set_snpEff_species_db', default=None, type=str, help = 'Set default snpEff database name.')
+        vcf_settings.add_argument('--set_snpeff_species_db', default=None, type=str, help = 'Set default snpEff database name.')
         vcf_settings.add_argument('--set_reference_genome_source', default=None, type=str, help = 'Set default reference genome source')
         vcf_settings.add_argument('--set_known_snps', default=None, type=str, help = 'Set default VCF file containing background SNPs.')
         vcf_settings.add_argument('--set_threads_limit', default=None, type=str, help='Set default maximum threads for analysis')

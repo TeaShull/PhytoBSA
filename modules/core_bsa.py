@@ -25,16 +25,27 @@ class BSA:
         self.bsa_vars = bsa_vars
 
 
-    def run_pipeline(self):
+    def __call__(self):
         smoothing_function = sm.nonparametric.lowess
 
         for line in self.bsa_vars.lines:
 
             self.log.delimiter(f'Initializing BSA pipeline log for {line.name}')
             bsa_log = LogHandler(f'analysis_{line.name}')
-            bsa_log.add_db_record(line, bsa_log.ulid, line.vcf_ulid)
             
             line.analysis_ulid = bsa_log.ulid 
+            bsa_log.add_db_record(
+                name = line.name, 
+                core_ulid = self.log.ulid, 
+                vcf_ulid = line.vcf_ulid, 
+                ratio_cutoff = self.bsa_vars.ratio_cutoff, 
+                loess_span = self.bsa_vars.loess_span, 
+                smooth_edges_bounds = self.bsa_vars.smooth_edges_bounds, 
+                filter_indels = self.bsa_vars.filter_indels, 
+                filter_ems = self.bsa_vars.filter_ems, 
+                snpmask_path = self.bsa_vars.snpmask_path
+            )
+
 
             #Extract vcf ulid from filename if needed. For standalone analysis runs
             if not line.vcf_ulid:
@@ -682,7 +693,6 @@ class FeatureProduction:
 
 
 class TableAndPlots:
-    
     def __init__(self, logger, name, analysis_out_prefix):
         self.log = logger
         self.name = name
