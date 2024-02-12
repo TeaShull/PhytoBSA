@@ -65,6 +65,7 @@ class ULID:
 
 
 class LogHandler:
+    
     def __init__(self, log_name):
         # Initialize log file parameters
         self.log_name = log_name 
@@ -156,7 +157,7 @@ class LogHandler:
             message_out = f"{log_handler_timestamp} {prefix} ({script_name}> module) {message_in}"
         return message_out 
 
-    ## MESSAGE TYPES
+    ## LOG MESSAGE TYPES
     def trigger(self, message):
         """
         log message type. 

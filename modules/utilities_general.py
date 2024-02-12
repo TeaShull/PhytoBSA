@@ -27,11 +27,11 @@ class FileUtilities:
         try: 
             # Check if the output directory exists, and create it if necessary
             if not os.path.exists(directory):
-                self.log.attempt(f"Directory does not exist. Creating: {directory}")
+                self.log.note(f"Directory does not exist. Creating: {directory}")
                 os.makedirs(directory)
                 self.log.success(f'Directory created: {directory}')
             else:
-                self.log.note(f"Directory already exists: {directory}")
+                self.log.success(f"Directory already exists: {directory}")
         
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')

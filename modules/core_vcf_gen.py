@@ -21,6 +21,7 @@ This module processes bulk segregant fasta files, and formats them for BSA.
 
 
 class VCFGenerator:
+    
     def __init__(self, logger, vcf_vars):
         self.vcf_vars = vcf_vars
         self.log = logger #pass core_log from main phytobsa script
@@ -172,6 +173,7 @@ class VCFGenerator:
 
 
 class VCFFormat:
+    
     def __init__(self, snpsift_out_path, vcf_table_path):
         self.snpsift_out_path = snpsift_out_path
         self.vcf_table_path = vcf_table_path

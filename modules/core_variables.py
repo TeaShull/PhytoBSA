@@ -108,6 +108,7 @@ class Lines:
 
 
 class AutomaticLineVariableDetector:
+    
     def __init__(self, logger):
         self.log = logger
         self.lines = []
@@ -194,6 +195,7 @@ class AutomaticLineVariableDetector:
             line.mu_input = sorted_mu_inputs
 
 class VCFGenVariables:
+    
     __slots__ = ['log', 'lines', 'reference_genome_path', 
         'reference_genome_source', 'omit_chrs_patterns', 'snpeff_species_db', 
         'threads_limit', 'call_variants_in_parallel', 'cleanup', 
@@ -366,6 +368,7 @@ class VCFGenVariables:
 
 
 class BSAVariables:
+
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
         'shuffle_iterations', 'filter_indels', 'filter_ems', 'snpmask_path', 
         'snpmask_df', 'ratio_cutoff'

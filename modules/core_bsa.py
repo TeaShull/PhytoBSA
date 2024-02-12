@@ -19,6 +19,7 @@ The read-depth analysis between the wild-type and mutant bulks are stored here.
 """
     
 class BSA:
+    
     def __init__(self, logger, bsa_vars):
         #AnalysisVariables class passed to function. 
         self.log = logger #pass core_log from main phytobsa script
@@ -117,6 +118,7 @@ class BSA:
 
 
 class DataFiltering:
+    
     def __init__ (self, logger, name):
         self.log = logger
         self.name = name
@@ -693,6 +695,7 @@ class FeatureProduction:
 
 
 class TableAndPlots:
+    
     def __init__(self, logger, name, analysis_out_prefix):
         self.log = logger
         self.name = name
