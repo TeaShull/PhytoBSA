@@ -22,7 +22,6 @@ class BSA:
     def __init__(self, logger, bsa_vars):
         #AnalysisVariables class passed to function. 
         self.log = logger #pass core_log from main phytobsa script
-        
         self.bsa_vars = bsa_vars
 
 
@@ -109,7 +108,6 @@ class BSA:
 class DataFiltering:
     def __init__ (self, logger, name):
         self.log = logger
-        
         self.name = name
     
 
@@ -130,10 +128,12 @@ class DataFiltering:
                 & ~(vcf_df["alt"].str.len() > 1)
             ]
             self.log.success("Indels dropped")
+            
             return vcf_df
         
         except AttributeError:
             self.log.fail("'ref' and 'alt' columns should only contain strings. VCF may not be properly formatted. Aborting...")
+        
         except KeyError:
             self.log.fail("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
     
@@ -191,9 +191,11 @@ class DataFiltering:
             if segregation_type == 'R':
                 self.log.note('Filtering genotypes based an a recessive segregation pattern')
                 seg_filter = ['1/1:0/1', '0/1:0/1']
+            
             elif segregation_type == 'D':
                 self.log.note('Filtering genotypes based an a dominant segregation pattern')
                 seg_filter = ['0/1:0/0', '0/1:0/1']  
+            
             else: 
                 self.log.fail(f'Allele type:{segregation_type} is not a valid selection! Aborting.')
             

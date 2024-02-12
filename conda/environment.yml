@@ -26,9 +26,9 @@ dependencies:
   - bwidget=1.9.14=ha770c72_1
   - bzip2=1.0.8=hd590300_5
   - c-ares=1.19.0=hd590300_0
-  - ca-certificates=2023.11.17=hbcca054_0
+  - ca-certificates=2024.2.2=hbcca054_0
   - cairo=1.18.0=h3faef2a_0
-  - certifi=2023.11.17=pyhd8ed1ab_0
+  - certifi=2024.2.2=pyhd8ed1ab_0
   - cffi=1.15.1=py311hb3a22ac_5
   - charset-normalizer=3.1.0=pyhd8ed1ab_0
   - click=8.1.7=unix_pyh707e725_0
@@ -164,7 +164,7 @@ dependencies:
   - numpy=1.24.3=py311h64a7726_0
   - openjdk=17.0.9=h4260e57_0
   - openjpeg=2.5.0=h488ebb8_3
-  - openssl=3.2.0=hd590300_1
+  - openssl=3.2.1=hd590300_0
   - packaging=23.1=pyhd8ed1ab_0
   - pandas=2.0.1=py311h320fe9a_1
   - pango=1.50.14=ha41ecd1_2
@@ -211,6 +211,7 @@ dependencies:
   - python-utils=3.8.1=pyhd8ed1ab_0
   - python_abi=3.11=4_cp311
   - pytz=2023.3.post1=pyhd8ed1ab_0
+  - pyvcf=0.6.8=py311h38be061_1003
   - pyvcf3=1.0.3=pyhdfd78af_0
   - pyzmq=25.1.0=py311h75c88c4_0
   - qt-main=5.15.8=h450f30e_18
@@ -275,3 +276,4 @@ dependencies:
   - zipp=3.15.0=pyhd8ed1ab_0
   - zlib=1.2.13=hd590300_5
   - zstd=1.5.5=hfc55251_0
+prefix: /opt/mambaforge/envs/phytobsa
