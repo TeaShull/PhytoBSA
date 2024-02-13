@@ -656,15 +656,14 @@ class FeatureProduction:
             return None, None, None, None
 
     def label_df_with_cutoffs(self, vcf_df: pd.DataFrame, gs_cutoff: float, rsg_cutoff: float, rsg_y_cutoff:float)->pd.DataFrame:
-        
         try:
-            vcf_df['G_S_05p'] = [1 if (np.isclose(x, gs_cutoff) 
+            vcf_df['G_S_05p_delta'] = [x - gs_cutoff if (np.isclose(x, gs_cutoff) 
                 or (x > gs_cutoff)) else 0 for x in vcf_df['G_S']
             ]
-            vcf_df['RS_G_05p'] = [1 if (np.isclose(x, rsg_cutoff) 
+            vcf_df['RS_G_05p_delta'] = [x - rsg_cutoff if (np.isclose(x, rsg_cutoff) 
                 or (x > rsg_cutoff)) else 0 for x in vcf_df['RS_G']
             ]
-            vcf_df['RS_G_yhat_01p'] = [1 if (np.isclose(x, rsg_y_cutoff) 
+            vcf_df['RS_G_yhat_05p_delta'] = [x - rsg_y_cutoff if (np.isclose(x, rsg_y_cutoff) 
                 or (x > rsg_y_cutoff)) else 0 for x in vcf_df['RS_G_yhat']
             ]
         
@@ -685,9 +684,9 @@ class TableAndPlots:
     def _identify_likely_candidates(self, vcf_df):
         try:
             likely_cands = vcf_df[
-                (vcf_df['RS_G_yhat_01p'] == 1) |
-                (vcf_df['G_S_05p'] == 1) |
-                (vcf_df['RS_G_05p'] == 1)
+                (vcf_df['RS_G_yhat_05p_delta'] > 0) |
+                (vcf_df['G_S_05p_delta'] > 0) |
+                (vcf_df['RS_G_05p_delta'] > 0)
             ].copy()
 
 
