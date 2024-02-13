@@ -6,7 +6,9 @@ import gzip
 import shutil
 import re
 
+
 from Bio import SeqIO
+import glob
 import pandas as pd
 
 from modules.utilities_logging import LogHandler
@@ -70,7 +72,7 @@ class VCFGenerator:
             self.log.note(f"Chromosomal fasta exists: {output_file}")
             self.log.note("Proceeding...")
     
-    def _cleanup_files(self, output_dir_path: str, cleanup_filetypes: bool):
+    def _cleanup_files(self, output_dir_path: str, cleanup_filetypes: list):
         for file_type in cleanup_filetypes:
             if file_type == '*.table':
                 print("*.table not allowed in cleanup_filetypes. This is the point of running VCF_gen in the first place. Continuing...")
@@ -168,7 +170,7 @@ class VCFGenerator:
             
             #Cleanup files if cleanup = True
             if self.vcf_vars.cleanup:
-                self._cleanup_files(line.vcf_output_dir)
+                self._cleanup_files(line.vcf_output_dir, self.vcf_vars.cleanup_filetypes)
             
 
 class VCFFormat:
