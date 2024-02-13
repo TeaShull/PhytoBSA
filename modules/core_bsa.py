@@ -16,7 +16,7 @@ Core module for bsa analysis
 Input variable class: BSA_variables from utilities_variables module.
 The read-depth analysis between the wild-type and mutant bulks are stored here.
 """
-    
+
 class BSA:
     def __init__(self, logger, bsa_vars):
         #AnalysisVariables class passed to function. 

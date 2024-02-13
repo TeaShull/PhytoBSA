@@ -347,7 +347,6 @@ class VCFGenVariables:
         self.reference_chrs_dict_path = (f"{ref_genome_prefix}.chrs.dict")
         self.reference_chrs_fa_path = (f"{ref_genome_prefix}.chrs.fa")
 
-
 class BSAVariables:
 
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
@@ -405,7 +404,9 @@ class BSAVariables:
 
     def load_snpmask(self, snpmask_path)->pd.DataFrame:
         """
-        Handles SNP mask and converts it into a pandas dataframe.
+        Handles SNP mask file and dataframe. If the file is a generic VCF file,
+        this function will make a backup of the original VCF and create a pandas
+        friendly SNP mask from the original VCF.
 
         Args:  
         snpmask_path - path to the vcf table to be loaded into df
@@ -424,6 +425,7 @@ class BSAVariables:
 
         except pd.errors.ParserError:
             self.log.note(f"snpmask file doesn't appear to be formatted for pandas. Formatting....")
+            self.log.warning("Parsing VCFs doesn't always go well. If you get a lot of errors during this process, it could be worthwile to format the snpmask file yourself. Required headers are 'CHROM POS REF ALT'")
             temp_table_path = f"{snpmask_path}.temp"
             backup_table_path = f"{snpmask_path}.backup"
             headers = ['CHROM','POS','REF','ALT' ]
@@ -448,6 +450,7 @@ class BSAVariables:
                             ref = record.REF
                             alt = ','.join(str(a) for a in record.ALT) 
                             writer.writerow([chrom, pos, ref, alt])
+            
                         except AttributeError:
                             self.log.warning(f"Skipping record due to missing field(s): {record}")
 
@@ -482,6 +485,7 @@ class BSAVariables:
                         analysis_out_prefix, 
                     analysis_out_prefix
                 )
+            
             else:
                 out_path = os.path.join(
                     OUTPUT_DIR,

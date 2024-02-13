@@ -113,13 +113,7 @@ class LogDbUtilites:
             LEFT JOIN analysis 
             ON vcf.name = analysis.name 
             WHERE vcf.name = ?
-        UNION ALL
-        SELECT vcf.*, analysis.* 
-            FROM analysis 
-            LEFT JOIN vcf 
-            ON analysis.name = vcf.name 
-            WHERE analysis.name = ?
-        ''', (line_name, line_name,))
+        ''', (line_name,))
         results = cursor.fetchall()
 
         if results:
