@@ -100,6 +100,7 @@ class BSA:
             print(len(line.vcf_df))
             null_models = feature_prod.aggregate_unsmoothed_values(null_models)
             line.vcf_df = feature_prod.label_df_with_percentiles(line.vcf_df, null_models)
+            line.vcf_df, null_models = feature_prod.remove_extra_data(line.vcf_df, null_models)
 
             #Construct output file path prefix
             line.analysis_out_prefix = self.bsa_vars.gen_bsa_out_prefix(
@@ -416,19 +417,19 @@ class FeatureProduction:
             positions = df_chrom['pos'].to_numpy()
 
             # Calculate the deltas
-            deltas = [pos - positions[i - 1] if i > 0 else pos for i, pos in enumerate(positions)]
+            deltas = np.diff(positions, prepend=0)
 
             # Calculate mirrored ends
-            deltas_pos_inv = deltas[::-1][-smooth_edges_bounds:-1]
-            deltas_neg_inv = deltas[::-1][1:smooth_edges_bounds]
-            deltas_mirrored_ends = deltas_pos_inv + deltas + deltas_neg_inv
+            deltas_pos_inv = deltas[1:smooth_edges_bounds][::-1]
+            deltas_neg_inv = deltas[-smooth_edges_bounds:-1][::-1]
+            deltas_mirrored_ends = np.concatenate([deltas_pos_inv, deltas, deltas_neg_inv])
 
             # Calculate pseudo_pos
             pseudo_pos = np.cumsum(deltas_mirrored_ends)
 
             # Mirror the data
-            df_chrom_inv_neg = df_chrom.iloc[-smooth_edges_bounds:-1]
-            df_chrom_inv_pos = df_chrom.iloc[1:smooth_edges_bounds]
+            df_chrom_inv_neg = df_chrom.iloc[1:smooth_edges_bounds][::-1]
+            df_chrom_inv_pos = df_chrom.iloc[-smooth_edges_bounds:-1][::-1]
             df_chrom = pd.concat([df_chrom_inv_neg, df_chrom, df_chrom_inv_pos], ignore_index=False)
 
             # Add pseudo_pos to the DataFrame
@@ -450,22 +451,17 @@ class FeatureProduction:
             
             return df_chrom
 
-    def _remove_extra_data(self, df_chrom, smooth_edges_bounds):
-        df_chrom = df_chrom.drop(columns='pseudo_pos')
-        df_chrom = df_chrom.dropna(subset=['ratio_yhat', 'G_S_yhat', 'RS_G_yhat'])
-        df_chrom = df_chrom.drop_duplicates(subset=['chrom', 'pos'])
-        
-        return df_chrom
-
     def _fit_single_chrom(self, df_chrom, chrom, smoothing_function, loess_span, smooth_edges_bounds):
+        self.log.attempt(f"Fitting values in chromosome:{chrom}")
         try:
+            
             df_chrom = self._create_mirrored_data(df_chrom, smooth_edges_bounds)
             df_chrom = self._fit_values(df_chrom, smoothing_function, loess_span)
-            df_chrom = self._remove_extra_data(df_chrom, smooth_edges_bounds)
 
             # Sort by 'chrom' and 'pos'
-            df_chrom = df_chrom.sort_values(by=['chrom', 'pos'])
+            df_chrom = df_chrom.sort_values(by=['chrom', 'pseudo_pos'])
             
+            self.log.success(f"Vales fit in chromosome: {chrom}")
             return df_chrom
 
         except Exception as e:
@@ -484,7 +480,7 @@ class FeatureProduction:
             if result is not None:
                 df_list.append(result)
 
-        return pd.concat(df_list)
+        return pd.concat(df_list).reset_index(drop=True)
     
     def fit_model(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, smooth_edges_bounds: int)->pd.DataFrame:
         """
@@ -510,7 +506,7 @@ class FeatureProduction:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
     @staticmethod
-    def _null_model(smChr, smPos, sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, smoothing_function, loess_span: float, ratio_cutoff: float):
+    def _null_model(smChr, smPseudoPos, sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, smoothing_function, loess_span: float, ratio_cutoff: float):
 
             np.random.shuffle(sm_wt_ref)
             np.random.shuffle(sm_wt_alt)
@@ -529,16 +525,17 @@ class FeatureProduction:
             
             mask = smRatio >= ratio_cutoff
 
+
+            smPseudoPos = smPseudoPos[mask] 
             smRatio = smRatio[mask]
             smGstat = smGstat[mask]
-            smPos = smPos[mask]
             smChr = smChr[mask]
             smRS_G = smRS_G[mask]
 
             # Sort arrays by chromosome
             sorted_indices = np.argsort(smChr)
             smChr = smChr[sorted_indices]
-            smPos = smPos[sorted_indices]
+            smPseudoPos = smPseudoPos[sorted_indices]
             smRatio = smRatio[sorted_indices]
             smGstat = smGstat[sorted_indices]
             smRS_G = smRS_G[sorted_indices]
@@ -549,61 +546,68 @@ class FeatureProduction:
             smRS_G_y = []
             for chrom, indices in groupby(enumerate(smChr), key=lambda x: x[1]):
                 indices = [i for i, _ in indices]
-                smRatio_y.extend(smoothing_function(smRatio[indices], smPos[indices], frac=loess_span)[:, 1])
-                smGstat_y.extend(smoothing_function(smGstat[indices], smPos[indices], frac=loess_span)[:, 1])
-                smRS_G_y.extend(smoothing_function(smRS_G[indices], smPos[indices], frac=loess_span)[:, 1])
+                smRatio_y.extend(smoothing_function(smRatio[indices], smPseudoPos[indices], frac=loess_span)[:, 1])
+                smGstat_y.extend(smoothing_function(smGstat[indices], smPseudoPos[indices], frac=loess_span)[:, 1])
+                smRS_G_y.extend(smoothing_function(smRS_G[indices], smPseudoPos[indices], frac=loess_span)[:, 1])
 
-            return smChr, smPos, smRatio, np.array(smRatio_y), smGstat, np.array(smGstat_y), smRS_G, np.array(smRS_G_y)
+            return smChr, smPseudoPos, smRatio, np.array(smRatio_y), smGstat, np.array(smGstat_y), smRS_G, np.array(smRS_G_y)
+
+    def _initialize_list(self, smChr, smPos, smPseudoPos, shuffle_iterations, list_name):
+        self.log.attempt(f"Initializing null model structured array: {list_name}")
+        try: 
+            dtype = [('chrom', 'U10'), ('pos', int), ('pseudo_pos', int), ('value', float, shuffle_iterations)]
+            lst = np.zeros(len(smChr), dtype=dtype)
+            lst['chrom'] = smChr
+            lst['pos'] = smPos
+            lst['pseudo_pos'] = smPseudoPos
+            
+            self.log.success(f"Null model structured array initialized: {list_name}")
+
+            return lst
+        except Exception as e:
+            self.log.fail(f"Initializing structured array for {list_name} null model failed: {e}")
 
     def calculate_null_model(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
         self.log.attempt('Bootstrapping to generate null model...')
         try:
 
             smChr = vcf_df['chrom'].to_numpy()
+            print(len(smChr))
             smPos = vcf_df['pos'].to_numpy()
+            print(len(smPos))
+            smPseudoPos = vcf_df['pseudo_pos'].to_numpy()
+            print(len(smPseudoPos))
             sm_wt_ref = vcf_df['wt_ref'].to_numpy()
+            print(len(sm_wt_ref))
             sm_wt_alt = vcf_df['wt_alt'].to_numpy()
             sm_mu_ref = vcf_df['mu_ref'].to_numpy()
             sm_mu_alt = vcf_df['mu_alt'].to_numpy()
 
-            dtype = [('chrom', 'U10'), ('pos', int), ('values', float, shuffle_iterations)]
+            args = [smChr, smPos, smPseudoPos, shuffle_iterations]
 
-            sm_ratio_lst = np.zeros(len(smChr), dtype=dtype)
-            sm_ratio_y_lst = np.zeros(len(smChr), dtype=dtype)
-            sm_g_stat_lst = np.zeros(len(smChr), dtype=dtype)
-            sm_g_stat_y_lst = np.zeros(len(smChr), dtype=dtype)
-            sm_ratio_scaled_g_lst = np.zeros(len(smChr), dtype=dtype)
-            sm_ratio_scaled_g_y_lst = np.zeros(len(smChr), dtype=dtype)
+            sm_ratio_lst = self._initialize_list(*args, 'sm_ratio')
+            sm_ratio_y_lst = self._initialize_list(*args, 'sm_ratio_y')
+            sm_g_stat_lst = self._initialize_list(*args, 'sm_g_stat')
+            sm_g_stat_y_lst = self._initialize_list(*args, 'sm_g_stat_y')
+            sm_ratio_scaled_g_lst = self._initialize_list(*args, 'sm_ratio_scaled_g')
+            sm_ratio_scaled_g_y_lst = self._initialize_list(*args, 'sm_ratio_scaled_g_y')
 
-            sm_ratio_lst['chrom'] = smChr
-            sm_ratio_lst['pos'] = smPos
-
-            sm_ratio_y_lst['chrom'] = smChr
-            sm_ratio_y_lst['pos'] = smPos
-
-            sm_g_stat_lst['chrom'] = smChr
-            sm_g_stat_lst['pos'] = smPos
-
-            sm_g_stat_y_lst['chrom'] = smChr
-            sm_g_stat_y_lst['pos'] = smPos
-
-            sm_ratio_scaled_g_lst['chrom'] = smChr
-            sm_ratio_scaled_g_lst['pos'] = smPos
-
-            sm_ratio_scaled_g_y_lst['chrom'] = smChr
-            sm_ratio_scaled_g_y_lst['pos'] = smPos
-
-            position_counts = {(chrom, pos): 0 for chrom, pos in zip(smChr, smPos)}
-            position_indices = {(chrom, pos): index for index, (chrom, pos) in enumerate(zip(smChr, smPos))}
-
+            position_counts = {}
+            position_indices = {}
+            unique_index = 0
+            for chrom, pseudoPos in zip(smChr, smPseudoPos):
+                if (chrom, pseudoPos) not in position_counts:
+                    position_counts[(chrom, pseudoPos)] = 0
+                    position_indices[(chrom, pseudoPos)] = unique_index
+                    unique_index += 1
+            
             num_cores = os.cpu_count()
-
             self.log.note(f"Distributing bootstrapping calculations to number of cores:{num_cores}")
             self.log.note(f"Bootstrapped vales per position:{shuffle_iterations}")
             total_values = len(smChr)*shuffle_iterations
             self.log.note(f"Total values to be generated:{total_values}")
-            
-            args = [(smChr, smPos, sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, smoothing_function, 
+
+            args = [(smChr, smPseudoPos, sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, smoothing_function, 
                 loess_span, ratio_cutoff) for _ in range(num_cores)]
 
             iteration = 0
@@ -617,21 +621,24 @@ class FeatureProduction:
                     self.log.note(f"Progress: {total_values_added}/{total_values}")
                     
                     for result in results:
-                        for chrom, pos, ratio, ratio_y, gstat, gstat_y, rs_g, rs_g_y in zip(*result):
-                            key = (chrom, pos)
-                            if position_counts[key] < shuffle_iterations:
-                                index = position_counts[key]
-                                array_index = position_indices[key]
-                                
-                                sm_ratio_lst['values'][array_index, index] = ratio
-                                sm_ratio_y_lst['values'][array_index, index] = ratio_y
-                                sm_g_stat_lst['values'][array_index, index] = gstat
-                                sm_g_stat_y_lst['values'][array_index, index] = gstat_y
-                                sm_ratio_scaled_g_lst['values'][array_index, index] = rs_g
-                                sm_ratio_scaled_g_y_lst['values'][array_index, index] = rs_g_y
+                        for chrom, pseudo_pos, ratio, ratio_y, gstat, gstat_y, rs_g, rs_g_y in zip(*result):
+                            try:
+                                key = (chrom, pseudo_pos)
+                                if position_counts[key] < shuffle_iterations:
+                                    index = position_counts[key]
+                                    array_index = position_indices[key]
+                                    sm_ratio_lst['value'][array_index, index] = ratio
+                                    sm_ratio_y_lst['value'][array_index, index] = ratio_y
+                                    sm_g_stat_lst['value'][array_index, index] = gstat
+                                    sm_g_stat_y_lst['value'][array_index, index] = gstat_y
+                                    sm_ratio_scaled_g_lst['value'][array_index, index] = rs_g
+                                    sm_ratio_scaled_g_y_lst['value'][array_index, index] = rs_g_y
 
-                                position_counts[key] += 1
-                                total_values_added += 1
+                                    position_counts[key] += 1
+                                    total_values_added += 1
+                            except Exception as e:
+                                self.log.warning(f"Counts not added at key:{key}, index:{index}, array index:{array_index}")
+                                continue
 
             self.log.success('Bootstrapping complete!')
 
@@ -656,7 +663,7 @@ class FeatureProduction:
         # Iterate over the structured arrays and the corresponding empty lists
         for lst, values in zip(lsts, aggregated_values):
             # Concatenate all values from the structured array into a single list
-            values.extend(lst['values'].flatten())
+            values.extend(lst['value'].flatten())
 
         sm_ratio_lst, sm_g_stat_lst, sm_ratio_scaled_g_lst = aggregated_values
         
@@ -697,7 +704,7 @@ class FeatureProduction:
                 for i, value in enumerate(column_array):
                     # Check if 'i' is a valid index in 'lst'
                     if i < len(lst):
-                        values_array = sorted(lst[i]['values'])
+                        values_array = sorted(lst[i]['value'])
                         # Calculate the percentile of the value
                         vcf_df.at[i, column + '_percentile'] = self._calculate_percentile(value, values_array)
                         vcf_df.at[i, column + '_percentile_cutoff'] = np.percentile(values_array, 95)
@@ -709,6 +716,28 @@ class FeatureProduction:
 
         except Exception as e:
             self.log.fail(f"Labeling dataframe failed:{e}")
+
+    def remove_extra_data(self, vcf_df, null_models):
+        vcf_df = vcf_df.drop(columns='pseudo_pos')
+        vcf_df = vcf_df.dropna(subset=['ratio_yhat', 'G_S_yhat', 'RS_G_yhat'])
+        vcf_df = vcf_df.drop_duplicates(subset=['chrom', 'pos'])
+
+        (sm_ratio_lst, sm_ratio_y_lst, sm_g_stat_lst, sm_g_stat_y_lst, 
+            sm_ratio_scaled_g_lst, sm_ratio_scaled_g_y_lst
+        ) = null_models
+
+        # For each structured array in null_models, drop 'pseudo_pos' and remove duplicates
+        new_null_models = []
+        for arr in null_models:
+            if isinstance(arr, np.ndarray) and 'pseudo_pos' in arr.dtype.names:
+                new_arr = np.delete(arr, np.where(arr['pseudo_pos']), axis=0)
+                new_arr = np.unique(new_arr, axis=0)
+                new_null_models.append(new_arr)
+                print(new_arr[:5])
+            else:
+                new_null_models.append(arr)
+
+        return vcf_df, new_null_models
 
 
 class TableAndPlots:
