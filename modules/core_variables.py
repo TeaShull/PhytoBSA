@@ -61,18 +61,10 @@ class Lines:
         self.rsg_y_cutoff = None
         self.analysis_ulid = None
 
-        
-        # Input Variables that require path parsing. _process_input checks if 
-        # hard-coded or if in the /inputs folder  
-        self.in_path_variables=[
-           'vcf_table_path',
-           'mu_input',
-           'wt_input'
-        ]
 
     def _process_input(self, key, details):
         file_utils = FileUtilities(self.log)
-        if key in self.in_path_variables:
+        if key == 'mu_input' or key == 'wt_input':
             paths = details.split() #for space seperated lists mu_input and wt_input
             dir = [INPUT_DIR]
             processed_paths = [file_utils.process_path(dir, path) for path in paths]
@@ -389,7 +381,7 @@ class BSAVariables:
         file_utils = FileUtilities(self.log)
         self.log.attempt(f"Attempting to load {vcf_table_path}")
         try:
-            directories = [INPUT_DIR] 
+            directories = [INPUT_DIR, OUTPUT_DIR] 
             vcf_table_path = file_utils.process_path(directories, vcf_table_path)
             df = pd.read_csv(vcf_table_path, sep="\t")
             self.log.note(f"{vcf_table_path} loaded. Proceeding...")
@@ -479,22 +471,23 @@ class BSAVariables:
         try:
             analysis_out_prefix = f'{ulid}-_{name}'
             if vcf_ulid:
-                out_path = os.path.join(
+                out_dir = os.path.join(
                         OUTPUT_DIR, 
                         f'{vcf_ulid}-_{name}',
-                        analysis_out_prefix, 
-                    analysis_out_prefix
+                        analysis_out_prefix
                 )
             
-            else:
-                out_path = os.path.join(
-                    OUTPUT_DIR,
-                    analysis_out_prefix
+            else: #For analysis runs that don't have PhytoBSA generated vcfs w/ ulids in the output dir.
+                out_dir = os.path.join(
+                    OUTPUT_DIR
                 )
+            
             file_utils = FileUtilities(self.log)
-            file_utils.setup_directory(out_path)
+            file_utils.setup_directory(out_dir) #setup the output dir
+            
+            analysis_out_prefix = os.path.join(out_dir, analysis_out_prefix) #prefix for files to be saved in out_dir
         
-            return out_path
+            return analysis_out_prefix
         
         except Exception as e:
             self.log.error(f"Error generating BSA output prefix: {e}")

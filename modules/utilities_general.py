@@ -37,16 +37,23 @@ class FileUtilities:
     def process_path(self, directories: list, path: str) -> str:
         if os.path.exists(path):
             self.log.note(f'Path found and assigned: {path}')
+           
             return path
+        
         else:
+            print(directories)
             for directory in directories:
-                self.log.note(f"path:{path} does not exist. Checking for it in {directory}..")
-                dir_path = os.path.join(directory, path)
-                if os.path.exists(dir_path):
-                    self.log.note(f" path:{dir_path} found! Assigning path value.")
-                    return dir_path
-
+                for root, dirs, files in os.walk(directory):
+                    self.log.note(f"Checking for path:{path} in {root}..")
+                    
+                    if path in files:
+                        dir_path = os.path.join(root, path)
+                        self.log.note(f"Path:{dir_path} found! Assigning path value.")
+                        
+                        return dir_path
+            
             self.log.fail(f'Path not found in any of the provided directories or the hard coded ({path}). Aborting')
+            
             return None
 
     def extract_ulid_from_file_path(self, file_path):
