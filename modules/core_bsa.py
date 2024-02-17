@@ -1,19 +1,15 @@
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-import warnings
 import bisect
 import os
 from plotnine import (
     ggplot, aes, geom_point, geom_line, geom_histogram, theme_linedraw, 
     facet_grid, facet_wrap, theme, ggtitle, xlab, ylab, geom_hline, geom_vline,
-    geom_text 
+    geom_text, geom_ribbon
 )
 
 from itertools import groupby
-
-from concurrent.futures import ProcessPoolExecutor
-
 
 from multiprocessing import Pool
 
@@ -86,18 +82,17 @@ class BSA:
             line.vcf_df = data_filter.drop_genos_below_ratio_cutoff(line.vcf_df, self.bsa_vars.ratio_cutoff)
             line.vcf_df = line.vcf_df.reset_index(drop=True)
             
-            print(len(line.vcf_df))
             line.vcf_df = feature_prod.fit_model(
                 line.vcf_df, smoothing_function, self.bsa_vars.loess_span, 
                 self.bsa_vars.smooth_edges_bounds
             )
-            print(len(line.vcf_df))
+
             ### Use bootstrapping to produce null models of features
             null_models = feature_prod.calculate_null_model(
                 line.vcf_df, smoothing_function, self.bsa_vars.loess_span, 
                 self.bsa_vars.shuffle_iterations, self.bsa_vars.ratio_cutoff
             )
-            print(len(line.vcf_df))
+
             null_models = feature_prod.aggregate_unsmoothed_values(null_models)
             line.vcf_df = feature_prod.label_df_with_percentiles(line.vcf_df, null_models)
             line.vcf_df, null_models = feature_prod.remove_extra_data(line.vcf_df, null_models)
@@ -322,7 +317,6 @@ class DataFiltering:
 class FeatureProduction:    
     def __init__(self, logger, name):
         self.log = logger
-        
         self.name = name
     
     @staticmethod
@@ -412,6 +406,7 @@ class FeatureProduction:
             self.log.fail(f"An error occurred during calculation: {e}")
 
     def _create_mirrored_data(self, df_chrom, smooth_edges_bounds):
+        self.log.attempt(f'Mirroring {smooth_edges_bounds} datapoints at chromosome ends to correct for loess edge bias...')
         try:
             # Get the positions
             positions = df_chrom['pos'].to_numpy()
@@ -434,13 +429,16 @@ class FeatureProduction:
 
             # Add pseudo_pos to the DataFrame
             df_chrom['pseudo_pos'] = pseudo_pos
+            
+            self.log.success(f"Mirrored data created!")
+
+            return df_chrom
 
         except Exception as e:
-            print(f"Error in _create_mirrored_data: {e}")
+            print(f"Error in creating mirrored data: {e}")
+            
             return None
         
-        return df_chrom
-
     def _fit_values(self, df_chrom, smoothing_function, loess_span):
 
             X = df_chrom['pseudo_pos'].values
@@ -461,7 +459,7 @@ class FeatureProduction:
             # Sort by 'chrom' and 'pos'
             df_chrom = df_chrom.sort_values(by=['chrom', 'pseudo_pos'])
             
-            self.log.success(f"Vales fit in chromosome: {chrom}")
+            self.log.success(f"Values fit in chromosome: {chrom}")
             return df_chrom
 
         except Exception as e:
@@ -572,13 +570,9 @@ class FeatureProduction:
         try:
 
             smChr = vcf_df['chrom'].to_numpy()
-            print(len(smChr))
             smPos = vcf_df['pos'].to_numpy()
-            print(len(smPos))
             smPseudoPos = vcf_df['pseudo_pos'].to_numpy()
-            print(len(smPseudoPos))
             sm_wt_ref = vcf_df['wt_ref'].to_numpy()
-            print(len(sm_wt_ref))
             sm_wt_alt = vcf_df['wt_alt'].to_numpy()
             sm_mu_ref = vcf_df['mu_ref'].to_numpy()
             sm_mu_alt = vcf_df['mu_alt'].to_numpy()
@@ -707,7 +701,12 @@ class FeatureProduction:
                         values_array = sorted(lst[i]['value'])
                         # Calculate the percentile of the value
                         vcf_df.at[i, column + '_percentile'] = self._calculate_percentile(value, values_array)
-                        vcf_df.at[i, column + '_percentile_cutoff'] = np.percentile(values_array, 95)
+                        vcf_df.at[i, column + '_null_5'] = np.percentile(values_array, 5)
+                        vcf_df.at[i, column + '_null_25'] = np.percentile(values_array, 25)
+                        vcf_df.at[i, column + '_null_50'] = np.percentile(values_array, 50)
+                        vcf_df.at[i, column + '_null_75'] = np.percentile(values_array, 75)
+                        vcf_df.at[i, column + '_null_95'] = np.percentile(values_array, 95)
+                    
                     else:
                         self.log.warning(f"Skipping index {i} due to missing data")
             self.log.success(f"Dataframe labeled with percentiles")
@@ -718,27 +717,33 @@ class FeatureProduction:
             self.log.fail(f"Labeling dataframe failed:{e}")
 
     def remove_extra_data(self, vcf_df, null_models):
-        vcf_df = vcf_df.drop(columns='pseudo_pos')
-        vcf_df = vcf_df.dropna(subset=['ratio_yhat', 'G_S_yhat', 'RS_G_yhat'])
-        vcf_df = vcf_df.drop_duplicates(subset=['chrom', 'pos'])
+        self.log.attempt(f"Attempting to remove psuedo positions and mirrored data from dataframe and stuctured array")
+        try:
+            vcf_df = vcf_df.drop(columns='pseudo_pos')
+            vcf_df = vcf_df.dropna(subset=['ratio_yhat', 'G_S_yhat', 'RS_G_yhat'])
+            vcf_df = vcf_df.drop_duplicates(subset=['chrom', 'pos'])
 
-        (sm_ratio_lst, sm_ratio_y_lst, sm_g_stat_lst, sm_g_stat_y_lst, 
-            sm_ratio_scaled_g_lst, sm_ratio_scaled_g_y_lst
-        ) = null_models
+            (sm_ratio_lst, sm_ratio_y_lst, sm_g_stat_lst, sm_g_stat_y_lst, 
+                sm_ratio_scaled_g_lst, sm_ratio_scaled_g_y_lst
+            ) = null_models
 
-        # For each structured array in null_models, drop 'pseudo_pos' and remove duplicates
-        new_null_models = []
-        for arr in null_models:
-            if isinstance(arr, np.ndarray) and 'pseudo_pos' in arr.dtype.names:
-                new_arr = np.delete(arr, np.where(arr['pseudo_pos']), axis=0)
-                new_arr = np.unique(new_arr, axis=0)
-                new_null_models.append(new_arr)
-                print(new_arr[:5])
-            else:
-                new_null_models.append(arr)
+            # For each structured array in null_models, drop 'pseudo_pos' and remove duplicates
+            new_null_models = []
+            for arr in null_models:
+                if isinstance(arr, np.ndarray) and 'pseudo_pos' in arr.dtype.names:
+                    new_arr = np.copy(arr[['chrom', 'pos', 'value']])  # create a new array with only 'chrom', 'pos', 'values' fields
+                    new_arr = np.unique(new_arr, axis=0)  # remove duplicates
+                    new_null_models.append(new_arr)
 
-        return vcf_df, new_null_models
+                else:
+                    new_null_models.append(arr)
 
+            self.log.success("Mirrored data removed!")
+
+            return vcf_df, new_null_models
+        
+        except Exception as e:
+            self.log.fail(f"There was an error while removing mirrored data and psuedo positions:{e}")
 
 class TableAndPlots:
     def __init__(self, logger, name, analysis_out_prefix):
@@ -907,9 +912,14 @@ class TableAndPlots:
                 )
 
             # Add line for percentile cutoff if column exists
-            cutoff_column = y_column + '_percentile_cutoff'
+            cutoff_column = y_column + '_null_50'
+
             if cutoff_column in vcf_df.columns:
-                plot += geom_line(aes(y=cutoff_column), size=0.3, color='red')
+                plot += geom_line(aes(y=y_column + '_null_50'), size=0.6, color='red')
+                # Add yellow ribbons for interquartile range and 5-95 percentile range
+                plot += geom_ribbon(aes(ymin=y_column + '_null_25', ymax=y_column + '_null_75'), fill='yellow', alpha=0.5)
+                plot += geom_ribbon(aes(ymin=y_column + '_null_5', ymax=y_column + '_null_95'), fill='yellow', alpha=0.3)
+
 
             if lines:
                 plot += geom_line(color='blue')
