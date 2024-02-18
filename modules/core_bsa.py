@@ -934,12 +934,12 @@ class TableAndPlots:
 
             cutoff_column = y_column + '_null_50'
             if cutoff_column in vcf_df.columns:
-                plot += geom_ribbon(aes(ymin='G_S_yhat_null_5', ymax='G_S_yhat_null_95'), fill='gray', alpha=0.3)
-                plot += geom_ribbon(aes(ymin='G_S_yhat_null_25', ymax='G_S_yhat_null_75'), fill='gray', alpha=0.3)
-                plot += geom_line(aes(y='G_S_yhat_null_50'), size=0.4, color='black', alpha=0.3)
+                plot += geom_ribbon(aes(ymin=y_column +'_null_5', ymax=y_column +'_null_95'), fill='gray', alpha=0.2)
+                plot += geom_ribbon(aes(ymin=y_column +'_null_25', ymax=y_column +'_null_75'), fill='gray', alpha=0.2)
+                plot += geom_line(aes(y=y_column +'_null_50'), size=0.4, color='black', alpha=0.2)
 
             if lines:
-                plot += geom_line(color='blue', size=0.6, alpha=0.7)
+                plot += geom_line(color='blue', size=0.7, alpha=0.85)
 
             return plot
 
