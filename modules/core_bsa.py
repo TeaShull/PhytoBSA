@@ -4,9 +4,9 @@ import statsmodels.api as sm
 import bisect
 import os
 from plotnine import (
-    ggplot, aes, geom_point, geom_line, geom_histogram, theme_linedraw, 
-    facet_grid, facet_wrap, theme, ggtitle, xlab, ylab, geom_hline, geom_vline,
-    geom_text, geom_ribbon
+    ggplot, aes, geom_point, geom_line, geom_histogram, facet_grid, facet_wrap, 
+    theme, ggtitle, xlab, ylab, geom_hline, geom_vline, geom_text, geom_ribbon, 
+    element_text, element_rect, element_line
 )
 
 from itertools import groupby
@@ -751,6 +751,37 @@ class TableAndPlots:
         self.name = name
         self.analysis_out_prefix = analysis_out_prefix
 
+    def _theme(self):
+        return theme(
+            #general
+            plot_background = element_rect(fill = 'white'),
+            panel_background = element_rect(fill = 'white'),
+            panel_border = element_rect(color = 'grey', size = 0.5, alpha=0.6),
+            panel_grid = element_line(size = 0.3, color = 'grey', alpha=0.5),
+            panel_grid_minor = element_line(size = 0.5, color = 'grey', 
+                alpha=0.5, linetype = 'dotted'
+            ),
+            
+            # Set the title text properties
+            title = element_text(color = 'black', size = 10, weight = 'bold'),
+            
+            # Set the axis text properties
+            axis_text = element_text(color = 'black', size = 8),
+            axis_ticks_major = element_line(color='grey', size = 0.1, alpha=0.5),
+            
+            # Set the legend text properties
+            legend_text = element_text(color = 'black', size = 8),
+            legend_title = element_text(color = 'black', size = 10, 
+                weight = 'bold'
+            ),
+
+            # Set the strip properties
+            strip_background = element_rect(fill = 'white', color = 'grey',
+                size = 0.2
+            ),
+            strip_text = element_text(color = 'grey', size = 8, weight = 'bold'),        
+        )
+
     def _plot_histogram(self, data, title, filename, faceted):
         # Calculate the bin width using the Freedman-Diaconis rule
         iqr = np.subtract(*np.percentile(data['value'], [75, 25]))
@@ -760,7 +791,7 @@ class TableAndPlots:
         plot = (ggplot(data, aes(x='value')) +
                 geom_histogram(binwidth=binwidth, fill='#69b3a2', color="#000000", alpha=0.7) +
                 ggtitle(title) +
-                theme_linedraw())
+                self._theme())
 
         if faceted:
             plot = (plot +
@@ -802,7 +833,8 @@ class TableAndPlots:
         for df_name, histogram in histograms.items():
             if '_y_' in df_name:
                 # Randomly sample 20 rows from the dataframe for faceted histograms
-                sampled_df = dataframes[df_name].sample(n=20, random_state=1)
+                num_samples = min(20, len(dataframes[df_name]))
+                sampled_df = dataframes[df_name].sample(n=num_samples, random_state=1)
                 
                 exploded_df = sampled_df.explode('value')
                 exploded_df['value'] = pd.to_numeric(exploded_df['value'])
@@ -885,49 +917,35 @@ class TableAndPlots:
             axis_x = xlab("Position (Mb)")
             axis_y = ylab(ylab_text)
 
+            plot = (chart
+                    + geom_point(color='goldenrod', size=0.8)
+                    + self._theme()
+                    + facet_grid('. ~ chrom', space='free_x', scales='free_x')
+                    + title
+                    + axis_x
+                    + axis_y
+                    + theme(panel_spacing=0.025)
+            )
+
             if cutoff_value is not None:
                 cutoff = geom_hline(yintercept=cutoff_value, color='red',
                                     linetype="dashed", size=0.3)
+                plot += cutoff
 
-                plot = (chart
-                        + geom_point(color='goldenrod', size=0.8)
-                        + theme_linedraw()
-                        + facet_grid('. ~ chrom', space='free_x', scales='free_x')
-                        + title
-                        + axis_x
-                        + axis_y
-                        + theme(panel_spacing=0.025)
-                        + cutoff
-                )
-
-            else:
-                plot = (chart
-                        + geom_point(color='goldenrod', size=0.8)
-                        + theme_linedraw()
-                        + facet_grid('. ~ chrom', space='free_x', scales='free_x')
-                        + title
-                        + axis_x
-                        + axis_y
-                        + theme(panel_spacing=0.025)
-                )
-
-            # Add line for percentile cutoff if column exists
             cutoff_column = y_column + '_null_50'
-
             if cutoff_column in vcf_df.columns:
-                plot += geom_line(aes(y=y_column + '_null_50'), size=0.6, color='red')
-                # Add yellow ribbons for interquartile range and 5-95 percentile range
-                plot += geom_ribbon(aes(ymin=y_column + '_null_25', ymax=y_column + '_null_75'), fill='yellow', alpha=0.5)
-                plot += geom_ribbon(aes(ymin=y_column + '_null_5', ymax=y_column + '_null_95'), fill='yellow', alpha=0.3)
-
+                plot += geom_ribbon(aes(ymin='G_S_yhat_null_5', ymax='G_S_yhat_null_95'), fill='gray', alpha=0.3)
+                plot += geom_ribbon(aes(ymin='G_S_yhat_null_25', ymax='G_S_yhat_null_75'), fill='gray', alpha=0.3)
+                plot += geom_line(aes(y='G_S_yhat_null_50'), size=0.4, color='black', alpha=0.3)
 
             if lines:
-                plot += geom_line(color='blue')
+                plot += geom_line(color='blue', size=0.6, alpha=0.7)
 
             return plot
 
         except Exception as e:
-            self.log.fail(f"Plot creation failed for {self.name}, column {y_column}: {e}")
+            self.log.fail(f"Plot creation failed for {self.name}, column {y_column}: {e}") 
+            
             return None
             
     def _save_plot(self, plot, y_column, *args):
