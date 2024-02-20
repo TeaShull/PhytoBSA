@@ -64,6 +64,25 @@ class FileUtilities:
         else:
             return None
 
+    def _write_instance_variables(self, instance, file, indent=0):
+        for attr in dir(instance):
+            if not attr.startswith("__"):
+                value = getattr(instance, attr)
+                if not callable(value):
+                    if isinstance(value, list) and all(hasattr(i, "__dict__") for i in value):
+                        file.write(f"{' ' * indent}{attr}:\n")
+                        for i in value:
+                            _write_instance_variables(i, file, indent + 2)
+                    elif hasattr(value, "__dict__"):
+                        file.write(f"{' ' * indent}{attr}:\n")
+                        _write_instance_variables(value, file, indent + 2)
+                    else:
+                        file.write(f"{' ' * indent}{attr}: {value}\n")
+
+    def write_instance_variables_to_file(self, instance, filename):
+        with open(filename, 'w') as f:
+            _write_instance_variables(instance, f)
+
 
 class LogDbUtilites:
     def __init__(self):

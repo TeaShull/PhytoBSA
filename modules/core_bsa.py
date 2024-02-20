@@ -1,16 +1,12 @@
+import os
+import bisect
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-import bisect
-import os
-from plotnine import (
-    ggplot, aes, geom_point, geom_line, geom_histogram, facet_grid, facet_wrap, 
-    theme, ggtitle, xlab, ylab, geom_hline, geom_vline, geom_text, geom_ribbon, 
-    element_text, element_rect, element_line
-)
 
+from plotnine import *
 from itertools import groupby
-
 from multiprocessing import Pool
 
 from modules.utilities_logging import LogHandler
@@ -115,6 +111,11 @@ class BSA:
             
             table_and_plots.generate_plots(line.vcf_df)
 
+            #Finally, write a quick reference file containing the run parameters
+            file_utils = FileUtilities(self.log)
+            out_vars = f"{line.analysis_out_prefix}.bsa_vars.txt"
+            file_utils.write_instance_vars_to_file(bsa_vars, out_vars)
+
 
 class DataFiltering:
     def __init__ (self, logger, name):
@@ -218,7 +219,7 @@ class DataFiltering:
 
             except KeyError as e:
                 self.log.note('Key error. VCF dataframe should have the following headers: ')
-                self.log.note('chrom  pos ref alt gene snpEffect snpVariant snpImpact mu:wt_GTpred mu_ref mu_alt wt_ref wt_alt')
+                self.log.note('chrom pos ref alt gene snpEffect snpVariant snpImpact mu:wt_GTpred mu_ref mu_alt wt_ref wt_alt')
                 self.log.fail(f"Dataframe doesn't contain {e} column. Aborting...")
             
         
@@ -822,12 +823,12 @@ class TableAndPlots:
         }
 
         histograms = {
-            'sm_ratio_df': ["Ratio Frequency Distribution", f"{self.analysis_out_prefix}-ratio_histogram.png"],
-            'sm_g_stat_df': ["G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-g_stat_histogram.png"],
-            'sm_ratio_scaled_g_df': ["Ratio-scaled G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-ratio_scaled_g_histogram.png"],
-            'sm_ratio_y_df': ["LOESS smoothed Ratio Frequency Distribution", f"{self.analysis_out_prefix}-ratio_y_histogram.png"],
-            'sm_g_stat_y_df': ["LOESS smoothed G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-g_stat_y_histogram.png"],
-            'sm_ratio_scaled_g_y_df': ["LOESS smoothed Ratio-scaled G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-ratio_scaled_g_y_histogram.png"]
+            'sm_ratio_df': ["Ratio Frequency Distribution", f"{self.analysis_out_prefix}-NULL-ratio.png"],
+            'sm_g_stat_df': ["G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-NULL_g_stat.png"],
+            'sm_ratio_scaled_g_df': ["Ratio-scaled G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-NULL_ratio_scaled_g.png"],
+            'sm_ratio_y_df': ["LOESS smoothed Ratio Frequency Distribution", f"{self.analysis_out_prefix}-NULL_ratio_y.png"],
+            'sm_g_stat_y_df': ["LOESS smoothed G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-NULL-g_stat_y.png"],
+            'sm_ratio_scaled_g_y_df': ["LOESS smoothed Ratio-scaled G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-NULL-ratio_scaled_g_y.png"]
         }
 
         for df_name, histogram in histograms.items():
@@ -918,7 +919,6 @@ class TableAndPlots:
             axis_y = ylab(ylab_text)
 
             plot = (chart
-                    + geom_point(color='goldenrod', size=0.8)
                     + self._theme()
                     + facet_grid('. ~ chrom', space='free_x', scales='free_x')
                     + title
@@ -934,12 +934,29 @@ class TableAndPlots:
 
             cutoff_column = y_column + '_null_50'
             if cutoff_column in vcf_df.columns:
+
+                # Calculate the middle position for each 'chrom'
+                mid_pos_df = vcf_df.groupby('chrom')['pos_mb'].apply(lambda x: (x.max() + x.min()) / 2).reset_index()
+                mid_pos_df.columns = ['chrom', 'mid_pos']
+
+                # Calculate the average of the 50th percentile for each 'chrom'
+                avg_50_percentile_df = vcf_df.groupby('chrom')[cutoff_column].mean().reset_index()
+                avg_50_percentile_df.columns = ['chrom', 'avg_50_percentile']
+
+                # Merge middle position and average 50th percentile data frames
+                label_df = pd.merge(mid_pos_df, avg_50_percentile_df, on='chrom')
+
+
                 plot += geom_ribbon(aes(ymin=y_column +'_null_5', ymax=y_column +'_null_95'), fill='gray', alpha=0.2)
                 plot += geom_ribbon(aes(ymin=y_column +'_null_25', ymax=y_column +'_null_75'), fill='gray', alpha=0.2)
-                plot += geom_line(aes(y=y_column +'_null_50'), size=0.4, color='black', alpha=0.2)
+                plot += geom_line(aes(y=y_column +'_null_50'), size=0.4, color='gray', alpha=0.2)
+                plot += geom_text(data=label_df, mapping=aes(x='mid_pos', y='avg_50_percentile', label="r'$H_{0}^{*}$'"), size=6, ha='center', color='purple', alpha=0.8)
+                # Add "null" annotation to the average 50th percentile position in each facet
+
+            plot += geom_point(color='goldenrod', size=0.9)
 
             if lines:
-                plot += geom_line(color='blue', size=0.7, alpha=0.85)
+                plot += geom_line(color='blue', size=0.7, alpha=0.9)
 
             return plot
 
@@ -970,9 +987,6 @@ class TableAndPlots:
             ('ratio_percentile', 'Delta SNP ratio percentile', 'Ratio percentile', 0.95, False),
             ('G_S_percentile', 'G-statistic percentile', 'G-statistic percentile', 0.95, False),
             ('RS_G_percentile', 'Ratio-scaled G statistic percentile', 'Ratio-scaled G-statistic percentile', 0.95, False),
-            ('ratio_yhat_percentile', 'Fitted Delta SNP ratio percentile', 'Fitted delta SNP ratio percentile', 0.95, True),
-            ('G_S_yhat_percentile', 'Fitted G-statistic percentile', 'Fitted G-statistic percentile', 0.95, True),
-            ('RS_G_yhat_percentile', 'Fitted ratio-scaled G statistic percentile', 'Fitted Ratio-scaled G-statistic percentile', 0.95, True)
         ]
 
         for plot_scenario in plot_scenarios:
