@@ -79,9 +79,9 @@ class FileUtilities:
                     else:
                         file.write(f"{' ' * indent}{attr}: {value}\n")
 
-    def write_instance_variables_to_file(self, instance, filename):
+    def write_instance_vars_to_file(self, instance, filename):
         with open(filename, 'w') as f:
-            _write_instance_variables(instance, f)
+            self._write_instance_variables(instance, f)
 
 
 class LogDbUtilites:

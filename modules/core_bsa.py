@@ -16,105 +16,127 @@ from modules.utilities_general import FileUtilities
 Core module for bsa analysis
 Input variable class: BSA_variables from utilities_variables module.
 The read-depth analysis between the wild-type and mutant bulks are stored here.
+
+Most logging and error handling is done outside of the BSA class. 
 """
 
 class BSA:
     def __init__(self, logger, bsa_vars):
-        #AnalysisVariables class passed to function. 
-        self.log = logger #pass core_log from main phytobsa script
+        self.log = logger 
         self.bsa_vars = bsa_vars
 
-    def __call__(self):
-        smoothing_function = sm.nonparametric.lowess
+    def _initialize_log(self, line):
+        self.log.delimiter(f'Initializing BSA pipeline log for {line.name}')
+        bsa_log = LogHandler(f'analysis_{line.name}')
+        line.analysis_ulid = bsa_log.ulid 
+        bsa_log.add_db_record(
+            name = line.name, 
+            core_ulid = self.log.ulid, 
+            vcf_ulid = line.vcf_ulid, 
+            ratio_cutoff = self.bsa_vars.ratio_cutoff, 
+            loess_span = self.bsa_vars.loess_span, 
+            smooth_edges_bounds = self.bsa_vars.smooth_edges_bounds, 
+            filter_indels = self.bsa_vars.filter_indels, 
+            filter_ems = self.bsa_vars.filter_ems, 
+            snpmask_path = self.bsa_vars.snpmask_path
+        )
+        return bsa_log
 
-        for line in self.bsa_vars.lines:
-
-            self.log.delimiter(f'Initializing BSA pipeline log for {line.name}')
-            bsa_log = LogHandler(f'analysis_{line.name}')
-            
-            line.analysis_ulid = bsa_log.ulid 
-            bsa_log.add_db_record(
-                name = line.name, 
-                core_ulid = self.log.ulid, 
-                vcf_ulid = line.vcf_ulid, 
-                ratio_cutoff = self.bsa_vars.ratio_cutoff, 
-                loess_span = self.bsa_vars.loess_span, 
-                smooth_edges_bounds = self.bsa_vars.smooth_edges_bounds, 
-                filter_indels = self.bsa_vars.filter_indels, 
-                filter_ems = self.bsa_vars.filter_ems, 
-                snpmask_path = self.bsa_vars.snpmask_path
-            )
-
-
-            #Extract vcf ulid from filename if needed. For standalone analysis runs
-            if not line.vcf_ulid:
-                file_utils = FileUtilities(self.log)
-                line.vcf_ulid = file_utils.extract_ulid_from_file_path(line.vcf_table_path)
-
-            #Load VCF data table pandas dataframe vcf_df
-            line.vcf_df = self.bsa_vars.load_vcf_table(line.vcf_table_path) #vcf_table_path generated in modules.core_vcf_gen or modules.utilities_lines
-            
-            ## data cleaning and orginization
-            data_filter = DataFiltering(bsa_log, line.name)
-            line.vcf_df = data_filter.filter_genotypes(line.segregation_type, line.vcf_df)
-            
-            
-            if self.bsa_vars.filter_indels: 
-                line.vcf_df = data_filter.drop_indels(line.vcf_df)
-                
-            if self.bsa_vars.filter_ems: #for EMS mutants
-                line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
-                            
-            if self.bsa_vars.snpmask_path: #Mask background snps if provided
-                line.snpmask_df = self.bsa_vars.load_snpmask(self.bsa_vars.snpmask_path)
-                line.vcf_df = data_filter.mask_known_snps(line.snpmask_df, line.vcf_df)
-                
-            
-            ## Feature production
-            feature_prod = FeatureProduction(bsa_log, line.name)
-            line.vcf_df = feature_prod.calculate_delta_snp_and_g_statistic(line.vcf_df)
-            
-            line.vcf_df = data_filter.drop_na(line.vcf_df)
-            line.vcf_df = data_filter.drop_genos_below_ratio_cutoff(line.vcf_df, self.bsa_vars.ratio_cutoff)
-            line.vcf_df = line.vcf_df.reset_index(drop=True)
-            
-            line.vcf_df = feature_prod.fit_model(
-                line.vcf_df, smoothing_function, self.bsa_vars.loess_span, 
-                self.bsa_vars.smooth_edges_bounds
-            )
-
-            ### Use bootstrapping to produce null models of features
-            null_models = feature_prod.calculate_null_model(
-                line.vcf_df, smoothing_function, self.bsa_vars.loess_span, 
-                self.bsa_vars.shuffle_iterations, self.bsa_vars.ratio_cutoff
-            )
-
-            null_models = feature_prod.aggregate_unsmoothed_values(null_models)
-            line.vcf_df = feature_prod.label_df_with_percentiles(line.vcf_df, null_models)
-            line.vcf_df, null_models = feature_prod.remove_extra_data(line.vcf_df, null_models)
-
-            #Construct output file path prefix
-            line.analysis_out_prefix = self.bsa_vars.gen_bsa_out_prefix(
-                line.name, line.analysis_ulid, line.vcf_ulid
-            )
-
-            ## Saving and plotting outputs
-            table_and_plots = TableAndPlots(
-                bsa_log,
-                line.name,
-                line.analysis_out_prefix
-            )
-            
-            table_and_plots.plot_null_histograms(null_models)
-
-            line.vcf_df = table_and_plots.sort_save_likely_candidates(line.vcf_df)
-            
-            table_and_plots.generate_plots(line.vcf_df)
-
-            #Finally, write a quick reference file containing the run parameters
+    def _load_data(self, line, bsa_log):
+        if not line.vcf_ulid:
             file_utils = FileUtilities(self.log)
-            out_vars = f"{line.analysis_out_prefix}.bsa_vars.txt"
-            file_utils.write_instance_vars_to_file(bsa_vars, out_vars)
+            line.vcf_ulid = file_utils.extract_ulid_from_file_path(line.vcf_table_path)
+        
+        line.vcf_df = self.bsa_vars.load_vcf_table(line.vcf_table_path)
+
+    def _filter_data(self, line, bsa_log):
+        #Filter data based on boolean values set in Check config.ini or argparse
+        data_filter = DataFiltering(bsa_log, line.name)
+        line.vcf_df = data_filter.filter_genotypes(line.segregation_type, line.vcf_df)
+        
+        if self.bsa_vars.filter_indels: 
+            line.vcf_df = data_filter.drop_indels(line.vcf_df)
+        
+        if self.bsa_vars.filter_ems: 
+            line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
+        
+        if self.bsa_vars.snpmask_path: 
+            line.snpmask_df = self.bsa_vars.load_snpmask(self.bsa_vars.snpmask_path)
+            line.vcf_df = data_filter.mask_known_snps(line.snpmask_df, line.vcf_df)
+
+    def _produce_features(self, line, bsa_log):
+        # Produce SNP ratio and G-statistic
+        feature_prod = FeatureProduction(bsa_log, line.name)
+        line.vcf_df = feature_prod.calculate_delta_snp_and_g_statistic(line.vcf_df)
+        
+        #some additional filtering for better results...
+        data_filter = DataFiltering(bsa_log, line.name)
+        line.vcf_df = data_filter.drop_na(line.vcf_df)
+        line.vcf_df = data_filter.drop_genos_below_ratio_cutoff(line.vcf_df, self.bsa_vars.ratio_cutoff)
+        line.vcf_df = line.vcf_df.reset_index(drop=True)
+        
+        #Produced fitted G and fitted ratio to improve signal/noise
+        line.vcf_df = feature_prod.fit_model(
+            line.vcf_df, sm.nonparametric.lowess, self.bsa_vars.loess_span, 
+            self.bsa_vars.smooth_edges_bounds
+        )
+
+    def _produce_null_models(self, line, bsa_log):
+        #Init Feature Production Class
+        feature_prod = FeatureProduction(bsa_log, line.name)
+        
+        #Generate H0* distrubtions. Locus-wise for fitted, global otherwise 
+        null_models = feature_prod.calculate_null_models(
+            line.vcf_df, sm.nonparametric.lowess, self.bsa_vars.loess_span, 
+            self.bsa_vars.shuffle_iterations, self.bsa_vars.ratio_cutoff
+        )
+        #Aggregate values from unsmoothed features.
+        null_models = feature_prod.aggregate_unsmoothed_values(null_models)
+        
+        #Label the dataframe with percentiles from the null models. 
+        line.vcf_df = feature_prod.label_df_with_percentiles(line.vcf_df, 
+            null_models
+        )
+        
+        #Trim out extra data from edge bias adjustment
+        line.vcf_df, null_models = feature_prod.remove_extra_data(line.vcf_df, 
+            null_models
+        )
+
+    def _save_and_plot_outputs(self, line, bsa_log):
+        #Generate output prefix
+        line.analysis_out_prefix = self.bsa_vars.gen_bsa_out_prefix(line.name, 
+            line.analysis_ulid, line.vcf_ulid
+        )
+        
+        #init TableAndPlots class
+        table_and_plots = TableAndPlots(
+            bsa_log,
+            line.name,
+            line.analysis_out_prefix
+        )
+
+        #Plot Null models 
+        table_and_plots.plot_null_histograms(null_models)
+        
+        #Identify likely candidates based on H0* (No phenotype/genotype link)
+        table_and_plots.process_and_save_candidates(line.vcf_df)
+        table_and_plots.generate_plots(line.vcf_df)
+        
+        #Save run parameters for posterity
+        file_utils = FileUtilities(self.log)
+        out_vars = f"{line.analysis_out_prefix}.bsa_vars.txt"
+        file_utils.write_instance_vars_to_file(self.bsa_vars, out_vars)
+
+    def __call__(self):
+        #Run BSA pipeline
+        for line in self.bsa_vars.lines:
+            bsa_log = self._initialize_log(line)
+            self._load_data(line, bsa_log)
+            self._filter_data(line, bsa_log)
+            self._produce_features(line, bsa_log)
+            self._produce_null_models(line, bsa_log)
+            self._save_and_plot_outputs(line, bsa_log)
 
 
 class DataFiltering:
@@ -390,14 +412,6 @@ class FeatureProduction:
                    wt_ref, wt_alt, mu_ref, mu_alt
             )
 
-            # Calculate ratio-scaled g-statistic. (delata snp ratio x g-stat)
-            # RSG seems to be more stable than either on their own. The 
-            # math behind why this works so wellneeds to be articulated at some 
-            # point. G-stat tends to be all around better, but there is
-            # something about scaling it by the delta snp ratio that is pretty 
-            # effective, especially after this feature is fitted. the signal 
-            # becomes very clear
-
             vcf_df['RS_G'] = vcf_df['ratio'].values * vcf_df['G_S'].values
             self.log.success("Calculation of delta-SNP ratios and G-statistics was successful.")
             
@@ -505,26 +519,27 @@ class FeatureProduction:
             self.log.fail( f"An error occurred during LOESS smoothing: {e}")
     
     @staticmethod
-    def _null_model(smChr, smPseudoPos, sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, smoothing_function, loess_span: float, ratio_cutoff: float):
-
+    def _null_models(smChr, smPseudoPos, sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, smoothing_function, loess_span: float, ratio_cutoff: float):
+            #Break the phenotype/genotype association by shuffling read depth data
             np.random.shuffle(sm_wt_ref)
             np.random.shuffle(sm_wt_alt)
             np.random.shuffle(sm_mu_ref)
             np.random.shuffle(sm_mu_alt)
-
+            
+            #calc delta snp
             smRatio = FeatureProduction._delta_snp_array(
                 sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt
             )
-            
+            #calc g-stat
             smGstat = FeatureProduction._g_statistic_array(
                 sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt
             )
-
+            # calc ratio scaled g-stat
             smRS_G = smRatio * smGstat
             
+            # Mask those values and positions below the delta snp ratio cutoff 
+            # (makes null model fit trimmed data)
             mask = smRatio >= ratio_cutoff
-
-
             smPseudoPos = smPseudoPos[mask] 
             smRatio = smRatio[mask]
             smGstat = smGstat[mask]
@@ -566,8 +581,8 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail(f"Initializing structured array for {list_name} null model failed: {e}")
 
-    def calculate_null_model(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
-        self.log.attempt('Bootstrapping to generate null model...')
+    def calculate_null_models(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
+        self.log.attempt('Bootstrapping to generate null models...')
         try:
 
             smChr = vcf_df['chrom'].to_numpy()
@@ -609,7 +624,7 @@ class FeatureProduction:
             total_values_added = 0
             with Pool() as pool:
                 while not all(count == shuffle_iterations for count in position_counts.values()):
-                    results = pool.starmap(FeatureProduction._null_model, args)
+                    results = pool.starmap(FeatureProduction._null_models, args)
                     iteration += 1
                     self.log.note(f"Iteration: {iteration}")
 
@@ -746,12 +761,17 @@ class FeatureProduction:
         except Exception as e:
             self.log.fail(f"There was an error while removing mirrored data and psuedo positions:{e}")
 
+
 class TableAndPlots:
     def __init__(self, logger, name, analysis_out_prefix):
         self.log = logger
         self.name = name
         self.analysis_out_prefix = analysis_out_prefix
-
+        
+        self.impact_mapping = {
+            'HIGH': 4, 'MODERATE': 3, 'LOW': 2, 'MODIFIER': 1
+        }
+   
     def _theme(self):
         return theme(
             #general
@@ -809,20 +829,11 @@ class TableAndPlots:
         # Save the plot
         plot.save(filename, dpi=600)
 
-    def plot_null_histograms(self, null_models):
-        # Unpack null_models
-        sm_ratio_lst, sm_ratio_y_lst, sm_g_stat_lst, sm_g_stat_y_lst, sm_ratio_scaled_g_lst, sm_ratio_scaled_g_y_lst = null_models
- 
-        dataframes = {
-            'sm_ratio_df': pd.DataFrame(sm_ratio_lst, columns=['value']),
-            'sm_g_stat_df': pd.DataFrame(sm_g_stat_lst, columns=['value']),
-            'sm_ratio_scaled_g_df': pd.DataFrame(sm_ratio_scaled_g_lst, columns=['value']),
-            'sm_ratio_y_df': pd.DataFrame(sm_ratio_y_lst.tolist(), columns=['chrom', 'pos', 'value']),
-            'sm_g_stat_y_df': pd.DataFrame(sm_g_stat_y_lst.tolist(), columns=['chrom', 'pos', 'value']),
-            'sm_ratio_scaled_g_y_df': pd.DataFrame(sm_ratio_scaled_g_y_lst.tolist(), columns=['chrom', 'pos', 'value'])
-        }
+    def _create_dataframe(self, data, columns):
+        return pd.DataFrame(data, columns=columns)
 
-        histograms = {
+    def _create_histograms(self, dataframes):
+        return {
             'sm_ratio_df': ["Ratio Frequency Distribution", f"{self.analysis_out_prefix}-NULL-ratio.png"],
             'sm_g_stat_df': ["G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-NULL_g_stat.png"],
             'sm_ratio_scaled_g_df': ["Ratio-scaled G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-NULL_ratio_scaled_g.png"],
@@ -831,166 +842,94 @@ class TableAndPlots:
             'sm_ratio_scaled_g_y_df': ["LOESS smoothed Ratio-scaled G-statistic Frequency Distribution", f"{self.analysis_out_prefix}-NULL-ratio_scaled_g_y.png"]
         }
 
+    def _sample_and_explode_df(self, df):
+        num_samples = min(20, len(df))
+        sampled_df = df.sample(n=num_samples, random_state=1)
+        
+        exploded_df = sampled_df.explode('value')
+        exploded_df['value'] = pd.to_numeric(exploded_df['value'])
+        cutoffs = exploded_df.groupby(['chrom', 'pos'])['value'].quantile(0.95).reset_index()
+        cutoffs.rename(columns={'value': 'cutoff'}, inplace=True)
+        exploded_df = pd.merge(exploded_df, cutoffs, on=['chrom', 'pos'])
+        
+        return exploded_df
+
+    def plot_null_histograms(self, null_models):
+        # Unpack null_models
+        sm_ratio_lst, sm_ratio_y_lst, sm_g_stat_lst, sm_g_stat_y_lst, sm_ratio_scaled_g_lst, sm_ratio_scaled_g_y_lst = null_models
+
+        # Create dataframes
+        dataframes = {
+            'sm_ratio_df': self._create_dataframe(sm_ratio_lst, ['value']),
+            'sm_g_stat_df': self._create_dataframe(sm_g_stat_lst, ['value']),
+            'sm_ratio_scaled_g_df': self._create_dataframe(sm_ratio_scaled_g_lst, ['value']),
+            'sm_ratio_y_df': self._create_dataframe(sm_ratio_y_lst, ['chrom', 'pos', 'value']),
+            'sm_g_stat_y_df': self._create_dataframe(sm_g_stat_y_lst, ['chrom', 'pos', 'value']),
+            'sm_ratio_scaled_g_y_df': self._create_dataframe(sm_ratio_scaled_g_y_lst, ['chrom', 'pos', 'value'])
+        }
+
+        # Create histograms
+        histograms = self._create_histograms(dataframes)
+
         for df_name, histogram in histograms.items():
             if '_y_' in df_name:
-                # Randomly sample 20 rows from the dataframe for faceted histograms
-                num_samples = min(20, len(dataframes[df_name]))
-                sampled_df = dataframes[df_name].sample(n=num_samples, random_state=1)
-                
-                exploded_df = sampled_df.explode('value')
-                exploded_df['value'] = pd.to_numeric(exploded_df['value'])
-                cutoffs = exploded_df.groupby(['chrom', 'pos'])['value'].quantile(0.95).reset_index()
-                cutoffs.rename(columns={'value': 'cutoff'}, inplace=True)
-                exploded_df = pd.merge(exploded_df, cutoffs, on=['chrom', 'pos'])
-               
+                exploded_df = self._sample_and_explode_df(dataframes[df_name])
                 self._plot_histogram(exploded_df, histogram[0], histogram[1], faceted=True)
             else:
-                # For non-faceted histograms, use the entire dataframe
                 self._plot_histogram(dataframes[df_name], histogram[0], histogram[1], faceted=False)
+    
+    def _get_likely_candidates(self, vcf_df):
+        conditions = (
+            (vcf_df['G_S_percentile'] > 0.95) |
+            (vcf_df['RS_G_yhat_percentile'] > 0.95) |
+            (vcf_df['RS_G_percentile'] > 0.95)
+        )
 
-    def _identify_likely_candidates(self, vcf_df):
-        try:
-            likely_cands = vcf_df[
-                (vcf_df['G_S_percentile'] > 0.95) |
-                (vcf_df['RS_G_yhat_percentile'] > 0.95) |
-                (vcf_df['RS_G_percentile'] > 0.95)
-            ].copy()
+        return vcf_df[conditions].copy()
 
-            return likely_cands
+    def _sort_candidates(self, df):
+        df['impact_rank'] = df['snpimpact'].apply(
+            lambda x: max(self.impact_mapping.get(i, 0) for i in x.split(':'))
+        )
+        sorted_df = df.sort_values(
+            by=['impact_rank', 'RS_G_yhat_percentile', 
+                'G_S_percentile', 'RS_G_percentile'], 
+            ascending=False
+        )
 
-        except KeyError as e:
-            self.log.fail(f"Column {e} not found in DataFrame. Please ensure column names are correct.")
+        return sorted_df.drop('impact_rank', axis=1)
 
-    def _sort_likely_candidates(self, df):
-        """
-        Sorts the DataFrame based on 'RS_G_yhat', 'G_S_05', 'RS_G_05', 
-        with 'GS_G_yhat' being the top priority.
-        """
-        try:
-            # Define the mapping
-            impact_mapping = {'HIGH': 4, 'MODERATE': 3, 'LOW': 2, 'MODIFIER': 1}
+    def _save_to_csv(self, df, filename):
+        df.to_csv(f"{self.analysis_out_prefix}_{filename}.csv", index=False)
 
-            # 'impact_rank' maps top 'snpimpact' values using impact_mapping
-            df['impact_rank'] = df['snpimpact'].apply(
-                lambda x: max(impact_mapping.get(i, 0) for i in x.split(':')))
+    def process_and_save_candidates(self, vcf_df):
+        likely_candidates = self._sort_candidates(
+            self._get_likely_candidates(vcf_df)
+        )
+        self._save_to_csv(vcf_df, 'all')
+        self._save_to_csv(likely_candidates, 'likely_candidates')
 
-            # Sort the DataFrame
-            sorted_df = df.sort_values(by=[
-                'impact_rank', 
-                'RS_G_yhat_percentile', 
-                'G_S_percentile', 
-                'RS_G_percentile'], ascending=[False, False, False, False])
-
-            # Remove the 'impact_rank' column
-            sorted_df.drop('impact_rank', axis=1, inplace=True)
-
-            return sorted_df
-
-        except KeyError as e:
-            self.log.fail(f"Column {e} not found in DataFrame. Please ensure column names are correct.")
-
-    def _save_candidates(self, vcf_df, cands_df):
-        """
-        Saves the DataFrame of likely candidates to a CSV file.
-        """
-        try:
-            all_output_file = f"{self.analysis_out_prefix}_all.csv"
-            vcf_df.to_csv(all_output_file, index=False)
-            output_file = f"{self.analysis_out_prefix}_likely_candidates.csv"
-            cands_df.to_csv(output_file, index=False)
-        
-        except Exception as e:
-            self.log.fail(f"Failed to save likely candidates: {e}")
-        
-    def sort_save_likely_candidates(self, vcf_df):
-        likely_cands = self._identify_likely_candidates(vcf_df)
-        likely_cands = self._sort_likely_candidates(likely_cands)
-        self._save_candidates(vcf_df, likely_cands)
-
-        return vcf_df
-
-    def _create_plot(self, vcf_df, y_column, title_text, ylab_text, cutoff_value=None, lines=False):
-        try:
-            mb_conversion_constant = 0.000001
-            vcf_df['pos_mb'] = vcf_df['pos'] * mb_conversion_constant
-            chart = ggplot(vcf_df, aes('pos_mb', y=y_column))
-            title = ggtitle(title_text)
-            axis_x = xlab("Position (Mb)")
-            axis_y = ylab(ylab_text)
-
-            plot = (chart
-                    + self._theme()
-                    + facet_grid('. ~ chrom', space='free_x', scales='free_x')
-                    + title
-                    + axis_x
-                    + axis_y
-                    + theme(panel_spacing=0.025)
-            )
-
-            if cutoff_value is not None:
-                cutoff = geom_hline(yintercept=cutoff_value, color='red',
-                                    linetype="dashed", size=0.3)
-                plot += cutoff
-
-            cutoff_column = y_column + '_null_50'
-            if cutoff_column in vcf_df.columns:
-
-                # Calculate the middle position for each 'chrom'
-                mid_pos_df = vcf_df.groupby('chrom')['pos_mb'].apply(lambda x: (x.max() + x.min()) / 2).reset_index()
-                mid_pos_df.columns = ['chrom', 'mid_pos']
-
-                # Calculate the average of the 50th percentile for each 'chrom'
-                avg_50_percentile_df = vcf_df.groupby('chrom')[cutoff_column].mean().reset_index()
-                avg_50_percentile_df.columns = ['chrom', 'avg_50_percentile']
-
-                # Merge middle position and average 50th percentile data frames
-                label_df = pd.merge(mid_pos_df, avg_50_percentile_df, on='chrom')
-
-
-                plot += geom_ribbon(aes(ymin=y_column +'_null_5', ymax=y_column +'_null_95'), fill='gray', alpha=0.2)
-                plot += geom_ribbon(aes(ymin=y_column +'_null_25', ymax=y_column +'_null_75'), fill='gray', alpha=0.2)
-                plot += geom_line(aes(y=y_column +'_null_50'), size=0.4, color='gray', alpha=0.2)
-                plot += geom_text(data=label_df, mapping=aes(x='mid_pos', y='avg_50_percentile', label="r'$H_{0}^{*}$'"), size=6, ha='center', color='purple', alpha=0.8)
-                # Add "null" annotation to the average 50th percentile position in each facet
-
-            plot += geom_point(color='goldenrod', size=0.9)
-
-            if lines:
-                plot += geom_line(color='blue', size=0.7, alpha=0.9)
-
-            return plot
-
-        except Exception as e:
-            self.log.fail(f"Plot creation failed for {self.name}, column {y_column}: {e}") 
-            
-            return None
-            
-    def _save_plot(self, plot, y_column, *args):
-        try:
+    def _create_and_save_plot(self, df, y_column, title_text, ylab_text, cutoff=None, lines=False):
+        plot = self._create_plot(df, y_column, title_text, ylab_text, 
+                                 cutoff, lines)
+        if plot:
             plot_path = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
-            plot.save(filename=plot_path, height=6, width=8, units='in', dpi=500)
-            self.log.success(f"Plot saved {plot_path}")
-            return True
-
-        except Exception as e:
-            self.log.fail(f"Saving plot failed for {self.name}, column {y_column}: {e}")
-            return False
+            plot.save(filename=plot_path, height=6, width=8, 
+                      units='in', dpi=500)
 
     def generate_plots(self, vcf_df):
         plot_scenarios = [
-            ('G_S', 'G-statistic', 'G-statistic', None, False),
+            ('G_S', 'G-statistic', 'G-statistic'),
             ('G_S_yhat', 'Fitted G-statistic', 'Fitted G-statistic', None, True),
-            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic', None, False),
-            ('ratio', 'Delta SNP ratio', 'Ratio', None, False),
+            ('RS_G', 'Ratio-scaled G statistic', 'Ratio-scaled G-statistic'),
+            ('ratio', 'Delta SNP ratio', 'Ratio'),
             ('ratio_yhat', 'Fitted Delta SNP ratio', 'Fitted delta SNP ratio', None, True),
             ('RS_G_yhat', 'Fitted ratio-scaled G statistic', 'Fitted Ratio-scaled G-statistic', None, True),
-            ('ratio_percentile', 'Delta SNP ratio percentile', 'Ratio percentile', 0.95, False),
-            ('G_S_percentile', 'G-statistic percentile', 'G-statistic percentile', 0.95, False),
-            ('RS_G_percentile', 'Ratio-scaled G statistic percentile', 'Ratio-scaled G-statistic percentile', 0.95, False),
+            ('ratio_percentile', 'Delta SNP ratio percentile', 'Ratio percentile', 0.95),
+            ('G_S_percentile', 'G-statistic percentile', 'G-statistic percentile', 0.95),
+            ('RS_G_percentile', 'Ratio-scaled G statistic percentile', 
+             'Ratio-scaled G-statistic percentile', 0.95),
         ]
 
-        for plot_scenario in plot_scenarios:
-            plot_created = self._create_plot(vcf_df, *plot_scenario)
-
-            if plot_created is not None:
-                self._save_plot(plot_created, *plot_scenario)
+        for scenario in plot_scenarios:
+            self._create_and_save_plot(vcf_df, *scenario)

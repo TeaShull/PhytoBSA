@@ -61,7 +61,6 @@ class Lines:
         self.rsg_y_cutoff = None
         self.analysis_ulid = None
 
-
     def _process_input(self, key, details):
         file_utils = FileUtilities(self.log)
         if key == 'mu_input' or key == 'wt_input':
@@ -479,7 +478,8 @@ class BSAVariables:
             
             else: #For analysis runs that don't have PhytoBSA generated vcfs w/ ulids in the output dir.
                 out_dir = os.path.join(
-                    OUTPUT_DIR
+                    OUTPUT_DIR,
+                    analysis_out_prefix
                 )
             
             file_utils = FileUtilities(self.log)
