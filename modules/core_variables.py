@@ -35,7 +35,7 @@ class Lines:
 
         # BSA and VCF_gen variables
         self.name = name
-        self.vcf_table_path = None 
+        self.vcf_table_path = None
 
         # VCF_gen variables 
         self.mu_input = []
@@ -342,7 +342,7 @@ class BSAVariables:
 
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
         'shuffle_iterations', 'filter_indels', 'filter_ems', 'snpmask_path', 
-        'snpmask_df', 'ratio_cutoff'
+        'ratio_cutoff'
     ]
     
     def __init__(self, logger,
@@ -365,7 +365,6 @@ class BSAVariables:
         self.filter_ems = filter_ems
         self.snpmask_path = snpmask_path
         self.ratio_cutoff = ratio_cutoff
-        self.snpmask_df = None
 
     def load_vcf_table(self, vcf_table_path)->pd.DataFrame:
         """

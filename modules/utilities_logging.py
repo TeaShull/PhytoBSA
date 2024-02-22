@@ -209,6 +209,14 @@ class LogHandler:
         self.logger.info(log_message)
         print(log_message)
 
+    def error(self, message):
+        script_name, function_name = self._obtain_execution_frames()
+        log_message = self._construct_message(
+            '[!-ERROR-!]', script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
+
     def bash(self, message):
         script_name, function_name = self._obtain_execution_frames()
         log_message = self._construct_message(
