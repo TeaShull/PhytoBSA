@@ -4,8 +4,8 @@ import csv
 import pandas as pd
 from pathlib import Path
 
-from settings.paths import (INPUT_DIR, OUTPUT_DIR, REFERENCE_DIR, MODULES_DIR, 
-    VCF_GEN_SCRIPT
+from settings.globals import (INPUT_DIR, OUTPUT_DIR, REFERENCE_DIR, MODULES_DIR, 
+    VCF_GEN_SCRIPT, THREADS_LIMIT
 )
 from modules.utilities_general import FileUtilities
 
@@ -17,17 +17,15 @@ class Lines:
     here are dynamic, and many are used in both processes.
 
     The variables of this class can be populated by automatic_line_variables
-    in the AutomaticLineVariableDetector class or the usr_in_line_variables 
-    within this current class. 
+    in the AutomaticLineVariableDetector class or the parsed arguments passed 
+    to usr_in_line_variables within this current class. 
     '''
     
     __slots__ = ['log', 'name', 'segregation_type', 'vcf_table_path', 
         'mu_input', 'wt_input', 'pairedness', 'vcf_gen_cmd', 
         'vcf_output_prefix', 'vcf_output_dir', 'vcf_ulid', 'vcf_df', 
-        'analysis_out_prefix', 'gs_cutoff', 'rsg_cutoff', 'rsg_y_cutoff', 
-        'analysis_ulid', 'in_path_variables', 'ref_path_variables', 
-        'snpeff_dir', 'snpeff_out_path', 'snpsift_out_path', 
-        'snpeff_report_path', 'rs_cutoff', 'snpmask_df'
+        'analysis_out_prefix', 'analysis_ulid', 'snpeff_out_path', 
+        'snpsift_out_path', 'snpeff_report_path', 'snpmask_df'
     ]
 
     def __init__(self, logger, name):
@@ -49,16 +47,11 @@ class Lines:
         self.snpeff_out_path = None
         self.snpsift_out_path = None
 
-
         # BSA variables
         self.segregation_type = None
         self.vcf_df = None
         self.snpmask_df = None
         self.analysis_out_prefix = None
-        self.gs_cutoff = None
-        self.rs_cutoff = None
-        self.rsg_cutoff = None
-        self.rsg_y_cutoff = None
         self.analysis_ulid = None
 
     def _process_input(self, key, details):
@@ -179,9 +172,8 @@ class AutomaticLineVariableDetector:
 class VCFGenVariables:
     __slots__ = ['log', 'lines', 'reference_genome_path', 
         'reference_genome_source', 'omit_chrs_patterns', 'snpeff_species_db', 
-        'threads_limit', 'call_variants_in_parallel', 'cleanup', 
-        'cleanup_filetypes', 'reference_chrs_fa_path', 
-        'reference_chrs_dict_path'
+        'call_variants_in_parallel', 'cleanup', 'cleanup_filetypes', 
+        'reference_chrs_fa_path', 'reference_chrs_dict_path'
     ]
     
     def __init__(self, logger,
@@ -190,7 +182,6 @@ class VCFGenVariables:
         reference_genome_source,
         omit_chrs_patterns,
         snpeff_species_db,
-        threads_limit, 
         call_variants_in_parallel, 
         cleanup, 
         cleanup_filetypes
@@ -202,7 +193,6 @@ class VCFGenVariables:
         self.reference_genome_source = reference_genome_source
         self.omit_chrs_patterns = omit_chrs_patterns
         self.snpeff_species_db = snpeff_species_db
-        self.threads_limit = threads_limit
         self.call_variants_in_parallel = call_variants_in_parallel
         self.cleanup = cleanup
         self.cleanup_filetypes = cleanup_filetypes
@@ -224,7 +214,7 @@ class VCFGenVariables:
             self.reference_chrs_fa_path, #made in modules.core_vcf_gen
             self.reference_chrs_dict_path, #made in modules.core_vcf_gen
             self.snpeff_species_db,
-            self.threads_limit,
+            THREADS_LIMIT,
             self.call_variants_in_parallel,
             self.cleanup
         )

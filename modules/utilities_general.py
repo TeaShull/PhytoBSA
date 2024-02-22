@@ -1,4 +1,4 @@
-from settings.paths import (INPUT_DIR, 
+from settings.globals import (INPUT_DIR, 
     OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR, LOG_DATABASE_NAME, LOG_DATABASE_PATH
 )
 
@@ -71,17 +71,16 @@ class FileUtilities:
                 if not callable(value):
                     file.write(f"  {attr}: {value}\n")
 
-    def write_instance_vars_to_file(self, instance, filename):
+    def write_instance_vars_to_file(self, instances, filename):
         with open(filename, 'w') as f:
-            for attr in dir(instance):
-                if not attr.startswith("__"):
-                    value = getattr(instance, attr)
-                    if not callable(value):
-                        if hasattr(value, 'name'):
-                            f.write(f"{attr} (Lines instance):\n")
-                            self._write_lines_class_attrs(value, f)
-                        else:
-                            f.write(f"{attr}: {value}\n")
+            for instance in instances:
+                f.write(f"Instance of {instance.__class__.__name__}:\n")
+                for attr in dir(instance):
+                    if not attr.startswith("__"):
+                        value = getattr(instance, attr)
+                        if not callable(value):
+                            f.write(f"  {attr}: {value}\n")
+                f.write("\n")
 
 class LogDbUtilites:
     def __init__(self):

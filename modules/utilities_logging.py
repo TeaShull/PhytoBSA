@@ -1,4 +1,4 @@
-from settings.paths import LOG_DIR, LOG_DATABASE_PATH
+from settings.globals import LOG_DIR, LOG_DATABASE_PATH
 
 import os
 import sys

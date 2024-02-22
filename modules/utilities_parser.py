@@ -110,13 +110,13 @@ class ArgumentParser:
         ## Settings subparser
         parser_settings = subparsers.add_parser('settings', help='Update default settings.')
         parser_settings.add_argument('--set_data_dir', default=None, type=str, help='set Data directory. This must be set for program to run')
+        parser_settings.add_argument('--set_threads_limit', default=None, type=int, help="Set the threads limit for BSA and for VCF generation. If not set, threads will be detected and threads -2 will be used. ")
         #vcf_gen default run settings. 
         vcf_settings = parser_settings.add_argument_group('VCF generation default settings' 'These settings will be automatically applied if not explicity provided in automatic or VCF generation mode')
         vcf_settings.add_argument('--set_reference_genome_path', required=False, default=None, type=str, help='Set default reference genome name')
         vcf_settings.add_argument('--set_snpeff_species_db', default=None, type=str, help = 'Set default snpEff database name.')
         vcf_settings.add_argument('--set_reference_genome_source', default=None, type=str, help = 'Set default reference genome source')
         vcf_settings.add_argument('--set_known_snps', default=None, type=str, help = 'Set default VCF file containing background SNPs.')
-        vcf_settings.add_argument('--set_threads_limit', default=None, type=str, help='Set default maximum threads for analysis')
         vcf_settings.add_argument('--set_call_variants_in_parallel', default=None, type=bool, help='Set default for running gatk haplotype caller in parallel')
         vcf_settings.add_argument('--set_cleanup', default=None, type=bool, help='Set default for cleanup. If true, intermediate files will de deleted. False for troubleshooting and archiving files.' )
         vcf_settings.add_argument('--set_cleanup_filetypes', default=None, type=list, help="set default for cleanup filetypes. ordered list of globs for files you wish to clear out after vcf generation process")

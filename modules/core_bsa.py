@@ -11,6 +11,7 @@ from multiprocessing import Pool
 
 from modules.utilities_logging import LogHandler
 from modules.utilities_general import FileUtilities
+from settings.globals import THREADS_LIMIT
 
 """
 Core module for bsa analysis
@@ -104,7 +105,7 @@ class BSA:
 
         return null_models
 
-    def _save_and_plot_outputs(self, line,  null_models, bsa_log):
+    def _save_and_plot_outputs(self, line, null_models, bsa_log):
         #Generate output prefix
         line.analysis_out_prefix = self.bsa_vars.gen_bsa_out_prefix(line.name, 
             line.analysis_ulid, line.vcf_ulid
@@ -127,7 +128,8 @@ class BSA:
         #Save run parameters for posterity
         file_utils = FileUtilities(self.log)
         out_vars = f"{line.analysis_out_prefix}.bsa_vars.txt"
-        file_utils.write_instance_vars_to_file(self.bsa_vars, out_vars)
+        class_instances = [self.bsa_vars, line]
+        file_utils.write_instance_vars_to_file(class_instances, out_vars)
 
     def __call__(self):
         #Run BSA pipeline
@@ -639,14 +641,13 @@ class FeatureProduction:
                     position_indices[(chrom, pseudoPos)] = unique_index
                     unique_index += 1
             
-            num_cores = os.cpu_count()
-            self.log.note(f"Distributing bootstrapping calculations to number of cores:{num_cores}")
+            self.log.note(f"Distributing bootstrapping calculations to number of cores:{THREADS_LIMIT}")
             self.log.note(f"Bootstrapped vales per position:{shuffle_iterations}")
             total_values = len(smChr)*shuffle_iterations
             self.log.note(f"Total values to be generated:{total_values}")
 
             args = [(smChr, smPseudoPos, sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, smoothing_function, 
-                loess_span, ratio_cutoff) for _ in range(num_cores)]
+                loess_span, ratio_cutoff) for _ in range(THREADS_LIMIT)]
 
             iteration = 0
             total_values_added = 0
@@ -883,13 +884,9 @@ class TableAndPlots:
         return exploded_df
 
     def _plot_histogram(self, data, title, filename, faceted):
-        # Calculate the bin width using the Freedman-Diaconis rule
-        iqr = np.subtract(*np.percentile(data['value'], [75, 25]))
-        n = len(data)
-        binwidth = 2 * iqr * (n ** (-1/3))
-
+    
         plot = (ggplot(data, aes(x='value')) +
-                geom_histogram(binwidth=binwidth, fill='#69b3a2', color="#000000", alpha=0.7) +
+                geom_histogram(fill='#69b3a2', color="#000000", alpha=0.7) +
                 ggtitle(title) +
                 self._theme())
 

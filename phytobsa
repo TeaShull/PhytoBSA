@@ -6,28 +6,35 @@ args = arg_parser.args
 from modules.utilities_logging import LogHandler
 from modules.utilities_general import LogDbUtilites
 
-# import core modules
+# import core modules - vcf generation and BSA
 from modules.core_vcf_gen import VCFGenerator
 from modules.core_bsa import BSA
+
+#core_variables contins classes that configure runtime variables. 
 from modules.core_variables import (
     Lines, AutomaticLineVariableDetector, VCFGenVariables, BSAVariables
-) # Paths are set in settings.paths and imported in modules.core_variables 
-
+) # Paths are set in settings.globals and imported in modules.core_variables 
 
 def setup_vcf_variables(core_log, line, args):
     '''
-    Setup variables needed to run the VCF generator. Args are either passed by 
-    user or sourced from config.ini (check phytobsa settings -h to set defaults. 
-    One can also directly edit config.ini in a text editor)
+    Setup VCFGenVariables class, which holds variables needed to run vcf_gen()
+    
+    lines is a list of the Line class, which holds line-specific runtime 
+    variables such as input files, line names, segregation patterns, exc. 
+
+    Settings Variables are either passed by user via utilites_parser or sourced 
+    from config.ini (check ./phytobsa settings -h to set defaults. One can also 
+    directly edit config.ini in a text editor)
     '''
     vcf_vars = VCFGenVariables(
-        logger=core_log, 
-        lines=line,
+        logger=core_log,
+        lines=line, #list of class Lines. Contains variables set through parser or automatic detection in input folder
+        
+        #settings. set in config.ini or at runtime using parser. 
         reference_genome_path=args.reference_genome_path, 
         reference_genome_source=args.reference_genome_source,
         omit_chrs_patterns=args.omit_chrs_patterns,
         snpeff_species_db=args.snpeff_species_db,
-        threads_limit=args.threads_limit, 
         call_variants_in_parallel=args.call_variants_in_parallel,
         cleanup=args.cleanup,
         cleanup_filetypes=args.cleanup_filetypes
@@ -37,13 +44,20 @@ def setup_vcf_variables(core_log, line, args):
 
 def setup_bsa_variables(core_log, lines, args):
     '''
-    Setup variables needed to run BSA. Args are either passed by user or sourced
-    from config.ini (check phytobsa settings -h to set defaults. One can also
-    directly edit config.ini in a text editor)
+    Setup BSAVariables classs, which holds variables needed to run bsa() 
+    
+    lines is a list of the Line class, which holds line-specific runtime 
+    variables such as input files, line names, segregation patterns, exc
+
+    Args are either passed by user or sourced from config.ini (check phytobsa 
+    settings -h to set defaults. One can also directly edit config.ini in a text 
+    editor)
     '''
     bsa_vars = BSAVariables(
         logger=core_log, 
-        lines=lines, 
+        lines=lines, #list of the class Lines. Contains variables set through parser or automatic detection in input folder
+        
+        #settings. set in config.ini or at runtime using parser. 
         loess_span=args.loess_span, 
         smooth_edges_bounds=args.smooth_edges_bounds, 
         shuffle_iterations=args.shuffle_iterations,
@@ -62,14 +76,14 @@ def main():
     
     ulids link file outputs to their log. 
     ulid's are stored in LogHandler instances, and exported to the Lines data
-    class during vcf_gen and BSA(analysis). 
+    class during core_vcf_gen and core_bsa processes. 
 
     LogHandler manages the sqlite log database to save run information. 
 
     log list:
     'core' - logs all main program logic in thale_bsa.py, before child log init.  
-        'vcf_gen' - log pertaining to parent_functions.vcf_generation
-        'analysis' - log peratining to parent_functions.bsa_analysis 
+        'vcf_gen_<line_name>' - line specific logs pertaining to core_vcf_gen 
+        'analysis_<line_name>' - line specific logs peratining to core_bsa 
     '''
     
     if args.command != 'logdb':
@@ -89,7 +103,7 @@ def main():
         )
 
         # Process line & args, prep variables needed for runtime + more checks
-        lines = [line]
+        lines = [line] #list so that lines can be iterable in automatic mode. 
         bsa_vars = setup_bsa_variables(core_log, lines, args)
         
         # pass bsa_vars Class instance to the BSA pipeline, and run

@@ -12,7 +12,7 @@ import glob
 import pandas as pd
 
 from modules.utilities_logging import LogHandler
-from settings.paths import MODULES_DIR, REFERENCE_DIR
+from settings.globals import MODULES_DIR, REFERENCE_DIR, THREADS_LIMIT
 
 """
 Core module for VCF generation subprocess.
@@ -84,16 +84,14 @@ class VCFGenerator:
 
     def __call__(self):
         """
-        Input: Subprocess VCFgen.sh takes raw reads(wild-type(wt) 
-        and mutant(mu)), either single or paired end and generates VCF table 
-        *.noknownsnps.table.
-
-        Nonetypes - if nothing is provided, line_dict will be 
-        detected automatically from ./input and variables will be sourced from 
-        the variables.py module.
+        Input: VCFGenVariables class instance, populated with the variables needed
+        to run the process. 
         
-        Returns: updated line_dict containing the paths to 
-        the noknownsnps.table.
+        Required variables can be seen in core_variables.VCFVariables
+
+        the make_vcfgen_command returns the cmd passed to subprocess_VCFgen.sh 
+        This command needs to be kept in order, as the variable parsing in the
+        shell script is ordered.
         """
         
         #Generate chrs paths
@@ -124,7 +122,7 @@ class VCFGenerator:
                 snpeff_species_db=self.vcf_vars.snpeff_species_db,
                 reference_genome_source=self.vcf_vars.reference_genome_source,
                 omit_chrs_patterns=self.vcf_vars.omit_chrs_patterns,
-                threads_limit=self.vcf_vars.threads_limit
+                threads_limit=THREADS_LIMIT
             )
             
             #Generate output paths for process
@@ -179,14 +177,9 @@ class VCFFormat:
         self.snpsift_out_path = snpsift_out_path
         self.vcf_table_path = vcf_table_path
         self.vcf_df = None
-    
-    def remove_repetitive_nan(self):
-        with open(self.snpsift_out_path, 'r') as f_in, open(self.vcf_table_path, 'w') as f_out:
-            for line in f_in:
-                f_out.write(line.replace('NaN:', ''))
 
     def format_fields(self):
-        with open(self.vcf_table_path, 'r') as f:
+        with open(self.snpsift_out_path, 'r') as f:
             lines = f.readlines()
 
         with open(self.vcf_table_path, 'w') as f:
@@ -227,17 +220,5 @@ class VCFFormat:
             'wt_ref', 
             'wt_alt'
         ]
-    
-    def remove_repetitive_snpeff_labels(self):
-
-        columns_to_process = ["gene", "snpEffect", "snpVariant", "snpImpact"]
-        # Iterate over snpEff columns and use "set" to get unique labels only
-        for column in columns_to_process:
-            self.vcf_df[column] = (
-                self.vcf_df[column].astype(str)
-                                .str.split(":")
-                                .apply(lambda x: ":".join(set(x)))
-            )
-
-        # Write the DataFrame back to the file
         self.vcf_df.to_csv(self.vcf_table_path, sep='\t', index=False)
+    
