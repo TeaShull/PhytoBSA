@@ -30,6 +30,11 @@ class BSA:
         self.log.delimiter(f'Initializing BSA pipeline log for {line.name}')
         bsa_log = LogHandler(f'analysis_{line.name}')
         line.analysis_ulid = bsa_log.ulid 
+        
+        if not line.vcf_ulid:#store associated VCF ulid for records and file pathing
+            file_utils = FileUtilities(self.log)
+            line.vcf_ulid = file_utils.extract_ulid_from_file_path(line.vcf_table_path)
+        
         bsa_log.add_db_record(
             name = line.name, 
             core_ulid = self.log.ulid, 
@@ -45,10 +50,7 @@ class BSA:
         return bsa_log
 
     def _load_data(self, line, bsa_log):
-        if not line.vcf_ulid:
-            file_utils = FileUtilities(self.log)
-            line.vcf_ulid = file_utils.extract_ulid_from_file_path(line.vcf_table_path)
-        
+
         line.vcf_df = self.bsa_vars.load_vcf_table(line.vcf_table_path)
 
     def _filter_data(self, line, bsa_log):
@@ -134,14 +136,18 @@ class BSA:
     def __call__(self):
         #Run BSA pipeline
         for line in self.bsa_vars.lines:
-            bsa_log = self._initialize_log(line)
-            self._load_data(line, bsa_log)
-            self._filter_data(line, bsa_log)
-            self._produce_features(line, bsa_log)
-            
-            null_models = self._produce_null_models(line, bsa_log)
-            self._save_and_plot_outputs(line, null_models, bsa_log)
-
+            try:
+                bsa_log = self._initialize_log(line)
+                self._load_data(line, bsa_log)
+                self._filter_data(line, bsa_log)
+                self._produce_features(line, bsa_log)
+                
+                null_models = self._produce_null_models(line, bsa_log)
+                self._save_and_plot_outputs(line, null_models, bsa_log)
+            except Exception as e:
+                self.log.error(f"Running BSA for line {line.name} failed unexpectedly. {e}")
+                self.log.error("Continuing to attempt analysis of other lines...")
+                continue
 
 class DataFiltering:
     def __init__ (self, logger, name):
@@ -205,13 +211,14 @@ class DataFiltering:
     def filter_genotypes(self, segregation_type: str, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
         Filter genotypes in the 'mu:wt_GTpred' column of a DataFrame based on 
-        the specified allele.
+        the specified allele. 1/1:0/0 is included because in some situations, 
+        read depths
         
         Args:
             segregation_type (str): The allele value to filter the genotypes. 
                 Filters: 
-                        R = Recessive seg '1/1:0/1', '0/1:0/1'.
-                        D = Dominant seg '0/1:0/0', '0/1:0/1'.
+                        R = Recessive seg '1/1:0/1', '0/1:0/1', 1/1:0/0.
+                        D = Dominant seg '0/1:0/0', '0/1:0/1', 1/1:0/0.
             
             vcf_df (pd.DataFrame): The input DataFrame containing the genotypes.
 
@@ -235,12 +242,12 @@ class DataFiltering:
             
             elif segregation_type == 'D':
                 self.log.note('Filtering genotypes based an a dominant segregation pattern')
-                seg_filter = ['0/1:0/0', '0/1:0/1']  
+                seg_filter = ['0/1:0/0', '0/1:0/1','1/1:0/0']  
             
             else: 
-                self.log.error(f'Segregation type:{segregation_type} is not an expected value. Continuing with broadest filter...')
-                self.log.warning("Data should be mostly OK, but spurious mutations will be missing a filter. Null model generation will also be needlessly resource intensive")
-                seg_filter = ['0/1:0/0', '0/1:0/1', '1/1:0/1'] 
+                self.log.error(f'Segregation type value is not valid or not assigned. Continuing with broadest filter...')
+                self.log.warning("Data should be mostly OK, but some spurious mutations won't be filtered. Null model generation will be more resource intensive")
+                seg_filter = ['0/1:0/0', '0/1:0/1', '1/1:0/1', '1/1:0/0'] 
             
             try:
                 self.log.note(f'Input dataframe length: {len(vcf_df)}')
@@ -884,7 +891,11 @@ class TableAndPlots:
         return exploded_df
 
     def _plot_histogram(self, data, title, filename, faceted):
-    
+        
+        if len(data) > 100_000 and not faceted:
+            self.log.note(f"Data for histogram exceeds 100,000. Subsampling null model histogram down to 100,000 for faster plotting....")
+            data = data.sample(n=100_000, random_state=1)
+
         plot = (ggplot(data, aes(x='value')) +
                 geom_histogram(fill='#69b3a2', color="#000000", alpha=0.7) +
                 ggtitle(title) +
@@ -977,7 +988,12 @@ class TableAndPlots:
             (vcf_df['RS_G_yhat_percentile'] > 0.95) 
         )
 
-        return vcf_df[conditions].copy()
+        likely_candidates = vcf_df[conditions].copy()
+
+        if likely_candidates.empty:
+            self.log.nocandidates()
+        
+        return likely_candidates
 
     def _save_to_csv(self, df, filename):
         '''

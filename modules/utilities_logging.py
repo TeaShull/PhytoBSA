@@ -229,6 +229,7 @@ class LogHandler:
         self.logger.info(message)
         print(message)
 
+
     def delimiter(self, message):
         delimiter_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
         log_message = (f"""
@@ -242,7 +243,53 @@ class LogHandler:
 >=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-<
             """)
         self.logger.info(log_message)
-        print(log_message)    
+        print(log_message)
+
+
+    def nocandidates(self):
+        script_name, function_name = self._obtain_execution_frames()
+        nocands_msg= """
+!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*
+                      NO LIKELY CANDIDATES IDENTIFIED 
+
+This can happen for a number of reasons, including but not limited to:
+1) Messy data. The data filtering process did not elimate enough noise to 
+    identify regions linked to your segrating phenotype. 
+
+2) Over filtered data. Setting the ratio_cutoff setting too high (generally you 
+    get into some trouble above 0.3) can make identifying candidates hard, 
+    because you can remove the true negatives signal from the sample
+
+3) Inclusion of mutants in the wild-type bulk, or other lab related issues. 
+    -In the case of QTL identification, you may not have selected the tails of 
+    the phenotypic distribuition strictly enough
+
+    -In the case of EMS mutation detection, you may have made a mistake and 
+    included an incorrectly phenotyped sample in your tissue pool for your DNA 
+    preps.
+
+Tweaking the filtering parameters can enhance results.
+    1) Try not filtering by genotypes at all. Set 
+        segregation_pattern to None
+
+    2) Try increasing or decreasing ratio_cutoff
+
+    3) Try tweaking the loess_span 
+
+    4) Try either removing or adding a known snps file to improve 
+        results
+
+Finally, examine your plots and see if there are genomic regions that seem 
+promising. Sometimes looking through the "all.csv" file can yield your qtl, 
+mutation or information on why there are no candidates. 
+!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*
+        """
+        
+        log_message = self._construct_message(
+            nocands_msg, script_name, function_name, message
+        )
+        self.logger.info(log_message)
+        print(log_message)
 
     # Log database functions
     def _create_tables(self):

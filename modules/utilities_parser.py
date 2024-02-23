@@ -89,7 +89,8 @@ class ArgumentParser:
         ### REQUIRED
         parser_analysis.add_argument('-n', '--name', required=True, type=str, help='name of the line you wish to analyze. Will be used to name output files.')
         parser_analysis.add_argument('-vt', '--vcf_table_path', required=True, type=str, help='path to the vcf table you wish to analyze.')
-        parser_analysis.add_argument('-st', '--segregation_type', required=True, type=str, help="Recessive(R) or Dominant(D)")
+        ##Optional but recommended 
+        parser_analysis.add_argument('-st', '--segregation_type', required=False, default=None, type=str, help="Recessive(R) or Dominant(D)")
         self.add_bsa_arguments(parser_analysis)
 
         ## VCF generation subparser

@@ -111,64 +111,67 @@ class VCFGenerator:
         )
 
         for line in self.vcf_vars.lines:
-            #Initialize vcf log for the current line name
             self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
-            vcf_log = LogHandler(f'vcf_{line.name}')
-            line.vcf_ulid = vcf_log.ulid
-            vcf_log.add_db_record(
-                name=line.name, 
-                core_ulid=self.log.ulid,
-                reference_genome_path=self.vcf_vars.reference_genome_path,
-                snpeff_species_db=self.vcf_vars.snpeff_species_db,
-                reference_genome_source=self.vcf_vars.reference_genome_source,
-                omit_chrs_patterns=self.vcf_vars.omit_chrs_patterns,
-                threads_limit=THREADS_LIMIT
-            )
-            
-            #Generate output paths for process
-            vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
-                line.name, line.vcf_ulid
-            )
-            (
-                line.vcf_output_dir, 
-                line.vcf_output_prefix, 
-                line.vcf_table_path,
-                line.snpeff_report_path,
-                line.snpeff_out_path, 
-                line.snpsift_out_path
-            ) = vcf_out_paths
+            try:
+                #Initialize vcf log for the current line name
+                vcf_log = LogHandler(f'vcf_{line.name}')
+                line.vcf_ulid = vcf_log.ulid
+                vcf_log.add_db_record(
+                    name=line.name, 
+                    core_ulid=self.log.ulid,
+                    reference_genome_path=self.vcf_vars.reference_genome_path,
+                    snpeff_species_db=self.vcf_vars.snpeff_species_db,
+                    reference_genome_source=self.vcf_vars.reference_genome_source,
+                    omit_chrs_patterns=self.vcf_vars.omit_chrs_patterns,
+                    threads_limit=THREADS_LIMIT
+                )
+                
+                #Generate output paths for process
+                vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
+                    line.name, line.vcf_ulid
+                )
+                (
+                    line.vcf_output_dir, 
+                    line.vcf_output_prefix, 
+                    line.vcf_table_path,
+                    line.snpeff_report_path,
+                    line.snpeff_out_path, 
+                    line.snpsift_out_path
+                ) = vcf_out_paths
 
-            #Generate line.vcf_gen_cmd
-            line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
+                #Generate line.vcf_gen_cmd
+                line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
 
-            #Run vcfgen shell subprocess.
-            process = subprocess.Popen(
-                line.vcf_gen_cmd, 
-                cwd=MODULES_DIR, 
-                shell=True, 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT, 
-                text=True
-            )
-            # Iterate over stdout from process and log
-            for stdout_line in process.stdout:
-                vcf_log.bash(stdout_line.strip())
-            process.wait()
+                #Run vcfgen shell subprocess.
+                process = subprocess.Popen(
+                    line.vcf_gen_cmd, 
+                    cwd=MODULES_DIR, 
+                    shell=True, 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.STDOUT, 
+                    text=True
+                )
+                # Iterate over stdout from process and log
+                for stdout_line in process.stdout:
+                    vcf_log.bash(stdout_line.strip())
+                process.wait()
 
-            vcf_log.note(f"VCF file generated for {line.name}.") 
-            vcf_log.success("VCF file generation process complete")
+                vcf_log.note(f"VCF file generated for {line.name}.") 
+                vcf_log.success("VCF file generation process complete")
+                
+                # Formatting VCF output to make it dataframe friendly
+                vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path)
+                vcf_format.format_fields()
+                vcf_format.remove_complex_genotypes()
+                vcf_format.add_header() #pd.DataFrame created
+                
+                #Cleanup files if cleanup = True
+                if self.vcf_vars.cleanup:
+                    self._cleanup_files(line.vcf_output_dir, self.vcf_vars.cleanup_filetypes)
             
-            # Formatting VCF output to make it dataframe friendly
-            vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path)
-            vcf_format.remove_repetitive_nan() #vcf_table_path file created here
-            vcf_format.format_fields()
-            vcf_format.remove_complex_genotypes()
-            vcf_format.add_header() #pd.DataFrame created
-            vcf_format.remove_repetitive_snpeff_labels()#pd.DataFrame saved as csv 
-            
-            #Cleanup files if cleanup = True
-            if self.vcf_vars.cleanup:
-                self._cleanup_files(line.vcf_output_dir, self.vcf_vars.cleanup_filetypes)
+            except Exception as e:
+                self.log.error(f"There was an error while running vcf_generation process for {line.name}. Continuing to see if other lines can be run...")
+                continue
             
 
 class VCFFormat:
