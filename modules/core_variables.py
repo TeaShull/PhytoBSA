@@ -4,8 +4,8 @@ import csv
 import pandas as pd
 from pathlib import Path
 
-from settings.paths import (INPUT_DIR, OUTPUT_DIR, REFERENCE_DIR, MODULES_DIR, 
-    VCF_GEN_SCRIPT
+from settings.globals import (INPUT_DIR, OUTPUT_DIR, REFERENCE_DIR, MODULES_DIR, 
+    VCF_GEN_SCRIPT, THREADS_LIMIT
 )
 from modules.utilities_general import FileUtilities
 
@@ -17,17 +17,15 @@ class Lines:
     here are dynamic, and many are used in both processes.
 
     The variables of this class can be populated by automatic_line_variables
-    in the AutomaticLineVariableDetector class or the usr_in_line_variables 
-    within this current class. 
+    in the AutomaticLineVariableDetector class or the parsed arguments passed 
+    to usr_in_line_variables within this current class. 
     '''
     
     __slots__ = ['log', 'name', 'segregation_type', 'vcf_table_path', 
         'mu_input', 'wt_input', 'pairedness', 'vcf_gen_cmd', 
         'vcf_output_prefix', 'vcf_output_dir', 'vcf_ulid', 'vcf_df', 
-        'analysis_out_prefix', 'gs_cutoff', 'rsg_cutoff', 'rsg_y_cutoff', 
-        'analysis_ulid', 'in_path_variables', 'ref_path_variables', 
-        'snpeff_dir', 'snpeff_out_path', 'snpsift_out_path', 
-        'snpeff_report_path', 'rs_cutoff', 'snpmask_df'
+        'analysis_out_prefix', 'analysis_ulid', 'snpeff_out_path', 
+        'snpsift_out_path', 'snpeff_report_path', 'snpmask_df'
     ]
 
     def __init__(self, logger, name):
@@ -35,7 +33,7 @@ class Lines:
 
         # BSA and VCF_gen variables
         self.name = name
-        self.vcf_table_path = None 
+        self.vcf_table_path = None
 
         # VCF_gen variables 
         self.mu_input = []
@@ -49,31 +47,16 @@ class Lines:
         self.snpeff_out_path = None
         self.snpsift_out_path = None
 
-
         # BSA variables
         self.segregation_type = None
         self.vcf_df = None
         self.snpmask_df = None
         self.analysis_out_prefix = None
-        self.gs_cutoff = None
-        self.rs_cutoff = None
-        self.rsg_cutoff = None
-        self.rsg_y_cutoff = None
         self.analysis_ulid = None
-
-        
-        # Input Variables that require path parsing. _process_input checks if 
-        # hard-coded or if in the /inputs folder  
-        self.in_path_variables=[
-           'vcf_table_path',
-           'mu_input',
-           'wt_input'
-        ]
-
 
     def _process_input(self, key, details):
         file_utils = FileUtilities(self.log)
-        if key in self.in_path_variables:
+        if key == 'mu_input' or key == 'wt_input':
             paths = details.split() #for space seperated lists mu_input and wt_input
             dir = [INPUT_DIR]
             processed_paths = [file_utils.process_path(dir, path) for path in paths]
@@ -81,7 +64,6 @@ class Lines:
         else:
             return details
     
-
     def usr_in_line_variables(self, **kwargs):
         self.log.attempt('Attempting to organize inputs into Line data class...')
         try:
@@ -106,11 +88,10 @@ class Lines:
             self.log.fail(f'There was an error processing user inputs:{e}')
 
 
-class AutomaticLineVariableDetector:
+class AutomaticLineVariableDetector:    
     def __init__(self, logger):
         self.log = logger
         self.lines = []
-
 
     def _parse_filename(self, filename):
         parts = filename.split('.')
@@ -127,7 +108,6 @@ class AutomaticLineVariableDetector:
 
         return name, segregation_type, bulk_type, pairedness
 
-
     def _get_line(self, name):
         for l in self.lines:
             if l.name == name:
@@ -137,13 +117,11 @@ class AutomaticLineVariableDetector:
         self.lines.append(line)
         return line
 
-
     def _append_file_path(self, bulk_type, line, file_path):
         if bulk_type == 'wt':
             line.wt_input.append(file_path)
         elif bulk_type == 'mu':
             line.mu_input.append(file_path)
-
 
     def _process_file(self, filename):
         details = self._parse_filename(filename)
@@ -165,8 +143,7 @@ class AutomaticLineVariableDetector:
         line.pairedness = pairedness
         file_path = os.path.join(INPUT_DIR, filename)
         
-        self._append_file_path(bulk_type, line, file_path)
-    
+        self._append_file_path(bulk_type, line, file_path)    
 
     def _sort_file_paths(self):
         for line in self.lines:
@@ -175,8 +152,7 @@ class AutomaticLineVariableDetector:
             line.wt_input = sorted_wt_inputs
             line.mu_input = sorted_mu_inputs
 
-
-    def automatic_line_variables(self):
+    def __call__(self):
         self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
         try:
             for filename in os.listdir(INPUT_DIR):
@@ -187,7 +163,7 @@ class AutomaticLineVariableDetector:
             
             self.log.note("Sorting file paths...")
             self._sort_file_paths()
-            self.log.success(f'Line and run details generated.')
+            self.log.success(f'Line and run details generated from input directory:{INPUT_DIR}.')
         
         except Exception as e:
             self.log.fail(f"Error while detecting line and run details: {e}")
@@ -195,10 +171,9 @@ class AutomaticLineVariableDetector:
 
 class VCFGenVariables:
     __slots__ = ['log', 'lines', 'reference_genome_path', 
-        'reference_genome_source', 'omit_chrs_patterns', 'snpEff_species_db', 
-        'threads_limit', 'call_variants_in_parallel', 'cleanup', 
-        'cleanup_filetypes', 'reference_chrs_fa_path', 
-        'reference_chrs_dict_path'
+        'reference_genome_source', 'omit_chrs_patterns', 'snpeff_species_db', 
+        'call_variants_in_parallel', 'cleanup', 'cleanup_filetypes', 
+        'reference_chrs_fa_path', 'reference_chrs_dict_path'
     ]
     
     def __init__(self, logger,
@@ -206,8 +181,7 @@ class VCFGenVariables:
         reference_genome_path, 
         reference_genome_source,
         omit_chrs_patterns,
-        snpEff_species_db,
-        threads_limit, 
+        snpeff_species_db,
         call_variants_in_parallel, 
         cleanup, 
         cleanup_filetypes
@@ -218,8 +192,7 @@ class VCFGenVariables:
         self.reference_genome_path = reference_genome_path
         self.reference_genome_source = reference_genome_source
         self.omit_chrs_patterns = omit_chrs_patterns
-        self.snpEff_species_db = snpEff_species_db
-        self.threads_limit = threads_limit
+        self.snpeff_species_db = snpeff_species_db
         self.call_variants_in_parallel = call_variants_in_parallel
         self.cleanup = cleanup
         self.cleanup_filetypes = cleanup_filetypes
@@ -227,9 +200,6 @@ class VCFGenVariables:
         # Generated by _gen_reference_chrs_paths
         self.reference_chrs_fa_path = None 
         self.reference_chrs_dict_path = None
-        #Generate chrs paths
-        self._gen_reference_chrs_paths()
-
 
     def make_vcfgen_command(self, line):
         args = (
@@ -243,14 +213,13 @@ class VCFGenVariables:
             line.snpsift_out_path,
             self.reference_chrs_fa_path, #made in modules.core_vcf_gen
             self.reference_chrs_dict_path, #made in modules.core_vcf_gen
-            self.snpEff_species_db,
-            self.threads_limit,
+            self.snpeff_species_db,
+            THREADS_LIMIT,
             self.call_variants_in_parallel,
             self.cleanup
         )
         cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
         return cmd
-
 
     def gen_vcf_output_paths(self, name, vcf_ulid):
         self.log.attempt(f"Generating output paths and directories for line {name} with ulid:{vcf_ulid}")
@@ -294,7 +263,6 @@ class VCFGenVariables:
         except Exception as e:
             self.log.fail(f"Error generating VCF output paths: {e}")
 
-
     def _get_ref_name(self, file_path):
         self.log.attempt('Attempting to retrieve reference base name from inputs...')
         try: 
@@ -309,10 +277,9 @@ class VCFGenVariables:
                 base_name = Path(base_name).stem
             self.log.success(f"Base name: {base_name}")
         except Exception as e:
-            self.log.fail(f"There as an error retrieving reference base name from inputs...")
+            self.log.fail(f"There as an error retrieving reference base name from inputs:{e}")
         return base_name
     
-
     def _check_ref_path(self, ref_genome_path):
         self.log.attempt(f"Checking reference genome path for completeness:{ref_genome_path}")
 
@@ -349,9 +316,7 @@ class VCFGenVariables:
         self.log.note(f"{ref_genome_path} is not the full path or found in ./references.") 
         self.log.note(f"Later we will attempt to source reference from user provided URL: {self.reference_genome_source}")
 
-
-
-    def _gen_reference_chrs_paths(self):
+    def gen_reference_chrs_paths(self):
         self.reference_genome_path = self._check_ref_path(
             self.reference_genome_path
         )
@@ -363,14 +328,13 @@ class VCFGenVariables:
         self.reference_chrs_dict_path = (f"{ref_genome_prefix}.chrs.dict")
         self.reference_chrs_fa_path = (f"{ref_genome_prefix}.chrs.fa")
 
-
 class BSAVariables:
+
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
         'shuffle_iterations', 'filter_indels', 'filter_ems', 'snpmask_path', 
-        'snpmask_df', 'ratio_cutoff'
+        'ratio_cutoff'
     ]
     
-
     def __init__(self, logger,
         lines, 
         loess_span, 
@@ -391,8 +355,6 @@ class BSAVariables:
         self.filter_ems = filter_ems
         self.snpmask_path = snpmask_path
         self.ratio_cutoff = ratio_cutoff
-        self.snpmask_df = None
-
 
     def load_vcf_table(self, vcf_table_path)->pd.DataFrame:
         """
@@ -407,7 +369,7 @@ class BSAVariables:
         file_utils = FileUtilities(self.log)
         self.log.attempt(f"Attempting to load {vcf_table_path}")
         try:
-            directories = [INPUT_DIR] 
+            directories = [INPUT_DIR, OUTPUT_DIR] 
             vcf_table_path = file_utils.process_path(directories, vcf_table_path)
             df = pd.read_csv(vcf_table_path, sep="\t")
             self.log.note(f"{vcf_table_path} loaded. Proceeding...")
@@ -420,10 +382,11 @@ class BSAVariables:
         except Exception as e:
             self.log.fail(f"An unexpected error occurred: {e}")
 
-
     def load_snpmask(self, snpmask_path)->pd.DataFrame:
         """
-        Handles SNP mask and converts it into a pandas dataframe.
+        Handles SNP mask file and dataframe. If the file is a generic VCF file,
+        this function will make a backup of the original VCF and create a pandas
+        friendly SNP mask from the original VCF.
 
         Args:  
         snpmask_path - path to the vcf table to be loaded into df
@@ -442,6 +405,7 @@ class BSAVariables:
 
         except pd.errors.ParserError:
             self.log.note(f"snpmask file doesn't appear to be formatted for pandas. Formatting....")
+            self.log.warning("Parsing VCFs doesn't always go well. If you get a lot of errors during this process, it could be worthwile to format the snpmask file yourself. Required headers are 'CHROM POS REF ALT'")
             temp_table_path = f"{snpmask_path}.temp"
             backup_table_path = f"{snpmask_path}.backup"
             headers = ['CHROM','POS','REF','ALT' ]
@@ -466,6 +430,7 @@ class BSAVariables:
                             ref = record.REF
                             alt = ','.join(str(a) for a in record.ALT) 
                             writer.writerow([chrom, pos, ref, alt])
+            
                         except AttributeError:
                             self.log.warning(f"Skipping record due to missing field(s): {record}")
 
@@ -490,26 +455,28 @@ class BSAVariables:
         except Exception as e:
             self.log.fail(f"An unexpected error occurred: {e}")
 
-
     def gen_bsa_out_prefix(self, name, ulid, vcf_ulid): #called in core_bsa.py
         try:
             analysis_out_prefix = f'{ulid}-_{name}'
             if vcf_ulid:
-                out_path = os.path.join(
+                out_dir = os.path.join(
                         OUTPUT_DIR, 
                         f'{vcf_ulid}-_{name}',
-                        analysis_out_prefix, 
-                    analysis_out_prefix
+                        analysis_out_prefix
                 )
-            else:
-                out_path = os.path.join(
+            
+            else: #For analysis runs that don't have PhytoBSA generated vcfs w/ ulids in the output dir.
+                out_dir = os.path.join(
                     OUTPUT_DIR,
                     analysis_out_prefix
                 )
+            
             file_utils = FileUtilities(self.log)
-            file_utils.setup_directory(out_path)
+            file_utils.setup_directory(out_dir) #setup the output dir
+            
+            analysis_out_prefix = os.path.join(out_dir, analysis_out_prefix) #prefix for files to be saved in out_dir
         
-            return out_path
+            return analysis_out_prefix
         
         except Exception as e:
             self.log.error(f"Error generating BSA output prefix: {e}")

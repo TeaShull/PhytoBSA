@@ -5,6 +5,7 @@ import ast
 
 
 class ArgumentParser:
+    
     def __init__(self):
         self.parse_program_arguments()
         self.config = configparser.ConfigParser()
@@ -26,7 +27,6 @@ class ArgumentParser:
         elif self.args.command == 'analysis':
             self.apply_defaults_from_config('BSA')
  
-
     def apply_settings_to_config(self):
         for arg in vars(self.args):
             if arg.startswith('set_') and getattr(self.args, arg) is not None:
@@ -42,7 +42,6 @@ class ArgumentParser:
             self.config.write(configfile)
         quit()
 
-
     def apply_defaults_from_config(self, section):
         for arg in vars(self.args).keys():
             if getattr(self.args, arg) is None and self.config.has_option(section, arg):
@@ -53,7 +52,6 @@ class ArgumentParser:
                     pass
                 print(f'Default applied: {arg}:{value}')
                 setattr(self.args, arg, value)
-
 
     def add_bsa_arguments(self, parser):
         bsa_options = parser.add_argument_group('BSA analysis options', 'Options for BSA analysis. Defaults can be changed using the settings positional argument. phytobsa settings -h for for info')
@@ -68,7 +66,7 @@ class ArgumentParser:
     def add_vcf_gen_arguments(self, parser):
         vcf_gen_options = parser.add_argument_group('VCF generation options', 'Options for VCF generation. Defaults can be changed using the settings positional argument phytobsa settings -h for more info')
         vcf_gen_options.add_argument('-rgn', '--reference_genome_path', required=False, default=None, type=str, help='Reference genome name')
-        vcf_gen_options.add_argument('-ssdb', '--snpEff_species_db', default=None, type=str, help = 'The name of your snpEff database name.')
+        vcf_gen_options.add_argument('-ssdb', '--snpeff_species_db', default=None, type=str, help = 'The name of your snpEff database name.')
         vcf_gen_options.add_argument('-rgs', '--reference_genome_source', default=None, type=str, help = 'Optional, if you wish the pipeline to download your reference from a url')
         vcf_gen_options.add_argument('-ks','--known_snps', default=None, type=str, help = 'VCF file containing background SNPs. Helps improve output quality')
         vcf_gen_options.add_argument('-t', '--threads_limit', default=None, type=str, help='Maximum threads you wish to use for analysis')
@@ -76,7 +74,6 @@ class ArgumentParser:
         vcf_gen_options.add_argument('-c','--cleanup', default=None, type=bool, help='If true, intermediate files will de deleted. False for troubleshooting and archiving files.' )
         vcf_gen_options.add_argument('-cft', '--cleanup_filetypes', default=None, type=list, help="Filetypes to clean out after VCF generation is complete. format - ['*file_suffix', exc] example - ['*.tmp', '*.metrics']")
         vcf_gen_options.add_argument('-ocp', '--omit_chrs_patterns', default=None, type=list, help='Header patterns to omit from reference chromosomes. Useful for removing >mt(mitochondrial) and other unneeded reference sequences')
-
 
     def parse_program_arguments(self):
         
@@ -92,7 +89,8 @@ class ArgumentParser:
         ### REQUIRED
         parser_analysis.add_argument('-n', '--name', required=True, type=str, help='name of the line you wish to analyze. Will be used to name output files.')
         parser_analysis.add_argument('-vt', '--vcf_table_path', required=True, type=str, help='path to the vcf table you wish to analyze.')
-        parser_analysis.add_argument('-st', '--segregation_type', required=True, type=str, help="Recessive(R) or Dominant(D)")
+        ##Optional but recommended 
+        parser_analysis.add_argument('-st', '--segregation_type', required=False, default=None, type=str, help="Recessive(R) or Dominant(D)")
         self.add_bsa_arguments(parser_analysis)
 
         ## VCF generation subparser
@@ -113,13 +111,13 @@ class ArgumentParser:
         ## Settings subparser
         parser_settings = subparsers.add_parser('settings', help='Update default settings.')
         parser_settings.add_argument('--set_data_dir', default=None, type=str, help='set Data directory. This must be set for program to run')
+        parser_settings.add_argument('--set_threads_limit', default=None, type=int, help="Set the threads limit for BSA and for VCF generation. If not set, threads will be detected and threads -2 will be used. ")
         #vcf_gen default run settings. 
         vcf_settings = parser_settings.add_argument_group('VCF generation default settings' 'These settings will be automatically applied if not explicity provided in automatic or VCF generation mode')
         vcf_settings.add_argument('--set_reference_genome_path', required=False, default=None, type=str, help='Set default reference genome name')
-        vcf_settings.add_argument('--set_snpEff_species_db', default=None, type=str, help = 'Set default snpEff database name.')
+        vcf_settings.add_argument('--set_snpeff_species_db', default=None, type=str, help = 'Set default snpEff database name.')
         vcf_settings.add_argument('--set_reference_genome_source', default=None, type=str, help = 'Set default reference genome source')
         vcf_settings.add_argument('--set_known_snps', default=None, type=str, help = 'Set default VCF file containing background SNPs.')
-        vcf_settings.add_argument('--set_threads_limit', default=None, type=str, help='Set default maximum threads for analysis')
         vcf_settings.add_argument('--set_call_variants_in_parallel', default=None, type=bool, help='Set default for running gatk haplotype caller in parallel')
         vcf_settings.add_argument('--set_cleanup', default=None, type=bool, help='Set default for cleanup. If true, intermediate files will de deleted. False for troubleshooting and archiving files.' )
         vcf_settings.add_argument('--set_cleanup_filetypes', default=None, type=list, help="set default for cleanup filetypes. ordered list of globs for files you wish to clear out after vcf generation process")

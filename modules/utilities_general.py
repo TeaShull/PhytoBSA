@@ -1,4 +1,4 @@
-from settings.paths import (INPUT_DIR, 
+from settings.globals import (INPUT_DIR, 
     OUTPUT_DIR, MODULES_DIR, REFERENCE_DIR, LOG_DATABASE_NAME, LOG_DATABASE_PATH
 )
 
@@ -8,10 +8,8 @@ import sqlite3
 
 
 class FileUtilities:
-    # Utility class: Handling file operations and inputs. 
     def __init__(self, logger):
         self.log = logger 
-
 
     def setup_directory(self, directory):
         '''
@@ -27,31 +25,36 @@ class FileUtilities:
         try: 
             # Check if the output directory exists, and create it if necessary
             if not os.path.exists(directory):
-                self.log.attempt(f"Directory does not exist. Creating: {directory}")
+                self.log.note(f"Directory does not exist. Creating: {directory}")
                 os.makedirs(directory)
                 self.log.success(f'Directory created: {directory}')
             else:
-                self.log.note(f"Directory already exists: {directory}")
+                self.log.success(f"Directory already exists: {directory}")
         
         except Exception as e:
             self.log.fail(f'setting up directory failed: {e}')
 
-
     def process_path(self, directories: list, path: str) -> str:
         if os.path.exists(path):
             self.log.note(f'Path found and assigned: {path}')
+           
             return path
+        
         else:
+            print(directories)
             for directory in directories:
-                self.log.note(f"path:{path} does not exist. Checking for it in {directory}..")
-                dir_path = os.path.join(directory, path)
-                if os.path.exists(dir_path):
-                    self.log.note(f" path:{dir_path} found! Assigning path value.")
-                    return dir_path
-
+                for root, dirs, files in os.walk(directory):
+                    self.log.note(f"Checking for path:{path} in {root}..")
+                    
+                    if path in files:
+                        dir_path = os.path.join(root, path)
+                        self.log.note(f"Path:{dir_path} found! Assigning path value.")
+                        
+                        return dir_path
+            
             self.log.fail(f'Path not found in any of the provided directories or the hard coded ({path}). Aborting')
+            
             return None
-
 
     def extract_ulid_from_file_path(self, file_path):
         ulid_pattern = re.compile(r'[0-9A-HJKMNPQRSTVWXYZ]{26}')
@@ -61,86 +64,122 @@ class FileUtilities:
         else:
             return None
 
+    def _write_lines_class_attrs(self, lines_instance, file):
+        for attr in dir(lines_instance):
+            if not attr.startswith("__"):
+                value = getattr(lines_instance, attr)
+                if not callable(value):
+                    file.write(f"  {attr}: {value}\n")
+
+    def write_instance_vars_to_file(self, instances, filename):
+        with open(filename, 'w') as f:
+            for instance in instances:
+                f.write(f"Instance of {instance.__class__.__name__}:\n")
+                for attr in dir(instance):
+                    if not attr.startswith("__"):
+                        value = getattr(instance, attr)
+                        if not callable(value):
+                            f.write(f"  {attr}: {value}\n")
+                f.write("\n")
 
 class LogDbUtilites:
-    # Utility class: retrieving log information from the log database
     def __init__(self):
         self.conn = sqlite3.connect(LOG_DATABASE_PATH)
-
 
     def print_analysis_log_data(self, ulid):
         """Retrieve the paths based on the analysis ID"""
         cursor = self.conn.execute('''
-        SELECT analysis_ulid, line_name, core_ulid, 
-            vcf_ulid, analysis_log_path, analysis_timestamp 
-            FROM analysis
+        SELECT * FROM analysis
             WHERE analysis_ulid = ? OR vcf_ulid = ? OR core_ulid = ?
         ''', (ulid, ulid, ulid))
         result = cursor.fetchone()
 
         if result:
             print(f"analysis_ulid: {result[0]}")
-            print(f"line_name: {result[1]}")
-            print(f"core_ulid: {result[2]}")
-            print(f"vcf_ulid: {result[3]}")
-            print(f"analysis_log_path: {result[4]}")
-            print(f"Analysis_timestamp: {result[5]}")
+            print(f"analysis_log_path: {result[1]}")
+            print(f"analysis_timestamp: {result[2]}")
+            print(f"name: {result[3]}")
+            print(f"core_ulid: {result[4]}")
+            print(f"vcf_ulid: {result[5]}")
+            print(f"ratio_cutoff: {result[6]}")
+            print(f"loess_span: {result[7]}")
+            print(f"smooth_edges_bounds: {result[8]}")
+            print(f"filter_indels: {result[9]}")
+            print(f"filter_ems: {result[10]}")
+            print(f"snpmask_path: {result[11]}")
         else:
             print(f"No database entry found for {ulid}")
 
-
     def print_vcf_log_data(self, ulid):
         cursor = self.conn.execute('''
-        SELECT vcf_ulid, line_name, core_ulid, vcf_log_path, vcf_timestamp 
-            FROM vcf 
+        SELECT * FROM vcf 
             WHERE vcf_ulid = ? OR core_ulid = ?
         ''', (ulid, ulid)) 
         result = cursor.fetchone()
         if result:
-            print(f"VCF ulid: {result[0]}")
-            print(f"Line Name: {result[1]}")
-            print(f"Core ulid: {result[2]}")
-            print(f"VCF Log Path: {result[3]}")
-            print(f"VCF Timestamp: {result[4]}")
+            print(f"vcf_ulid: {result[0]}")
+            print(f"vcf_log_path: {result[1]}")
+            print(f"vcf_timestamp: {result[2]}")
+            print(f"name: {result[3]}")
+            print(f"core_ulid: {result[4]}")
+            print(f"reference_genome_path: {result[5]}")
+            print(f"snpeff_species_db: {result[6]}")
+            print(f"reference_genome_source: {result[7]}")
+            print(f"threads_limit: {result[8]}")
         else:
             print(f"No database entry found for {ulid}")
-
 
     def print_line_name_data(self, line_name):
         """Retrieve all entries based on the line name"""
         cursor = self.conn.execute('''
-        SELECT vcf.vcf_ulid, vcf.vcf_log_path, vcf.vcf_timestamp, 
-            analysis.analysis_ulid, analysis.line_name, analysis.core_ulid, 
-            analysis.analysis_log_path, analysis.analysis_timestamp 
+        SELECT vcf.*, analysis.* 
             FROM vcf 
-            INNER JOIN analysis 
-            ON vcf.line_name = analysis.line_name 
-            WHERE vcf.line_name = ?
+            LEFT JOIN analysis 
+            ON vcf.name = analysis.name 
+            WHERE vcf.name = ?
         ''', (line_name,))
         results = cursor.fetchall()
 
         if results:
             for result in results:
-                print(f"VCF ULID: {result[0]}")
-                print(f"VCF Log Path: {result[1]}")
-                print(f"VCF Timestamp: {result[2]}")
-                print(f"Analysis ULID: {result[3]}")
-                print(f"Line Name: {result[4]}")
-                print(f"Core ULID: {result[5]}")
-                print(f"Analysis Log Path: {result[6]}")
-                print(f"Analysis Timestamp: {result[7]}")
+                print("\nVCF Data:")
+                if result[0] is not None:
+                    print(f"vcf_ulid: {result[0]}")
+                    print(f"vcf_log_path: {result[1]}")
+                    print(f"vcf_timestamp: {result[2]}")
+                    print(f"name: {result[3]}")
+                    print(f"core_ulid: {result[4]}")
+                    print(f"reference_genome_path: {result[5]}")
+                    print(f"snpeff_species_db: {result[6]}")
+                    print(f"reference_genome_source: {result[7]}")
+                    print(f"threads_limit: {result[8]}")
+                else:
+                    print("No VCF data found for this line name.")
+
+                print("\nAnalysis Data:")
+                if result[9] is not None:
+                    print(f"analysis_ulid: {result[9]}")
+                    print(f"analysis_log_path: {result[10]}")
+                    print(f"analysis_timestamp: {result[11]}")
+                    print(f"name: {result[12]}")
+                    print(f"core_ulid: {result[13]}")
+                    print(f"vcf_ulid: {result[14]}")
+                    print(f"ratio_cutoff: {result[15]}")
+                    print(f"loess_span: {result[16]}")
+                    print(f"smooth_edges_bounds: {result[17]}")
+                    print(f"filter_indels: {result[18]}")
+                    print(f"filter_ems: {result[19]}")
+                    print(f"snpmask_path: {result[20]}")
+                else:
+                    print("No analysis data found for this line name.")
                 print("\n")  # for separating different entries
         else:
             print("No results found for this line name.")
 
-
     def print_core_ulid_data(self, core_ulid):
         """Retrieve all entries based on the core ulid"""
         cursor = self.conn.execute('''
-        SELECT vcf.vcf_ulid, vcf.vcf_log_path, vcf.vcf_timestamp, 
-            analysis.analysis_ulid, analysis.line_name, analysis.core_ulid, 
-            analysis.analysis_log_path, analysis.analysis_timestamp,
-            core.core_log_path, core.core_timestamp
+        SELECT core.*, vcf.*, analysis.* 
             FROM core 
             LEFT JOIN vcf 
             ON core.core_ulid = vcf.core_ulid 
@@ -152,20 +191,37 @@ class LogDbUtilites:
 
         if results:
             for result in results:
-                print(f"Core ULID: {result[5]}")
-                print(f"Core Log Path: {result[8]}")
-                print(f"Core Timestamp: {result[9]}")
-
-                if result[0] is not None:
-                    print(f"VCF ULID: {result[0]}")
-                    print(f"VCF Log Path: {result[1]}")
-                    print(f"VCF Timestamp: {result[2]}")
+                print("\nCore Data:")
+                print(f"core_ulid: {result[0]}")
+                print(f"core_log_path: {result[1]}")
+                print(f"core_timestamp: {result[2]}")
 
                 if result[3] is not None:
-                    print(f"Analysis ULID: {result[3]}")
-                    print(f"Line Name: {result[4]}")
-                    print(f"Analysis Log Path: {result[6]}")
-                    print(f"Analysis Timestamp: {result[7]}")
+                    print("\nVCF Data:")
+                    print(f"vcf_ulid: {result[3]}")
+                    print(f"vcf_log_path: {result[4]}")
+                    print(f"vcf_timestamp: {result[5]}")
+                    print(f"name: {result[6]}")
+                    print(f"core_ulid: {result[7]}")
+                    print(f"reference_genome_path: {result[8]}")
+                    print(f"snpeff_species_db: {result[9]}")
+                    print(f"reference_genome_source: {result[10]}")
+                    print(f"threads_limit: {result[11]}")
+
+                if result[12] is not None:
+                    print("\nAnalysis Data:")
+                    print(f"analysis_ulid: {result[12]}")
+                    print(f"analysis_log_path: {result[13]}")
+                    print(f"analysis_timestamp: {result[14]}")
+                    print(f"name: {result[15]}")
+                    print(f"core_ulid:{result[16]}")
+                    print(f"vcf_ulid: {result[17]}")
+                    print(f"ratio_cutoff: {result[18]}")
+                    print(f"loess_span: {result[19]}")
+                    print(f"smooth_edges_bounds: {result[20]}")
+                    print(f"filter_indels: {result[21]}")
+                    print(f"filter_ems: {result[22]}")
+                    print(f"snpmask_path: {result[23]}")
 
                 print("\n")  # for separating different entries
         else:
