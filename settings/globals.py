@@ -71,5 +71,5 @@ LOG_DIR = os.path.join(DATA_DIR, 'logs')
 LOG_DATABASE_NAME = 'phytoBSAlog.db'
 LOG_DATABASE_PATH = os.path.join(LOG_DIR, LOG_DATABASE_NAME)
 
-#setup data directory, if it doesn't exist
-setup_data_dir(DATA_DIR, REFERENCE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR)
+
+

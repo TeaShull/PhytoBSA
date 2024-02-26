@@ -4,7 +4,7 @@ from modules.utilities_parser import ArgumentParser
 arg_parser = ArgumentParser() #First so DATA_DIR can be set & populate paths
 args = arg_parser.args
 from modules.utilities_logging import LogHandler
-from modules.utilities_general import LogDbUtilites
+from modules.utilities_general import LogDbUtilites, RefDbUtilities
 
 # import core modules - vcf generation and BSA
 from modules.core_vcf_gen import VCFGenerator
@@ -14,6 +14,7 @@ from modules.core_bsa import BSA
 from modules.core_variables import (
     Lines, AutomaticLineVariableDetector, VCFGenVariables, BSAVariables
 ) # Paths are set in settings.globals and imported in modules.core_variables 
+
 
 def setup_vcf_variables(core_log, line, args):
     '''
@@ -26,21 +27,23 @@ def setup_vcf_variables(core_log, line, args):
     from config.ini (check ./phytobsa settings -h to set defaults. One can also 
     directly edit config.ini in a text editor)
     '''
+    #Setup sqlite connection to fetch reference configuration from ref database
+    refdb_utils = RefDbUtilities(core_log, args.reference_name)
+
     vcf_vars = VCFGenVariables(
         logger=core_log,
         lines=line, #list of class Lines. Contains variables set through parser or automatic detection in input folder
         
         #settings. set in config.ini or at runtime using parser. 
-        reference_genome_path=args.reference_genome_path, 
-        reference_genome_source=args.reference_genome_source,
+        reference_genome_path=refdb_utils.fetch_ref_var('reference_genome_path'), 
+        reference_genome_source=refdb_utils.fetch_ref_var('reference_genome_source'),
         omit_chrs_patterns=args.omit_chrs_patterns,
-        snpeff_species_db=args.snpeff_species_db,
+        snpeff_species_db=refdb_utils.fetch_ref_var('snpeff_species_db'),
         call_variants_in_parallel=args.call_variants_in_parallel,
         cleanup=args.cleanup,
         cleanup_filetypes=args.cleanup_filetypes
     )
     return vcf_vars
-
 
 def setup_bsa_variables(core_log, lines, args):
     '''
@@ -53,6 +56,7 @@ def setup_bsa_variables(core_log, lines, args):
     settings -h to set defaults. One can also directly edit config.ini in a text 
     editor)
     '''
+    refdb_utils = RefDbUtilities(core_log, args.reference_name)
     bsa_vars = BSAVariables(
         logger=core_log, 
         lines=lines, #list of the class Lines. Contains variables set through parser or automatic detection in input folder
@@ -63,7 +67,8 @@ def setup_bsa_variables(core_log, lines, args):
         shuffle_iterations=args.shuffle_iterations,
         filter_indels=args.filter_indels,
         filter_ems=args.filter_ems,
-        snpmask_path=args.snpmask_path,
+        snpmask_path=refdb_utils.fetch_ref_var('snpmask_path'),
+        snpmask_url=refdb_utils.fetch_ref_var('snpmask_url'),
         ratio_cutoff=args.ratio_cutoff
     )
     return bsa_vars

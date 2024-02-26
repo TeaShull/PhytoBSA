@@ -61,7 +61,7 @@ class BSA:
         if self.bsa_vars.filter_indels: 
             line.vcf_df = data_filter.drop_indels(line.vcf_df)
         
-        if self.bsa_vars.filter_ems: 
+        if self.bsa_vars.filter_ems and self.segregation_type != 'QTL': 
             line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
         
         if self.bsa_vars.snpmask_path: 
@@ -244,6 +244,11 @@ class DataFiltering:
                 self.log.note('Filtering genotypes based an a dominant segregation pattern')
                 seg_filter = ['0/1:0/0', '0/1:0/1','1/1:0/0']  
             
+            elif segregation_type =='QTL':
+                self.log.note('Segregation type is QTL. Skipping filtering...')
+                
+                return vcf_df
+
             else: 
                 self.log.error(f'Segregation type value is not valid or not assigned. Continuing with broadest filter...')
                 self.log.warning("Data should be mostly OK, but some spurious mutations won't be filtered. Null model generation will be more resource intensive")
@@ -722,7 +727,7 @@ class FeatureProduction:
 
     def _calculate_percentile(self, value, sorted_array):
         '''
-        Quick function to grab the percentile. Built in libraries for this were
+        Quick function to calc percentile. Built in libraries for this were
         painfully slow
         '''
         sorted_list = (
@@ -736,14 +741,43 @@ class FeatureProduction:
         
         return percentile
 
+    def _assign_percentiles(self, vcf_df, columns_and_lists):
+        for column, lst in columns_and_lists:
+            self.log.note(f"assigning {column} percentiles based on null model")
+            sorted_lst = sorted(lst)
+            vcf_df[column + '_percentile'] = vcf_df[column].apply(
+                self._calculate_percentile, sorted_array=sorted_lst
+            )
+
+    def _assign_yhat_percentiles(self, vcf_df, columns_and_arrays_yhat):
+        for column, lst in columns_and_arrays_yhat:
+            self.log.note(f"assigning {column} percentiles based on null model")
+            column_array = vcf_df[column].to_numpy()
+
+            for i, value in enumerate(column_array):
+                if i < len(lst):
+                    values_array = sorted(lst[i]['value'])
+                    self._calculate_and_assign_percentiles(
+                        i, column, value, values_array, vcf_df
+                    )
+                else:
+                    self.log.warning(f"Skipping index {i} due to missing data")
+
+    def _calculate_and_assign_percentiles(self, i, column, value, values_array, vcf_df):
+        vcf_df.at[i, column + '_percentile'] = self._calculate_percentile(
+            value, values_array
+        )
+        vcf_df.at[i, column + '_null_5'] = np.percentile(values_array, 5)
+        vcf_df.at[i, column + '_null_25'] = np.percentile(values_array, 25)
+        vcf_df.at[i, column + '_null_50'] = np.percentile(values_array, 50)
+        vcf_df.at[i, column + '_null_75'] = np.percentile(values_array, 75)
+        vcf_df.at[i, column + '_null_95'] = np.percentile(values_array, 95)
+    
     def label_df_with_percentiles(self, vcf_df: pd.DataFrame, null_models)->pd.DataFrame:
         '''
         Labels the dataframe with the percetiles needed to both generate the 
         likely candidates list, and to create the null model ribbons on the 
         fitted graphs
-
-        [...]
-        A bit too big. Consider light refactoring
         '''
         self.log.attempt(f"Labeling dataframe with percentiles based on null models...")
         try:
@@ -752,41 +786,18 @@ class FeatureProduction:
             ) = null_models
 
             columns_and_arrays_yhat = [('ratio_yhat', sm_ratio_y_array), 
-                                      ('G_S_yhat', sm_g_stat_y_array), 
-                                      ('RS_G_yhat', sm_ratio_scaled_g_y_array)]
+                                    ('G_S_yhat', sm_g_stat_y_array), 
+                                    ('RS_G_yhat', sm_ratio_scaled_g_y_array)]
 
             columns_and_lists = [('ratio', sm_ratio_lst), 
-                                 ('G_S', sm_g_stat_lst), 
-                                 ('RS_G', sm_ratio_scaled_g_lst)]
+                                ('G_S', sm_g_stat_lst), 
+                                ('RS_G', sm_ratio_scaled_g_lst)]
 
-            for column, lst in columns_and_lists:
-                self.log.note(f"assigning {column} percentiles based on null model")
-                sorted_lst = sorted(lst)
-                vcf_df[column + '_percentile'] = vcf_df[column].apply(self._calculate_percentile, sorted_array=sorted_lst)
+            self._assign_percentiles(vcf_df, columns_and_lists)
+            self._assign_yhat_percentiles(vcf_df, columns_and_arrays_yhat)
             
-            for column, lst in columns_and_arrays_yhat:
-                self.log.note(f"assigning {column} percentiles based on null model")
-                # Convert the column to a numpy array
-                column_array = vcf_df[column].to_numpy()
-
-                # Iterate over the numpy array
-                for i, value in enumerate(column_array):
-                    # Check if 'i' is a valid index in 'lst'
-                    if i < len(lst):
-                        values_array = sorted(lst[i]['value'])
-                        # Calculate the percentile of the value
-                        vcf_df.at[i, column + '_percentile'] = self._calculate_percentile(value, values_array)
-                        vcf_df.at[i, column + '_null_5'] = np.percentile(values_array, 5)
-                        vcf_df.at[i, column + '_null_25'] = np.percentile(values_array, 25)
-                        vcf_df.at[i, column + '_null_50'] = np.percentile(values_array, 50)
-                        vcf_df.at[i, column + '_null_75'] = np.percentile(values_array, 75)
-                        vcf_df.at[i, column + '_null_95'] = np.percentile(values_array, 95)
-                    
-                    else:
-                        self.log.warning(f"Skipping index {i} due to missing data")
-        
             self.log.success(f"Dataframe labeled with percentiles")
-        
+            
             return vcf_df
 
         except Exception as e:

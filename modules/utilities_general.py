@@ -6,6 +6,10 @@ import os
 import re
 import sqlite3
 
+import gzip
+import shutil
+import urllib.request
+from urllib.parse import urlparse
 
 class FileUtilities:
     def __init__(self, logger):
@@ -81,6 +85,49 @@ class FileUtilities:
                         if not callable(value):
                             f.write(f"  {attr}: {value}\n")
                 f.write("\n")
+
+    def _unzip_file(self, file_path: str) -> str:
+        self.log.attempt(f"Attempting to unzip {file_path}")
+        with gzip.open(file_path, 'rb') as f_in:
+            with open(file_path[:-3], 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        file_path = file_path[:-3]
+        self.log.success(f"File unzipped to {file_path}")
+
+        return file_path
+
+    def _download_file(self, file_path: str, file_source: str) -> str:
+        self.log.attempt(f"File doesn't exist, sourcing from: {file_source}")
+        parsed_url = urlparse(file_source)
+        source_extension = os.path.splitext(parsed_url.path)[1]
+        
+        if file_path.endswith(source_extension) is False:
+            self.log.note(f"Source extension {source_extension} and file name extension don't match. Attempting to fix...")
+            file_path += source_extension
+        
+        self.log.attempt(f"Downloading from URL: {file_source}")
+        urllib.request.urlretrieve(file_source, file_path)
+        self.log.success(f"File downloaded and saved at {file_path}")
+
+        return file_path 
+
+    def parse_file(self, file_path: str, file_source: str)-> str:
+        self.log.attempt("Attempting to parse file...")
+        try:
+            if not os.path.isfile(file_path) and file_source:
+                file_path = self._download_file(file_path, file_source)
+            
+            if os.path.isfile(file_path) and file_path.endswith('.gz'):
+                file_path = self._unzip_file(file_path)
+
+            return file_path
+        
+        except Exception as e:
+            self.log.error("Parsing file failed.")
+            self.log.error(e)
+            
+            return None
+
 
 class LogDbUtilites:
     def __init__(self):
@@ -227,4 +274,45 @@ class LogDbUtilites:
         else:
             print(f"No database entries found for core ULID: {core_ulid}")
 
+class RefDbUtilities:
+    def __init__(self, logger, ref_name):
+        self.log = logger
+        self.ref_name = ref_name
+        self.conn = None
+        self.cursor = None
+        self.db_path = 'references.db'
+        self.open_connection()
 
+    def open_connection(self):
+        self.log.attempt("Opening reference database connection...")
+        try:
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+        except Exception as e:
+            self.log.note(f"Failed to connect to the database: {e}")
+            raise
+
+    def fetch_ref_var(self, field):
+        self.log.attempt(f"Attempting to retrieve {field} for {self.ref_name}")
+        try:
+            self.cursor.execute(f"""
+                SELECT {field}
+                FROM RefVariables
+                WHERE reference_name = ?
+            """, (self.ref_name,))
+            
+            row = self.cursor.fetchone()
+            if row is None:
+                return None
+            
+            self.log.success(f"{field} for {self.ref_name} retrieved!")
+
+            return row[0]  # Return the single field value
+        
+        except Exception as e:
+            self.log.fail(f"Failed to retrieve {field}: {e}")
+            raise
+
+    def _close_connection(self):
+        if self.conn:
+            self.conn.close()

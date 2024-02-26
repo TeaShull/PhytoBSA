@@ -1,16 +1,12 @@
 import os
 import subprocess
-import urllib.request
-from urllib.parse import urlparse
-import gzip
-import shutil
 import re
-
 
 from Bio import SeqIO
 import glob
 import pandas as pd
 
+from modules.utilities_general import FileUtilities
 from modules.utilities_logging import LogHandler
 from settings.globals import MODULES_DIR, REFERENCE_DIR, THREADS_LIMIT
 
@@ -27,38 +23,6 @@ class VCFGenerator:
     def __init__(self, logger, vcf_vars):
         self.vcf_vars = vcf_vars
         self.log = logger #pass core_log from main phytobsa script
-
-    def _parse_reference_genome(self, ref_genome_path: str, ref_genome_source: str)-> str:
-        self.log.attempt("Attempting to parse reference genome...")
-        try:
-            if not os.path.isfile(ref_genome_path) and ref_genome_source:
-                self.log.attempt(f"Reference genome doesn't exist, sourcing from: {ref_genome_source}")
-                parsed_url = urlparse(ref_genome_source)
-                source_extension = os.path.splitext(parsed_url.path)[1]
-                
-                if ref_genome_path.endswith(source_extension) is False:
-                    self.log.note(f"Source extension {source_extension} and reference genome name extension don't match. Attempting to fix...")
-                    ref_genome_path += source_extension
-                
-                self.log.attempt(f"Downloading from URL: {ref_genome_source}")
-                urllib.request.urlretrieve(ref_genome_source, ref_genome_path)
-                self.log.success(f"Reference genome downloaded and saved at {ref_genome_path}")
-            
-            if os.path.isfile(ref_genome_path) and ref_genome_path.endswith('.gz'):
-                self.log.attempt(f"Attempting to unzip {ref_genome_path}")
-                with gzip.open(ref_genome_path, 'rb') as f_in:
-                    with open(ref_genome_path[:-3], 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-                ref_genome_path = ref_genome_path[:-3]
-                self.log.success(f"File unzipped to {ref_genome_path}")
-
-            return ref_genome_path
-        
-        except Exception as e:
-            self.log.error("Parsing reference genome failed.")
-            self.log.error(e)
-            
-            return None
 
     def _create_chromosomal_fasta(self, input_file: str, output_file: str, *patterns: list):
         if not os.path.isfile(output_file):
@@ -100,7 +64,8 @@ class VCFGenerator:
         # Parse reference genome path. If exists - proceed. 
         # If compressed, decompress. 
         # If not there, download from reference_genome_source and decompress
-        self.vcf_vars.reference_genome_path = self._parse_reference_genome(
+        file_utils = FileUtilities(self.log)
+        self.vcf_vars.reference_genome_path = file_utils.parse_file(
             self.vcf_vars.reference_genome_path, 
             self.vcf_vars.reference_genome_source
         )
