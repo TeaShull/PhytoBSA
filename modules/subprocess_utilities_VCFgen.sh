@@ -83,27 +83,41 @@ split_and_call_haplotypes() {
 
     # Create an array of chromosome names (assuming the reference fasta file is indexed)
     mapfile -t chrs < <(awk '{print $1}' "${reference_chrs_fa_path}.fai")
-    # Calculate threads per chromosome
-    local threads_per_chr=$((threads_limit / ${#chrs[@]}))
+
+    # Calculate number of chromosomes per chunk and threads per chunk
+    # bash always rounds down. use ceiling division to ensure that the 
+    # number of chunks doesn't exceed the number of chunks. 
+    local chrs_per_chunk=$(((${#chrs[@]} + threads_limit - 1) / threads_limit))
+    local threads_per_chunk=$((threads_limit / chrs_per_chunk))
 
     # Create an array to hold output file names
     declare -a output_files
 
-    # Loop over chromosomes
-    for chr in "${chrs[@]}"; do
+    # Loop over chromosomes in chunks
+    for ((i=0; i<${#chrs[@]}; i+=chrs_per_chunk)); do
+        # Get a chunk of chromosomes
+        local chunk=("${chrs[@]:i:chrs_per_chunk}")
+
         # Generate output file name
-        local output_file="${output_prefix}_${chr}.vcf"
+        local output_file="${output_prefix}_chunk$(($i / chrs_per_chunk + 1)).vcf"
         output_files+=("$output_file")
 
-        #Call HaplotypeCaller for each chromosome
+        # Generate chromosome list for the -L option
+        local chr_list="${chunk[0]}"
+        for ((j=1; j<${#chunk[@]}; j++)); do
+            chr_list+=",${chunk[j]}"
+        done
+        echo "CHROMOSOME CHUNK LIST: ${chr_list}" 
+
+        # Call HaplotypeCaller for the chunk of chromosomes
         gatk HaplotypeCaller \
             -R "$reference_chrs_fa_path" \
             -I "$picard_addorreplacereadgroups_output_mu" \
             -I "$picard_addorreplacereadgroups_output_wt" \
             -O "$output_file" \
-            -L "$chr" \
+            -L "$chr_list" \
             -output-mode EMIT_ALL_CONFIDENT_SITES \
-            --native-pair-hmm-threads "$threads_per_chr" &
+            --native-pair-hmm-threads "$threads_per_chunk" &
     done
 
     # Wait for all background jobs to finish
@@ -114,10 +128,10 @@ split_and_call_haplotypes() {
     for vcf in "${output_files[@]}"; do
         merge_files+="-I $vcf "
     done 
-    
+
     gatk MergeVcfs $merge_files -O "$gatk_haplotypecaller_output"
 
-    # Remove individual chromosome VCF files
+    # Remove individual chunk VCF files
     for output_file in "${output_files[@]}"; do
         rm -f ${output_file}
         rm -f ${output_file}.idx

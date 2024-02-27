@@ -152,7 +152,7 @@ main() {
         -O $picard_buildbamindex_output_wt
     wait
 
-    print_message "Calling haplotypes. This may take a while..."
+    print_message "Calling haplotypes. This may take awhile..."
     # Haplotype caller looks for regions with variance and locally reconstructs
     # the region using the available reads, and calls variants for the region. 
     # Time-consuming but accurate. Calling variants in parallel allows faster
@@ -165,16 +165,27 @@ main() {
         ${picard_addorreplacereadgroups_output_mu} \
         ${threads_limit} \
         ${gatk_haplotypecaller_output}
-    else
-        gatk HaplotypeCaller \
+
+        if [ $? -ne 0 ]; then
+            print_message "split_and_call_haplotypes failed. Falling back to non-parallel variant calling."
+            gatk HaplotypeCaller \
             -R $reference_chrs_fa_path \
             -I $picard_addorreplacereadgroups_output_mu \
             -I $picard_addorreplacereadgroups_output_wt \
             -O $gatk_haplotypecaller_output \
             -output-mode EMIT_ALL_CONFIDENT_SITES \
             --native-pair-hmm-threads $threads_limit
+        fi
+    else
+        gatk HaplotypeCaller \
+        -R $reference_chrs_fa_path \
+        -I $picard_addorreplacereadgroups_output_mu \
+        -I $picard_addorreplacereadgroups_output_wt \
+        -O $gatk_haplotypecaller_output \
+        -output-mode EMIT_ALL_CONFIDENT_SITES \
+        --native-pair-hmm-threads $threads_limit
     fi
-
+    
     print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
     # snpEff labels the variants in haplotype caller with likely impact of variants 
     # on gene function (early stop/start codons, missense mutations, etc.) using
@@ -184,8 +195,8 @@ main() {
         -s $snpeff_report_path \
         $gatk_haplotypecaller_output > $snpeff_out_path
     wait
+    
     print_message "Haplotypes called and SNPs labeled. Extracting feilds with snpSift."
-
     # Extracting SNPeff data and variant information into a table
     # built-in data processing of snpEff labels... 
     extract_fields_snpSift \
