@@ -95,7 +95,7 @@ split_and_call_haplotypes() {
         local output_file="${output_prefix}_${chr}.vcf"
         output_files+=("$output_file")
 
-        Call HaplotypeCaller for each chromosome
+        #Call HaplotypeCaller for each chromosome
         gatk HaplotypeCaller \
             -R "$reference_chrs_fa_path" \
             -I "$picard_addorreplacereadgroups_output_mu" \

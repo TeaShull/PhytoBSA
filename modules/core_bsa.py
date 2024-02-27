@@ -61,11 +61,12 @@ class BSA:
         if self.bsa_vars.filter_indels: 
             line.vcf_df = data_filter.drop_indels(line.vcf_df)
         
-        if self.bsa_vars.filter_ems and self.segregation_type != 'QTL': 
+        if self.bsa_vars.filter_ems and line.segregation_type != 'QTL': 
             line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
         
         if self.bsa_vars.snpmask_path: 
-            line.snpmask_df = self.bsa_vars.load_snpmask(self.bsa_vars.snpmask_path)
+            line.snpmask_df = self.bsa_vars.load_snpmask(
+                self.bsa_vars.snpmask_path, self.bsa_vars.snpmask_url)
             line.vcf_df = data_filter.mask_known_snps(line.snpmask_df, line.vcf_df)
 
     def _produce_features(self, line, bsa_log):
@@ -430,14 +431,12 @@ class FeatureProduction:
             vcf_df['ratio'] = FeatureProduction._delta_snp_array(
                 wt_ref, wt_alt, mu_ref, mu_alt
             )
-
             vcf_df['G_S'] = FeatureProduction._g_statistic_array(
                    wt_ref, wt_alt, mu_ref, mu_alt
             )
-
             vcf_df['RS_G'] = vcf_df['ratio'].values * vcf_df['G_S'].values
+
             self.log.success("Calculation of delta-SNP ratios and G-statistics was successful.")
-            
             return vcf_df
         
         except Exception as e:
@@ -469,12 +468,10 @@ class FeatureProduction:
             df_chrom['pseudo_pos'] = pseudo_pos
             
             self.log.success(f"Mirrored data created!")
-
             return df_chrom
 
         except Exception as e:
             print(f"Error in creating mirrored data: {e}")
-            
             return None
         
     def _fit_values(self, df_chrom, smoothing_function, loess_span):
@@ -497,7 +494,7 @@ class FeatureProduction:
             # Sort by 'chrom' and 'pos'
             df_chrom = df_chrom.sort_values(by=['chrom', 'pseudo_pos'])
             
-            self.log.success(f"Values fit in chromosome: {chrom}")
+            self.log.success(f"Values fit in chromosome: {chrom}") 
             return df_chrom
 
         except Exception as e:
@@ -797,7 +794,6 @@ class FeatureProduction:
             self._assign_yhat_percentiles(vcf_df, columns_and_arrays_yhat)
             
             self.log.success(f"Dataframe labeled with percentiles")
-            
             return vcf_df
 
         except Exception as e:
@@ -831,7 +827,6 @@ class FeatureProduction:
                     new_null_models.append(arr)
 
             self.log.success("Mirrored data removed!")
-
             return vcf_df, new_null_models
         
         except Exception as e:

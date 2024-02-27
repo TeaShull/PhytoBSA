@@ -11,6 +11,7 @@ import shutil
 import urllib.request
 from urllib.parse import urlparse
 
+
 class FileUtilities:
     def __init__(self, logger):
         self.log = logger 

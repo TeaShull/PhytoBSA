@@ -103,7 +103,13 @@ class AutomaticLineVariableDetector:
         if '_2' in segregation_type:
             segregation_type = segregation_type.rstrip('_2')
 
-        bulk_type = parts[-3]
+        # Adjust for .gz file extension
+        if parts[-1] == 'gz':
+            bulk_type = parts[-3]
+        else:
+            self.log.warning("gunzip your files - you don't have to, but they will run fine and take up less space!")
+            bulk_type = parts[-2]
+            
         pairedness = 'paired-end' if '_1' or '_2' in filename else 'single-read'
 
         return name, segregation_type, bulk_type, pairedness
@@ -367,6 +373,7 @@ class BSAVariables:
         self.filter_indels = filter_indels
         self.filter_ems = filter_ems
         self.snpmask_path = snpmask_path
+        self.snpmask_url = snpmask_url
         self.ratio_cutoff = ratio_cutoff
 
     def load_vcf_table(self, vcf_table_path)->pd.DataFrame:
