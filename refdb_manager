@@ -64,15 +64,45 @@ class RefDbUtilities:
             print(f"Failed to delete entry: {e}")
             raise
 
-    def list_entries(self):
+    def list_entries(self, abbreviate=False):
         try:
             self.cursor.execute("SELECT * FROM RefVariables")
             rows = self.cursor.fetchall()
+
+            if abbreviate:
+                # Abbreviate URLs
+                rows = [list(row) for row in rows]
+                for row in rows:
+                    for i, data in enumerate(row):
+                        if '/' in str(data):
+                            if len(data) > 30:
+                                row[i] = '...' + data[-30:]
+
+            # Get column names
+            header = ["Reference Name", "Reference Genome Path", "Reference Genome Source", "SNPEff Species DB", "SNPMask Path", "SNPMask URL"]
+
+            # Find the maximum length of data in each column
+            lengths = [len(x) for x in header]
             for row in rows:
-                print(row)
+                for i, data in enumerate(row):
+                    length = len(str(data))
+                    if length > lengths[i]:
+                        lengths[i] = length
+            
+            # Generate the format string to print each row
+            row_format = "".join(["{:<" + str(length) + "} " for length in lengths])
+
+            # Print the header
+            print(row_format.format(*header))
+
+            # Print rows
+            for row in rows:
+                print(row_format.format(*row))
+
         except Exception as e:
             print(f"Failed to list entries: {e}")
             raise
+
 
 def main():
     # Create the parser
@@ -90,6 +120,7 @@ def main():
 
     # Create parser for "list" command
     list_parser = subparsers.add_parser("list", help="List all entries")
+    list_parser.add_argument("--abbreviate", '-ab',  help="Abbreviate URLs in the list command", action="store_true")
 
     # Parse the arguments
     args = parser.parse_args()
@@ -118,7 +149,7 @@ def main():
         refdb_utils.delete_ref_entry(args.reference_name)
     elif args.command == "list":
         # List all entries
-        refdb_utils.list_entries()
+        refdb_utils.list_entries(args.abbreviate)
 
     # Close connection
     refdb_utils.close_connection()
