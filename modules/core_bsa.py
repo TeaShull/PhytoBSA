@@ -44,7 +44,8 @@ class BSA:
             smooth_edges_bounds = self.bsa_vars.smooth_edges_bounds, 
             filter_indels = self.bsa_vars.filter_indels, 
             filter_ems = self.bsa_vars.filter_ems, 
-            snpmask_path = self.bsa_vars.snpmask_path
+            snpmask_path = self.bsa_vars.snpmask_path,
+            segregation_type = line.segregation_type
         )
 
         return bsa_log
@@ -58,13 +59,13 @@ class BSA:
         data_filter = DataFiltering(bsa_log, line.name)
         line.vcf_df = data_filter.filter_genotypes(line.segregation_type, line.vcf_df)
         
-        if self.bsa_vars.filter_indels: 
+        if self.bsa_vars.filter_indels and line.segregation_type != 'QTL': 
             line.vcf_df = data_filter.drop_indels(line.vcf_df)
         
         if self.bsa_vars.filter_ems and line.segregation_type != 'QTL': 
             line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
         
-        if self.bsa_vars.snpmask_path: 
+        if self.bsa_vars.snpmask_path and self.bsa_vars.mask_snps: 
             line.snpmask_df = self.bsa_vars.load_snpmask(
                 self.bsa_vars.snpmask_path, self.bsa_vars.snpmask_url)
             line.vcf_df = data_filter.mask_known_snps(line.snpmask_df, line.vcf_df)
@@ -179,10 +180,10 @@ class DataFiltering:
             return vcf_df
         
         except AttributeError:
-            self.log.fail("'ref' and 'alt' columns should only contain strings. VCF may not be properly formatted. Aborting...")
+            self.log.error("'ref' and 'alt' columns should only contain strings. VCF may not be properly formatted. Aborting...")
         
         except KeyError:
-            self.log.fail("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
+            self.log.error("'ref' or 'alt' column not found in the DataFrame. Please ensure they exist.")
     
     def drop_na(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
@@ -267,11 +268,11 @@ class DataFiltering:
             except KeyError as e:
                 self.log.note('Key error. VCF dataframe should have the following headers: ')
                 self.log.note('chrom pos ref alt gene snpEffect snpVariant snpImpact mu:wt_GTpred mu_ref mu_alt wt_ref wt_alt')
-                self.log.fail(f"Dataframe doesn't contain {e} column. Aborting...")
+                self.log.error(f"Dataframe doesn't contain {e} column. Aborting...")
             
         
         except Exception as e:
-            self.log.fail(f'There was an error while filtering genotypes:{e}')        
+            self.log.error(f'There was an error while filtering genotypes:{e}')        
 
     def filter_ems_mutations(self, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
@@ -319,7 +320,7 @@ class DataFiltering:
             return vcf_df
 
         except Exception as e:
-            self.log.fail(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
+            self.log.error(f'There was an error removing genotypes that produce nagative delta snp ratios:{e}')
 
     def mask_known_snps(self, snpmask_df: pd.DataFrame, vcf_df: pd.DataFrame) -> pd.DataFrame:
         '''
@@ -440,7 +441,7 @@ class FeatureProduction:
             return vcf_df
         
         except Exception as e:
-            self.log.fail(f"An error occurred during calculation: {e}")
+            self.log.error(f"An error occurred during calculation: {e}")
 
     def _create_mirrored_data(self, df_chrom, smooth_edges_bounds):
         self.log.attempt(f'Mirroring {smooth_edges_bounds} datapoints at chromosome ends to correct for loess edge bias...')
@@ -471,7 +472,7 @@ class FeatureProduction:
             return df_chrom
 
         except Exception as e:
-            print(f"Error in creating mirrored data: {e}")
+            self.log.warning(f"Error in creating mirrored data: {e}")
             return None
         
     def _fit_values(self, df_chrom, smoothing_function, loess_span):
@@ -498,7 +499,7 @@ class FeatureProduction:
             return df_chrom
 
         except Exception as e:
-            print(f"There was an error while smoothing chrom:{chrom}:{e}")
+            self.log.warning(f"There was an error while smoothing chrom:{chrom}:{e}")
 
         return None
 
@@ -535,7 +536,7 @@ class FeatureProduction:
             return vcf_df
         
         except Exception as e:
-            self.log.fail( f"An error occurred during LOESS smoothing: {e}")
+            self.log.error( f"An error occurred during LOESS smoothing: {e}")
     
     @staticmethod
     def _null_models(smChr, smPseudoPos, sm_wt_ref, sm_wt_alt, sm_mu_ref, sm_mu_alt, smoothing_function, loess_span: float, ratio_cutoff: float):
@@ -609,7 +610,7 @@ class FeatureProduction:
             return lst
         
         except Exception as e:
-            self.log.fail(f"Initializing structured array for {list_name} null model failed: {e}")
+            self.log.error(f"Initializing structured array for {list_name} null model failed: {e}")
 
     def calculate_null_models(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
         '''
@@ -693,7 +694,7 @@ class FeatureProduction:
             return sm_ratio_array, sm_ratio_y_array, sm_g_stat_array, sm_g_stat_y_array, sm_ratio_scaled_g_array, sm_ratio_scaled_g_y_array
 
         except Exception as e:
-            self.log.fail(f'Bootstrapping to generate empirical cutoffs failed:{e}')
+            self.log.error(f'Bootstrapping to generate empirical cutoffs failed:{e}')
 
             return None, None, None, None, None, None, None
 
@@ -797,7 +798,7 @@ class FeatureProduction:
             return vcf_df
 
         except Exception as e:
-            self.log.fail(f"Labeling dataframe failed:{e}")
+            self.log.error(f"Labeling dataframe failed:{e}")
 
     def remove_extra_data(self, vcf_df, null_models):
         '''
@@ -830,7 +831,7 @@ class FeatureProduction:
             return vcf_df, new_null_models
         
         except Exception as e:
-            self.log.fail(f"There was an error while removing mirrored data and psuedo positions:{e}")
+            self.log.error(f"There was an error while removing mirrored data and psuedo positions:{e}")
 
 
 class TableAndPlots:
@@ -1081,7 +1082,7 @@ class TableAndPlots:
             return plot
 
         except Exception as e:
-            self.log.fail(f"Plot creation failed for {self.name}, column {y_column}: {e}") 
+            self.log.error(f"Plot creation failed for {self.name}, column {y_column}: {e}") 
             
             return None
     

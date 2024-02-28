@@ -177,7 +177,7 @@ class LogDbUtilites:
         else:
             print(f"No database entry found for {ulid}")
 
-    def print_line_name_data(self, line_name):
+    def get_line_name_data(self, line_name):
         """Retrieve all entries based on the line name"""
         cursor = self.conn.execute('''
         SELECT vcf.*, analysis.* 
@@ -187,7 +187,11 @@ class LogDbUtilites:
             WHERE vcf.name = ?
         ''', (line_name,))
         results = cursor.fetchall()
+        return results
 
+    def print_line_name_data(self, line_name):
+        """Print all entries based on the line name"""
+        results = self.get_line_name_data(line_name)
         if results:
             for result in results:
                 print("\nVCF Data:")

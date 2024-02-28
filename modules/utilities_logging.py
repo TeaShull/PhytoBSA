@@ -334,6 +334,7 @@ mutation or information on why there are no candidates.
                 filter_indels TEXT,
                 filter_ems TEXT,
                 snpmask_path TEXT,
+                segregation_type TEXT,
                 PRIMARY KEY (analysis_ulid, name),
                 FOREIGN KEY (core_ulid) REFERENCES core(core_ulid),
                 FOREIGN KEY (vcf_ulid) REFERENCES vcf(vcf_ulid)
@@ -413,9 +414,10 @@ mutation or information on why there are no candidates.
                     smooth_edges_bounds, 
                     filter_indels, 
                     filter_ems, 
-                    snpmask_path
+                    snpmask_path,
+                    segregation_type
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
             '''
 
             try:
@@ -431,7 +433,8 @@ mutation or information on why there are no candidates.
                     kwargs['smooth_edges_bounds'], 
                     kwargs['filter_indels'], 
                     kwargs['filter_ems'], 
-                    kwargs['snpmask_path']
+                    kwargs['snpmask_path'],
+                    kwargs['segreation_type']
                 )
             except KeyError as e:
                 raise ValueError(f"Missing required argument: {e}")

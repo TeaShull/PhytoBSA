@@ -69,6 +69,7 @@ def setup_bsa_variables(core_log, lines, args):
         filter_ems=args.filter_ems,
         snpmask_path=refdb_utils.fetch_ref_var('snpmask_path'),
         snpmask_url=refdb_utils.fetch_ref_var('snpmask_url'),
+        mask_snps=args.mask_snps,
         ratio_cutoff=args.ratio_cutoff
     )
     return bsa_vars

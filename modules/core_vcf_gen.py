@@ -27,7 +27,7 @@ class VCFGenerator:
     def _create_chromosomal_fasta(self, input_file: str, output_file: str, *patterns: list):
         if not os.path.isfile(output_file):
             self.log.attempt(f"Creating {output_file} with only chromosomal DNA...")
-            print(f"Omitting contigs containing {', '.join(patterns)}")
+            self.log.note(f"Omitting contigs containing {', '.join(patterns)}")
             with open(input_file, "r") as in_handle, open(output_file, "w") as out_handle:
                 for record in SeqIO.parse(in_handle, "fasta"):
                     if not any(re.search(pattern, record.id) for pattern in patterns):
@@ -39,7 +39,7 @@ class VCFGenerator:
     def _cleanup_files(self, output_dir_path: str, cleanup_filetypes: list):
         for file_type in cleanup_filetypes:
             if file_type == '*.table':
-                print("*.table not allowed in cleanup_filetypes. This is the point of running VCF_gen in the first place. Continuing...")
+                self.log.warning("*.table not allowed in cleanup_filetypes. This is the point of running VCF_gen in the first place. Continuing...")
                 continue
             files = glob.glob(os.path.join(output_dir_path, file_type))
             for file in files:
