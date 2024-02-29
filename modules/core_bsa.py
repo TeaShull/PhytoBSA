@@ -287,7 +287,7 @@ class DataFiltering:
                 vcf_df = vcf_df[vcf_df['mu:wt_GTpred'].isin(seg_filter)]
                 self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
                 
-                self.log.success('Genotypes filtured based on segregation pattern')
+                self.log.success('Genotypes filtered based on segregation pattern')
                 return vcf_df
 
             except KeyError as e:
@@ -946,6 +946,7 @@ class TableAndPlots:
             )
         
         # Save the plot
+        self.log.success(f"Saving plot:{filename}")
         plot.save(filename, dpi=600)
 
     def plot_null_histograms(self, null_models):
@@ -1114,6 +1115,7 @@ class TableAndPlots:
         organizes the creation and saving of plots. An intermedary between 
         generate_plots and _create_plot
         '''
+        self.log.attempt(f"Creating {y_column} plot for {self.name}")
         plot = self._create_plot(
             df, y_column, title_text, ylab_text, cutoff, lines
         )
@@ -1125,6 +1127,7 @@ class TableAndPlots:
             width = width_per_chromosome * num_chromosomes  # Calculate the total width
 
             plot_path = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
+            self.log.success(f"Saving plot:{plot_path}")
             plot.save(filename=plot_path, height=6, width=width, units='in', dpi=500)
 
     def generate_plots(self, vcf_df):

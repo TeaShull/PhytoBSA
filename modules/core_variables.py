@@ -347,6 +347,7 @@ class VCFGenVariables:
         self.reference_chrs_dict_path = (f"{ref_genome_prefix}.chrs.dict")
         self.reference_chrs_fa_path = (f"{ref_genome_prefix}.chrs.fa")
 
+
 class BSAVariables:
 
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
