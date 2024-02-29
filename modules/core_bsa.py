@@ -58,11 +58,12 @@ class BSA:
         #Filter data based on boolean values set in Check config.ini or argparse
         data_filter = DataFiltering(bsa_log, line.name)
         line.vcf_df = data_filter.filter_genotypes(line.segregation_type, line.vcf_df)
+        line.vcf_df = data_filter.filter_low_readdepth(line.vcf_df)
         
-        if self.bsa_vars.filter_indels and line.segregation_type != 'QTL': 
+        if self.bsa_vars.filter_indels: 
             line.vcf_df = data_filter.drop_indels(line.vcf_df)
         
-        if self.bsa_vars.filter_ems and line.segregation_type != 'QTL': 
+        if self.bsa_vars.filter_ems: 
             line.vcf_df = data_filter.filter_ems_mutations(line.vcf_df)
         
         if self.bsa_vars.snpmask_path and self.bsa_vars.mask_snps: 
@@ -176,7 +177,6 @@ class DataFiltering:
             self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
             
             self.log.success("Indels dropped")
-            
             return vcf_df
         
         except AttributeError:
@@ -204,11 +204,38 @@ class DataFiltering:
             self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
         
             self.log.success('NaN values dropped')
-        
             return vcf_df
         
         except Exception as e:
             self.log.error(f'There was an error dropping NaN values{e}')     
+
+    def filter_low_readdepth(self, vcf_df: pd.DataFrame) -> pd.DataFrame:
+        self.log.attempt('Trying to drop those loci with summed read depths below the 0.5 percentile...')
+        '''
+        Filters out loci with poor quality of information, scaled to the distribution of the read depths. 
+        the bottom 0.5 percentile of the sum of the read depths across bulks tend to be noisy, because 
+        minor variation in read depth can cause large swings in g stat and ratio values. 
+        '''
+        
+        try:
+            # Calculate the sum directly using numpy
+            readdepth_sums = np.sum(vcf_df[['mu_ref', 'mu_alt', 'wt_ref', 'wt_alt']].values, axis=1)
+            percentile_5 = np.percentile(readdepth_sums, 5)
+
+            # Create a mask for those rows where the sum is greater than or equal to the 5th percentile
+            mask = readdepth_sums >= percentile_5
+
+            # Use the mask to filter the DataFrame
+            self.log.note(f'Input dataframe length: {len(vcf_df)}')
+            vcf_df = vcf_df[mask]
+            self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
+
+            self.log.success("Loci with low total read depths trimmed.")
+            return vcf_df
+
+        except Exception as e:
+            self.log.fail(f'Failed to drop those loci with read counts in the bottom 0.5 percentile. Error: {str(e)}')
+            return vcf_df
 
     def filter_genotypes(self, segregation_type: str, vcf_df: pd.DataFrame)-> pd.DataFrame:
         """
@@ -247,14 +274,13 @@ class DataFiltering:
                 seg_filter = ['0/1:0/0', '0/1:0/1','1/1:0/0']  
             
             elif segregation_type =='QTL':
-                self.log.note('Segregation type is QTL. Skipping filtering...')
-                
-                return vcf_df
+                self.log.note('Segregation type is QTL. Applying broad filter...')
+                seg_filter = ['0/1:0/0', '0/1:0/1','1/1:0/0', '0/0:0/1', '0/1:1/1', '1/1:0/1', '0/0:1/1']
 
             else: 
                 self.log.error(f'Segregation type value is not valid or not assigned. Continuing with broadest filter...')
                 self.log.warning("Data should be mostly OK, but some spurious mutations won't be filtered. Null model generation will be more resource intensive")
-                seg_filter = ['0/1:0/0', '0/1:0/1', '1/1:0/1', '1/1:0/0'] 
+                seg_filter = ['0/1:0/0', '0/1:0/1','1/1:0/0', '0/0:0/1', '0/1:1/1', '1/1:0/1', '0/0:1/1'] 
             
             try:
                 self.log.note(f'Input dataframe length: {len(vcf_df)}')
@@ -262,7 +288,6 @@ class DataFiltering:
                 self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
                 
                 self.log.success('Genotypes filtured based on segregation pattern')
-                
                 return vcf_df
 
             except KeyError as e:
@@ -1065,11 +1090,9 @@ class TableAndPlots:
                 # Merge middle position and average 50th percentile data frames
                 label_df = pd.merge(mid_pos_df, avg_50_percentile_df, on='chrom')
 
-
                 plot += geom_ribbon(aes(ymin=y_column +'_null_5', ymax=y_column +'_null_95'), fill='gray', alpha=0.2)
                 plot += geom_ribbon(aes(ymin=y_column +'_null_25', ymax=y_column +'_null_75'), fill='gray', alpha=0.2)
-                plot += geom_line(aes(y=y_column +'_null_50'), size=0.4, color='black', alpha=0.2)
-                plot += geom_line(aes(y=y_column +'_null_50'), size=0.4, color='gray', alpha=0.2)
+                plot += geom_line(aes(y=y_column +'_null_50'), size=0.15, color='gray', alpha=0.2)
                 plot += geom_text(data=label_df, mapping=aes(x='mid_pos', y='avg_50_percentile', label="r'$H_{0}^{*}$'"), size=6, ha='center', color='purple', alpha=1)
                 # Add "null" annotation to the average 50th percentile position in each facet
 
@@ -1096,8 +1119,13 @@ class TableAndPlots:
         )
         
         if plot:
+            num_chromosomes = df['chrom'].nunique()  # Get the number of unique chromosomes
+            base_width = 8  # The base width that works well for 6 chromosomes
+            width_per_chromosome = base_width / 6  # Calculate the width per chromosome
+            width = width_per_chromosome * num_chromosomes  # Calculate the total width
+
             plot_path = f"{self.analysis_out_prefix}_{y_column.lower()}.png"
-            plot.save(filename=plot_path, height=6, width=8, units='in', dpi=500)
+            plot.save(filename=plot_path, height=6, width=width, units='in', dpi=500)
 
     def generate_plots(self, vcf_df):
         plot_scenarios = [
