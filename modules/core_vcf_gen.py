@@ -29,8 +29,12 @@ class VCFGenerator:
             self.log.attempt(f"Creating {output_file} with only chromosomal DNA...")
             self.log.note(f"Omitting contigs containing {', '.join(patterns)}")
             with open(input_file, "r") as in_handle, open(output_file, "w") as out_handle:
-                for record in SeqIO.parse(in_handle, "fasta"):
-                    if not any(re.search(pattern, record.id) for pattern in patterns):
+                for record in SeqIO.parse(in_handle, "fasta"):\
+                    
+                    if not (any(re.search(pattern, record.id) 
+                        or re.search(pattern, record.description)) 
+                        for pattern in patterns
+                    ):
                         SeqIO.write(record, out_handle, "fasta")
         else:
             self.log.note(f"Chromosomal fasta exists: {output_file}")
