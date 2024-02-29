@@ -63,7 +63,7 @@ class ArgumentParser:
         bsa_options.add_argument('-fin', '--filter_indels', default=None, type=str, help="Filter out insertion-deletion mutations.")
         bsa_options.add_argument('-fems', '--filter_ems', default=None, type=str, help="Filter results to only include mutations likely to arise from EMS treatment")
         bsa_options.add_argument('-rco', '--ratio_cutoff', default=None, type=float, help="Used to filter results based on a ratio cutoff number. Increase to 0.2 or 0.3 if there is alot of noise at lower ratio bounds")
-        bsa_options.add_arguments('-msk', '--mask_snps', default=None, type=bool, help="Set to true if you have a snpmask file configured and would like to mask known snps in your analysis. ")
+        bsa_options.add_argument('-msk', '--mask_snps', default=None, type=bool, help="Set to true if you have a snpmask file configured and would like to mask known snps in your analysis. ")
 
     def add_vcf_gen_arguments(self, parser):
         vcf_gen_options = parser.add_argument_group('VCF generation options', 'Options for VCF generation. Defaults can be changed using the settings positional argument phytobsa settings -h for more info')

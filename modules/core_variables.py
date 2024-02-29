@@ -5,7 +5,7 @@ import pandas as pd
 from pathlib import Path
 
 from settings.globals import (INPUT_DIR, OUTPUT_DIR, REFERENCE_DIR, MODULES_DIR, 
-    VCF_GEN_SCRIPT, THREADS_LIMIT
+    VCF_GEN_SCRIPT, THREADS_LIMIT, TMP_PREFIX
 )
 from modules.utilities_general import FileUtilities
 
@@ -222,7 +222,8 @@ class VCFGenVariables:
             self.snpeff_species_db,
             THREADS_LIMIT,
             self.call_variants_in_parallel,
-            self.cleanup
+            self.cleanup,
+            TMP_PREFIX
         )
         cmd = f"{VCF_GEN_SCRIPT} {' '.join(map(str, args))}"
         return cmd
@@ -362,6 +363,7 @@ class BSAVariables:
         filter_ems, 
         snpmask_path,
         snpmask_url,
+        mask_snps,
         ratio_cutoff
         ):
         self.log = logger
@@ -480,13 +482,14 @@ class BSAVariables:
         self.log.attempt(f"Attempting to load {snpmask_path}")
         try:
             directories = [REFERENCE_DIR] 
-            snpmask_path = file_utils.process_path(directories, snpmask_path)
+            processed_snpmask_path = file_utils.process_path(directories, snpmask_path)
             
-            if not os.path.exists(snpmask_path):
-                snpmask_path = file_utils.parse_file(snpmask_path, snpmask_url)
-
-            df = self._load_dataframe(snpmask_path)
+            if not processed_snpmask_path:
+                processed_snpmask_path = file_utils.parse_file(
+                    snpmask_path, snpmask_url, REFERENCE_DIR
+                )
             
+            df = self._load_dataframe(processed_snpmask_path)
             return df
 
         except pd.errors.EmptyDataError:

@@ -87,8 +87,16 @@ split_and_call_haplotypes() {
     # Calculate number of chromosomes per chunk and threads per chunk
     # bash always rounds down. use ceiling division to ensure that the 
     # number of chunks doesn't exceed the number of chunks. 
+    
+    # Calculate number of chromosomes per chunk
     local chrs_per_chunk=$(((${#chrs[@]} + threads_limit - 1) / threads_limit))
-    local threads_per_chunk=$((threads_limit / chrs_per_chunk))
+
+    # Calculate number of chunks
+    local num_chunks=$(((${#chrs[@]} + chrs_per_chunk - 1) / chrs_per_chunk))
+
+    # Calculate base threads per chunk and remainder
+    local base_threads_per_chunk=$((threads_limit / num_chunks))
+    local remainder_threads=$((threads_limit % num_chunks))
 
     # Create an array to hold output file names
     declare -a output_files
@@ -109,6 +117,12 @@ split_and_call_haplotypes() {
         done
         echo "CHROMOSOME CHUNK LIST: ${chr_list}" 
 
+        # Determine threads for this chunk
+        local threads_for_this_chunk=$base_threads_per_chunk
+        if ((i < remainder_threads)); then
+            threads_for_this_chunk=$((threads_for_this_chunk + 1))
+        fi
+
         # Call HaplotypeCaller for the chunk of chromosomes
         gatk HaplotypeCaller \
             -R "$reference_chrs_fa_path" \
@@ -117,7 +131,7 @@ split_and_call_haplotypes() {
             -O "$output_file" \
             -L "$chr_list" \
             -output-mode EMIT_ALL_CONFIDENT_SITES \
-            --native-pair-hmm-threads "$threads_per_chunk" &
+            --native-pair-hmm-threads "$threads_for_this_chunk" &
     done
 
     # Wait for all background jobs to finish

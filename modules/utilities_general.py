@@ -46,7 +46,7 @@ class FileUtilities:
             return path
         
         else:
-            print(directories)
+            self.log.note(f"Path not hard coded. Traversing directories: {directories}")
             for directory in directories:
                 for root, dirs, files in os.walk(directory):
                     self.log.note(f"Checking for path:{path} in {root}..")
@@ -57,7 +57,7 @@ class FileUtilities:
                         
                         return dir_path
             
-            self.log.fail(f'Path not found in any of the provided directories or the hard coded ({path}). Aborting')
+            self.log.error(f'Path not found in any of the provided directories or the hard coded ({path}).')
             
             return None
 
@@ -112,23 +112,28 @@ class FileUtilities:
 
         return file_path 
 
-    def parse_file(self, file_path: str, file_source: str)-> str:
+    def parse_file(self, file_path: str, file_source: str, destination: str)-> str:
         self.log.attempt("Attempting to parse file...")
         try:
             if not os.path.isfile(file_path) and file_source:
+                file_name = os.path.basename(file_path)  # Extract the filename from the path
+                file_path = os.path.join(destination, file_name)  # Reconstruct the path with the destination directory
                 file_path = self._download_file(file_path, file_source)
             
             if os.path.isfile(file_path) and file_path.endswith('.gz'):
                 file_path = self._unzip_file(file_path)
 
-            return file_path
+            if file_path:
+                return file_path
+            else:
+                self.log.error('There was an error while parsing snpmask. Make sure the snpmask file exists or that the snpmask URL in references.db is valid.')
+                self.log.error('You may need to reconfigure the entry for your reference in references.db. Sse the functions found in ./refdb_manager -h to do this')
         
         except Exception as e:
             self.log.error("Parsing file failed.")
             self.log.error(e)
             
             return None
-
 
 class LogDbUtilites:
     def __init__(self):

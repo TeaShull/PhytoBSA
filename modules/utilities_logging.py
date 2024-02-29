@@ -434,7 +434,7 @@ mutation or information on why there are no candidates.
                     kwargs['filter_indels'], 
                     kwargs['filter_ems'], 
                     kwargs['snpmask_path'],
-                    kwargs['segreation_type']
+                    kwargs['segregation_type']
                 )
             except KeyError as e:
                 raise ValueError(f"Missing required argument: {e}")

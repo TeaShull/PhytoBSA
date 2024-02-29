@@ -67,7 +67,8 @@ class VCFGenerator:
         file_utils = FileUtilities(self.log)
         self.vcf_vars.reference_genome_path = file_utils.parse_file(
             self.vcf_vars.reference_genome_path, 
-            self.vcf_vars.reference_genome_source
+            self.vcf_vars.reference_genome_source,
+            REFERENCE_DIR
         )
         # Create a new fasta file, with unneeded contigs filtered based on 
         # user defaults. (mitochondria, exc)

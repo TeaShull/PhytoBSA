@@ -17,6 +17,7 @@ main() {
         ["threads_limit"]="${12}"
         ["call_variants_in_parallel"]="${13}"
         ["cleanup"]="${14}"
+        ["tmp_prefix"]="${15}"
     )
     print_variable_info passed_variables "Variables passed to subprocess_VCFgen.sh"
     assign_values passed_variables #assign variables based on keys for easy access
@@ -97,11 +98,13 @@ main() {
     picard SortSam \
         -I $samtools_fixmate_output_mu \
         -O $samtools_sortsam_output_mu \
-        -SORT_ORDER coordinate &
+        -SORT_ORDER coordinate \
+        -TMP_DIR $tmp_prefix &
     picard SortSam \
         -I $samtools_fixmate_output_wt \
         -O $samtools_sortsam_output_wt \
-        -SORT_ORDER coordinate
+        -SORT_ORDER coordinate \
+        -TMP_DIR $tmp_prefix
     wait
 
     print_message "Marking duplicates"
