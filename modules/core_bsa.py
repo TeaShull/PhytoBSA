@@ -17,8 +17,6 @@ from settings.globals import THREADS_LIMIT
 Core module for bsa analysis
 Input variable class: BSA_variables from utilities_variables module.
 The read-depth analysis between the wild-type and mutant bulks are stored here.
-
-Most logging and error handling is done outside of the BSA class. 
 """
 
 class BSA:
@@ -991,21 +989,24 @@ class TableAndPlots:
         '''
         Sorts likely candidates df by impact rank and percentile rankings.
         '''
-        df['impact_rank'] = df['snpimpact'].apply(
-            lambda x: max(self.impact_mapping.get(i, 0) for i in x.split(':'))
-        )
-        sorted_df = df.sort_values(
-            by=['impact_rank', 
-                'RS_G_yhat_percentile', 
-                'G_S_yhat_percentile', 
-                'ratio_yhat_percentile', 
-                'RS_G_percentile', 
-                'G_S_percentile', 
-                'ratio_percentile'], 
-            ascending=False
-        )
+        sort_fields = ['RS_G_yhat_percentile', 
+                    'G_S_yhat_percentile', 
+                    'ratio_yhat_percentile', 
+                    'RS_G_percentile', 
+                    'G_S_percentile', 
+                    'ratio_percentile']
 
-        return sorted_df.drop('impact_rank', axis=1)
+        if 'snpimpact' in df.columns:
+            df['impact_rank'] = df['snpimpact'].apply(
+                lambda x: max(self.impact_mapping.get(i, 0) for i in x.split(':'))
+            )
+            sort_fields.insert(0, 'impact_rank')
+        else:
+            self.log.warning("snpimpact not in available columns - not a huge deal, but consider adding this labeling with SnpEff to get better candidates")
+
+        sorted_df = df.sort_values(by=sort_fields, ascending=False)
+
+        return sorted_df.drop('impact_rank', axis=1) if 'impact_rank' in df.columns else sorted_df
 
     def _get_likely_candidates(self, vcf_df):
         '''

@@ -29,10 +29,8 @@ class VCFGenerator:
             self.log.attempt(f"Creating {output_file} with only chromosomal DNA...")
             self.log.note(f"Omitting contigs containing {', '.join(patterns)}")
             with open(input_file, "r") as in_handle, open(output_file, "w") as out_handle:
-                for record in SeqIO.parse(in_handle, "fasta"):\
-                    
-                    if not (any(re.search(pattern, record.id) 
-                        or re.search(pattern, record.description)) 
+                for record in SeqIO.parse(in_handle, "fasta"):
+                    if not any(re.search(pattern, record.description) 
                         for pattern in patterns
                     ):
                         SeqIO.write(record, out_handle, "fasta")
@@ -133,7 +131,6 @@ class VCFGenerator:
                 vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path)
                 vcf_format.format_fields()
                 vcf_format.remove_complex_genotypes()
-                vcf_format.add_header() #pd.DataFrame created
                 
                 #Cleanup files if cleanup = True
                 if self.vcf_vars.cleanup:
@@ -151,16 +148,37 @@ class VCFFormat:
         self.vcf_table_path = vcf_table_path
         self.vcf_df = None
 
-    def format_fields(self):
-        with open(self.snpsift_out_path, 'r') as f:
-            lines = f.readlines()
+        self.header_map = {
+            "CHROM": "chrom",
+            "POS": "pos",
+            "REF": "ref",
+            "ALT": "alt",
+            "ANN[*].GENE": "gene",
+            "ANN[*].EFFECT": "snpEffect",
+            "ANN[*].HGVS_P": "snpVariant",
+            "ANN[*].IMPACT": "snpImpact",
+            "GEN[*].GT": "mu:wt_GTpred",
+            "GEN[mu].AD": ["mu_ref", "mu_alt"],
+            "GEN[wt].AD": ["wt_ref", "wt_alt"]
+        }
 
-        with open(self.vcf_table_path, 'w') as f:
-            for line in lines:
-                fields = line.split('\t')
-                for i in [8, 9, 10]:
-                    fields[i] = fields[i].replace(',', '\t')
-                f.write('\t'.join(fields))
+    def format_fields(self, snpsift_out_path, vcf_table_path):
+        with open(snpsift_out_path, 'r') as f_in, open(vcf_table_path, 'w') as f_out:
+            header_line = next(f_in) #grab header line
+            headers = header_line.split('\t') # articulate each header
+            output_headers = [self.header_map.get(header, header) for header in headers] #map each header to self.header_map to create output_headers
+            f_out.write("\t".join(output_headers) + "\n") #write the output headers to file
+
+            for line in f_in:
+                fields = line.split('\t') 
+                new_fields = [] #new fields list
+                #create header, field tuples and interate through, splitting the allele depth columns (AD)
+                for header, field in zip(headers, fields): #headers is static - from "articulate each header", fields from for line in f_in. creates dynamic tuples of input headers and feilds
+                    if "AD" in header and ',' in field:
+                        new_fields.extend(field.split(','))
+                    else:
+                        new_fields.append(field)
+                f_out.write('\t'.join(new_fields) + "\n")
 
     def remove_complex_genotypes(self):
         complex_geno_tablename = f"{self.vcf_table_path}.complex_genos"
@@ -173,25 +191,4 @@ class VCFFormat:
                     f.write(line)
                 else:
                     f_too_complex.write(line)
-
-    def add_header(self):
-        self.vcf_df = pd.read_csv(self.vcf_table_path, sep='\t', header=None)
-
-        # Add the header
-        self.vcf_df.columns = [
-            'chrom', 
-            'pos', 
-            'ref', 
-            'alt', 
-            'gene', 
-            'snpEffect', 
-            'snpVariant', 
-            'snpImpact', 
-            'mu:wt_GTpred', 
-            'mu_ref', 
-            'mu_alt', 
-            'wt_ref', 
-            'wt_alt'
-        ]
-        self.vcf_df.to_csv(self.vcf_table_path, sep='\t', index=False)
     
