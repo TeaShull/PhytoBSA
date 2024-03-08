@@ -23,6 +23,27 @@ class VCFGenerator:
     def __init__(self, logger, vcf_vars):
         self.vcf_vars = vcf_vars
         self.log = logger #pass core_log from main phytobsa script
+        
+    def __call__(self):
+        self.vcf_vars.gen_reference_chrs_paths()
+        self._parse_reference_genome_path()
+        self._create_chromosomal_fasta(self.vcf_vars.reference_genome_path, 
+            self.vcf_vars.reference_chrs_fa_path, *self.vcf_vars.omit_chrs_patterns
+        )
+
+        for line in self.vcf_vars.lines:
+            self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
+            try:
+                self._initialize_vcf_log(line)
+                self._generate_output_paths(line)
+                self._run_vcfgen_subprocess(line)
+                self._format_vcf_output(line)
+                if self.vcf_vars.cleanup:
+                    self._cleanup_files(line.vcf_output_dir, self.vcf_vars.cleanup_filetypes)
+            except Exception as e:
+                self.log.error(f"There was an error while running vcf_generation process for {line.name}:{e}.")
+                self.log.error("Continuing to see if other lines can be run...")
+                continue
 
     def _create_chromosomal_fasta(self, input_file: str, output_file: str, *patterns: list):
         if not os.path.isfile(output_file):
@@ -37,7 +58,67 @@ class VCFGenerator:
         else:
             self.log.note(f"Chromosomal fasta exists: {output_file}")
             self.log.note("Proceeding...")
-    
+
+    def _parse_reference_genome_path(self):
+        file_utils = FileUtilities(self.log)
+        self.vcf_vars.reference_genome_path = file_utils.parse_file(
+            self.vcf_vars.reference_genome_path, 
+            self.vcf_vars.reference_genome_source,
+            REFERENCE_DIR
+        )
+
+    def _initialize_vcf_log(self, line):
+        vcf_log = LogHandler(f'vcf_{line.name}')
+        line.vcf_ulid = vcf_log.ulid
+        vcf_log.add_db_record(
+            name=line.name, 
+            core_ulid=self.log.ulid,
+            reference_genome_path=self.vcf_vars.reference_genome_path,
+            snpeff_species_db=self.vcf_vars.snpeff_species_db,
+            reference_genome_source=self.vcf_vars.reference_genome_source,
+            omit_chrs_patterns=self.vcf_vars.omit_chrs_patterns,
+            threads_limit=THREADS_LIMIT
+        )
+
+    def _generate_output_paths(self, line):
+        vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
+            line.name, line.vcf_ulid
+        )
+        (
+            line.vcf_output_dir, 
+            line.vcf_output_prefix, 
+            line.vcf_table_path,
+            line.snpeff_report_path,
+            line.snpeff_out_path, 
+            line.snpsift_out_path
+        ) = vcf_out_paths
+
+    def _run_vcfgen_subprocess(self, line):
+        line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
+        process = subprocess.Popen(
+            line.vcf_gen_cmd, 
+            cwd=MODULES_DIR, 
+            shell=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.STDOUT, 
+            text=True
+        )
+        vcf_log = LogHandler(f'vcf_{line.name}')
+        for stdout_line in process.stdout:
+            vcf_log.bash(stdout_line.strip())
+        process.wait()
+        vcf_log.note(f"VCF file generated for {line.name}.") 
+        vcf_log.success("VCF file generation process complete")
+
+    def _format_vcf_output(self, line):
+        try:
+            self.log.attempt("Attempting to format vcf table...")
+            vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path, self.log)
+            vcf_format.format_fields()
+            vcf_format.remove_complex_genotypes()
+        except Exception as e:
+            self.log.error(f"There was an error while formatting vcf table:{e}")
+
     def _cleanup_files(self, output_dir_path: str, cleanup_filetypes: list):
         for file_type in cleanup_filetypes:
             if file_type == '*.table':
@@ -48,105 +129,14 @@ class VCFGenerator:
                 if os.path.isfile(file):
                     os.remove(file)
 
-    def __call__(self):
-        """
-        Input: VCFGenVariables class instance, populated with the variables needed
-        to run the process. 
-        
-        Required variables can be seen in core_variables.VCFVariables
-
-        the make_vcfgen_command returns the cmd passed to subprocess_VCFgen.sh 
-        This command needs to be kept in order, as the variable parsing in the
-        shell script is ordered.
-        """
-        
-        #Generate chrs paths
-        self.vcf_vars.gen_reference_chrs_paths()
-        
-        # Parse reference genome path. If exists - proceed. 
-        # If compressed, decompress. 
-        # If not there, download from reference_genome_source and decompress
-        file_utils = FileUtilities(self.log)
-        self.vcf_vars.reference_genome_path = file_utils.parse_file(
-            self.vcf_vars.reference_genome_path, 
-            self.vcf_vars.reference_genome_source,
-            REFERENCE_DIR
-        )
-        # Create a new fasta file, with unneeded contigs filtered based on 
-        # user defaults. (mitochondria, exc)
-        self._create_chromosomal_fasta(self.vcf_vars.reference_genome_path, 
-            self.vcf_vars.reference_chrs_fa_path, *self.vcf_vars.omit_chrs_patterns
-        )
-
-        for line in self.vcf_vars.lines:
-            self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
-            try:
-                #Initialize vcf log for the current line name
-                vcf_log = LogHandler(f'vcf_{line.name}')
-                line.vcf_ulid = vcf_log.ulid
-                vcf_log.add_db_record(
-                    name=line.name, 
-                    core_ulid=self.log.ulid,
-                    reference_genome_path=self.vcf_vars.reference_genome_path,
-                    snpeff_species_db=self.vcf_vars.snpeff_species_db,
-                    reference_genome_source=self.vcf_vars.reference_genome_source,
-                    omit_chrs_patterns=self.vcf_vars.omit_chrs_patterns,
-                    threads_limit=THREADS_LIMIT
-                )
-                
-                #Generate output paths for process
-                vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
-                    line.name, line.vcf_ulid
-                )
-                (
-                    line.vcf_output_dir, 
-                    line.vcf_output_prefix, 
-                    line.vcf_table_path,
-                    line.snpeff_report_path,
-                    line.snpeff_out_path, 
-                    line.snpsift_out_path
-                ) = vcf_out_paths
-
-                #Generate line.vcf_gen_cmd
-                line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
-
-                #Run vcfgen shell subprocess.
-                process = subprocess.Popen(
-                    line.vcf_gen_cmd, 
-                    cwd=MODULES_DIR, 
-                    shell=True, 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.STDOUT, 
-                    text=True
-                )
-                # Iterate over stdout from process and log
-                for stdout_line in process.stdout:
-                    vcf_log.bash(stdout_line.strip())
-                process.wait()
-
-                vcf_log.note(f"VCF file generated for {line.name}.") 
-                vcf_log.success("VCF file generation process complete")
-                
-                # Formatting VCF output to make it dataframe friendly
-                vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path)
-                vcf_format.format_fields()
-                vcf_format.remove_complex_genotypes()
-                
-                #Cleanup files if cleanup = True
-                if self.vcf_vars.cleanup:
-                    self._cleanup_files(line.vcf_output_dir, self.vcf_vars.cleanup_filetypes)
-            
-            except Exception as e:
-                self.log.error(f"There was an error while running vcf_generation process for {line.name}. Continuing to see if other lines can be run...")
-                continue
-            
 
 class VCFFormat:
     
-    def __init__(self, snpsift_out_path, vcf_table_path):
+    def __init__(self, snpsift_out_path, vcf_table_path, logger):
         self.snpsift_out_path = snpsift_out_path
         self.vcf_table_path = vcf_table_path
         self.vcf_df = None
+        self.log = logger
 
         self.header_map = {
             "CHROM": "chrom",
@@ -162,33 +152,51 @@ class VCFFormat:
             "GEN[wt].AD": ["wt_ref", "wt_alt"]
         }
 
-    def format_fields(self, snpsift_out_path, vcf_table_path):
-        with open(snpsift_out_path, 'r') as f_in, open(vcf_table_path, 'w') as f_out:
-            header_line = next(f_in) #grab header line
-            headers = header_line.split('\t') # articulate each header
-            output_headers = [self.header_map.get(header, header) for header in headers] #map each header to self.header_map to create output_headers
-            f_out.write("\t".join(output_headers) + "\n") #write the output headers to file
-
-            for line in f_in:
-                fields = line.split('\t') 
-                new_fields = [] #new fields list
-                #create header, field tuples and interate through, splitting the allele depth columns (AD)
-                for header, field in zip(headers, fields): #headers is static - from "articulate each header", fields from for line in f_in. creates dynamic tuples of input headers and feilds
-                    if "AD" in header and ',' in field:
-                        new_fields.extend(field.split(','))
+    def format_fields(self):
+        self.log.attempt(f"Attempting to format vcf table:{self.vcf_table_path}")
+        try:
+            with open(self.snpsift_out_path, 'r') as f_in, open(self.vcf_table_path, 'w') as f_out:
+                header_line = next(f_in).strip()
+                headers = header_line.split('\t')
+                output_headers = []
+                for header in headers:
+                    mapped_header = self.header_map.get(header, header)
+                    if isinstance(mapped_header, list):
+                        output_headers.extend(mapped_header)
                     else:
-                        new_fields.append(field)
-                f_out.write('\t'.join(new_fields) + "\n")
+                        output_headers.append(mapped_header)
+                f_out.write("\t".join(output_headers) + "\n") 
 
-    def remove_complex_genotypes(self):
-        complex_geno_tablename = f"{self.vcf_table_path}.complex_genos"
-        with open(self.vcf_table_path, 'r') as f:
-            lines = f.readlines()
+                for line in f_in:
+                    fields = line.strip().split('\t') 
+                    new_fields = []
+                    for header, field in zip(headers, fields):
+                        if "AD" in header and ',' in field:
+                            new_fields.extend(field.split(','))
+                        else:
+                            new_fields.append(field)
+                    f_out.write('\t'.join(new_fields) + "\n")
 
-        with open(self.vcf_table_path, 'w') as f, open(complex_geno_tablename, 'w') as f_too_complex:
-            for line in lines:
-                if len(line.split('\t')) == 13:
-                    f.write(line)
-                else:
-                    f_too_complex.write(line)
+            self.log.success(f"VCF table formatted successfully!")
+
+        except IOError as e:
+            self.log.error(f"IOError occurred: {e}")
+        
+        except Exception as e:
+            self.log.error(f"There was an error while formatting the feilds for vcf file:{e}")
     
+    def remove_complex_genotypes(self):
+        self.log.attempt("Removing complex genotypes (can be found in .complex_genos file)")
+        try:
+            complex_geno_tablename = f"{self.vcf_table_path}.complex_genos"
+            with open(self.vcf_table_path, 'r') as f:
+                lines = f.readlines()
+
+            with open(self.vcf_table_path, 'w') as f, open(complex_geno_tablename, 'w') as f_too_complex:
+                for line in lines:
+                    if len(line.split('\t')) == 13:
+                        f.write(line)
+                    else:
+                        f_too_complex.write(line)
+        except Exception as e:
+            self.log.error(F"Removing complex genotypes failed for an unknown reason: {e}")

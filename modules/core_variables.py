@@ -13,8 +13,7 @@ from modules.utilities_general import FileUtilities
 class Lines:
     '''
     This class contains information and methods pertaining to variables
-    needed for both vcf generation and bsa pipeline. The variables contained 
-    here are dynamic, and many are used in both processes.
+    needed for both vcf generation and bsa pipeline.
 
     The variables of this class can be populated by automatic_line_variables
     in the AutomaticLineVariableDetector class or the parsed arguments passed 
@@ -54,6 +53,26 @@ class Lines:
         self.analysis_out_prefix = None
         self.analysis_ulid = None
 
+    def usr_in_line_variables(self, **kwargs):
+        self.log.attempt('Attempting to organize inputs into Line data class...')
+        try:
+            for key, details in kwargs.items():
+                try:
+                    processed_input = self._process_input(key, details)
+                except KeyError as ke:
+                    self.log.fail(f'Key not found: {ke}')
+                    continue
+                 
+                try:
+                    if hasattr(self, key):
+                        setattr(self, key, processed_input)
+                        self.log.note(f'User input added: |{self.name}|{key}:{processed_input} ')
+                except AttributeError as ae:
+                    self.log.fail(f'Attribute error: {ae}')
+
+        except Exception as e:
+            self.log.fail(f'There was an error processing user inputs:{e}')
+
     def _process_input(self, key, details):
         file_utils = FileUtilities(self.log)
         if key == 'mu_input' or key == 'wt_input':
@@ -64,34 +83,69 @@ class Lines:
         else:
             return details
     
-    def usr_in_line_variables(self, **kwargs):
-        self.log.attempt('Attempting to organize inputs into Line data class...')
-        try:
-            for key, details in kwargs.items():
-                try:
-                    processed_input = self._process_input(key, details)
-                
-                except KeyError as ke:
-                    self.log.fail(f'Key not found: {ke}')
-                    
-                    continue
-                 
-                try:
-                    if hasattr(self, key):
-                        setattr(self, key, processed_input)
-                        self.log.note(f'User input added: |{self.name}|{key}:{processed_input} ')
-
-                except AttributeError as ae:
-                    self.log.fail(f'Attribute error: {ae}')
-
-        except Exception as e:
-            self.log.fail(f'There was an error processing user inputs:{e}')
-
 
 class AutomaticLineVariableDetector:    
+
     def __init__(self, logger):
         self.log = logger
         self.lines = []
+
+    def __call__(self):
+        '''
+        Detect information needed to populate Line variable from the file names
+        in the ./data/input folder.
+
+        If the file is named properly, pipeline will run automatically. 
+
+        Naming convention: 
+        For paired-end  
+        `<line_name>.<R or D or QTL>_<read number>.<wt or mu>.fq.gz`
+        for unpaired  
+        `<line_name>.<R or D or QTL>.<wt or mu>.fq.gz`  
+
+        FLOW:
+        _process_file
+            _parse_filename
+            _get_line
+            _append_file_paths
+        _sort_file_paths
+        '''
+        self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
+        try:
+            for filename in os.listdir(INPUT_DIR):
+                print(" ")
+                self.log.attempt(f"Parsing {filename}....")
+                self._process_file(filename)
+                self.log.success(f"{filename} parsed!")
+            
+            self.log.note("Sorting file paths...")
+            self._sort_file_paths()
+            self.log.success(f'Line and run details generated from input directory:{INPUT_DIR}.')
+        
+        except Exception as e:
+            self.log.fail(f"Error while detecting line and run details: {e}")
+
+    def _process_file(self, filename):
+        details = self._parse_filename(filename)
+        name, segregation_type, bulk_type, pairedness = details
+        
+        self.log.note(f""" 
+        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+                  Details Detected
+        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        name:{name}
+        segregation_type:{segregation_type}
+        bulk_type:{bulk_type}
+        pairedness:{pairedness}
+        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=""")
+
+        line = self._get_line(name)
+        
+        line.segregation_type = segregation_type
+        line.pairedness = pairedness
+        file_path = os.path.join(INPUT_DIR, filename)
+        
+        self._append_file_path(bulk_type, line, file_path)    
 
     def _parse_filename(self, filename):
         parts = filename.split('.')
@@ -129,50 +183,12 @@ class AutomaticLineVariableDetector:
         elif bulk_type == 'mu':
             line.mu_input.append(file_path)
 
-    def _process_file(self, filename):
-        details = self._parse_filename(filename)
-        name, segregation_type, bulk_type, pairedness = details
-        
-        self.log.note(f""" 
-        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-                  Details Detected
-        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-        name:{name}
-        segregation_type:{segregation_type}
-        bulk_type:{bulk_type}
-        pairedness:{pairedness}
-        -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=""")
-
-        line = self._get_line(name)
-        
-        line.segregation_type = segregation_type
-        line.pairedness = pairedness
-        file_path = os.path.join(INPUT_DIR, filename)
-        
-        self._append_file_path(bulk_type, line, file_path)    
-
     def _sort_file_paths(self):
         for line in self.lines:
             sorted_wt_inputs = "' '".join(sorted(line.wt_input))
             sorted_mu_inputs = "' '".join(sorted(line.mu_input))
             line.wt_input = sorted_wt_inputs
             line.mu_input = sorted_mu_inputs
-
-    def __call__(self):
-        self.log.attempt(f"Detecting experiment details in: {INPUT_DIR}")
-        try:
-            for filename in os.listdir(INPUT_DIR):
-                print(" ")
-                self.log.attempt(f"Parsing {filename}....")
-                self._process_file(filename)
-                self.log.success(f"{filename} parsed!")
-            
-            self.log.note("Sorting file paths...")
-            self._sort_file_paths()
-            self.log.success(f'Line and run details generated from input directory:{INPUT_DIR}.')
-        
-        except Exception as e:
-            self.log.fail(f"Error while detecting line and run details: {e}")
 
 
 class VCFGenVariables:
@@ -270,20 +286,50 @@ class VCFGenVariables:
         except Exception as e:
             self.log.fail(f"Error generating VCF output paths: {e}")
 
-    def _get_ref_name(self, file_path):
-        self.log.attempt('Attempting to retrieve reference base name from inputs...')
-        try: 
-            # Get the file name without the path
-            file_name = os.path.basename(file_path)
-            self.log.note(f"File name:{file_name}")
-            # Remove the file extension(s)
-            base_name = file_name
-            while base_name.endswith(('.fa', '.fasta', '.gz')):
-                base_name = Path(base_name).stem
-            self.log.success(f"Base name: {base_name}")
-        except Exception as e:
-            self.log.fail(f"There as an error retrieving reference base name from inputs:{e}")
-        return base_name
+    def gen_reference_chrs_paths(self):
+        print(self.reference_genome_path)
+        # Parse the ref path, return checked path
+        self.reference_genome_path = self._check_ref_path(
+            self.reference_genome_path
+        )
+        # Retrieve the base name of the reference genome
+        ref_name = self._get_ref_name(self.reference_genome_path)
+        
+        #Reference genome prefix for .chrs.fa file
+        ref_genome_prefix = os.path.join(REFERENCE_DIR, ref_name)
+        self.reference_chrs_dict_path = (f"{ref_genome_prefix}.chrs.dict")
+        self.reference_chrs_fa_path = (f"{ref_genome_prefix}.chrs.fa")
+
+    def _check_ref_path(self, ref_genome_path):
+        self.log.attempt(f"Checking reference genome path for completeness:{ref_genome_path}")
+
+        if self._is_directory(ref_genome_path):
+            return
+
+        if not self._has_valid_extension(ref_genome_path):
+            return
+
+        ref_file_path = self._get_file_path(ref_genome_path)
+
+        if ref_file_path is None and not self.reference_genome_source:
+            self.log.fail(f"Reference genome path {ref_genome_path} does not exist, and reference genome source (a URL to download the reference from) was not provided. Aborting...")
+            return None
+
+        return ref_file_path
+
+    def _is_directory(self, ref_genome_path):
+        if os.path.isdir(ref_genome_path):
+            self.log.fail(f"Expected file, got directory: '{ref_genome_path}'")
+            return True
+        return False
+
+    def _has_valid_extension(self, ref_genome_path):
+        ext = os.path.splitext(ref_genome_path)[1]
+        gz_ext = os.path.splitext(os.path.splitext(ref_genome_path)[0])[1]
+        if ext not in ['.fa', '.fasta', '.gz'] or (ext == '.gz' and gz_ext not in ['.fa', '.fasta']):
+            self.log.fail(f"Invalid extension: '{gz_ext+ext}'. Expected '.fa', '.fasta', '.fa.gz' or '.fasta.gz'")
+            return False
+        return True
 
     def _get_file_path(self, ref_genome_path):
         if os.path.isfile(ref_genome_path):
@@ -303,56 +349,27 @@ class VCFGenVariables:
         
         return ref_file_path
 
-    def _is_directory(self, ref_genome_path):
-        if os.path.isdir(ref_genome_path):
-            self.log.fail(f"Expected file, got directory: '{ref_genome_path}'")
-            return True
-        return False
-
-    def _has_valid_extension(self, ref_genome_path):
-        ext = os.path.splitext(ref_genome_path)[1]
-        gz_ext = os.path.splitext(os.path.splitext(ref_genome_path)[0])[1]
-        if ext not in ['.fa', '.fasta', '.gz'] or (ext == '.gz' and gz_ext not in ['.fa', '.fasta']):
-            self.log.fail(f"Invalid extension: '{gz_ext+ext}'. Expected '.fa', '.fasta', '.fa.gz' or '.fasta.gz'")
-            return False
-        return True
-
-    def _check_ref_path(self, ref_genome_path):
-        self.log.attempt(f"Checking reference genome path for completeness:{ref_genome_path}")
-
-        if self._is_directory(ref_genome_path):
-            return
-
-        if not self._has_valid_extension(ref_genome_path):
-            return
-
-        ref_file_path = self._get_file_path(ref_genome_path)
-
-        if ref_file_path is None and not self.reference_genome_source:
-            self.log.fail(f"Reference genome path {ref_genome_path} does not exist, and reference genome source (a URL to download the reference from) was not provided. Aborting...")
-            return None
-
-        return ref_file_path
-
-    def gen_reference_chrs_paths(self):
-        print(self.reference_genome_path)
-        self.reference_genome_path = self._check_ref_path(
-            self.reference_genome_path
-        )
-        # Retrieve the base name of the reference genome
-        ref_name = self._get_ref_name(self.reference_genome_path)
-        
-        #Reference genome prefix for .chrs.fa file
-        ref_genome_prefix = os.path.join(REFERENCE_DIR, ref_name)
-        self.reference_chrs_dict_path = (f"{ref_genome_prefix}.chrs.dict")
-        self.reference_chrs_fa_path = (f"{ref_genome_prefix}.chrs.fa")
+    def _get_ref_name(self, file_path):
+        self.log.attempt('Attempting to retrieve reference base name from inputs...')
+        try: 
+            # Get the file name without the path
+            file_name = os.path.basename(file_path)
+            self.log.note(f"File name:{file_name}")
+            # Remove the file extension(s)
+            base_name = file_name
+            while base_name.endswith(('.fa', '.fasta', '.gz')):
+                base_name = Path(base_name).stem
+            self.log.success(f"Base name: {base_name}")
+        except Exception as e:
+            self.log.fail(f"There as an error retrieving reference base name from inputs:{e}")
+        return base_name
 
 
 class BSAVariables:
 
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
         'shuffle_iterations', 'filter_indels', 'filter_ems', 'snpmask_path', 
-        'snpmask_url', 'ratio_cutoff', 'mask_snps'
+        'snpmask_url', 'ratio_cutoff','critical_cutoff', 'mask_snps'
     ]
     
     def __init__(self, logger,
@@ -365,7 +382,8 @@ class BSAVariables:
         snpmask_path,
         snpmask_url,
         mask_snps,
-        ratio_cutoff
+        ratio_cutoff,
+        critical_cutoff
         ):
         self.log = logger
         
@@ -379,6 +397,7 @@ class BSAVariables:
         self.snpmask_url = snpmask_url
         self.mask_snps = mask_snps
         self.ratio_cutoff = ratio_cutoff
+        self.critical_cutoff = critical_cutoff
 
     def load_vcf_table(self, vcf_table_path)->pd.DataFrame:
         """
@@ -405,6 +424,49 @@ class BSAVariables:
         
         except Exception as e:
             self.log.fail(f"An unexpected error occurred: {e}")
+
+    def load_snpmask(self, snpmask_path, snpmask_url)->pd.DataFrame:
+        """
+        Handles SNP mask file and dataframe. If the file is a generic VCF file,
+        this function will make a backup of the original VCF and create a pandas
+        friendly SNP mask from the original VCF.
+
+        Args:  
+        snpmask_path - path to the vcf table to be loaded into df
+        snpmask_url - url to download the vcf file if it doesn't exist
+
+        Returns: 
+        Pandas dataframe containing the information loaded from vcf_table_path
+        """
+        file_utils = FileUtilities(self.log)
+        self.log.attempt(f"Attempting to load {snpmask_path}")
+        try:
+            directories = [REFERENCE_DIR] 
+            processed_snpmask_path = file_utils.process_path(directories, snpmask_path)
+            
+            if not processed_snpmask_path:
+                processed_snpmask_path = file_utils.parse_file(
+                    snpmask_path, snpmask_url, REFERENCE_DIR
+                )
+            
+            df = self._load_dataframe(processed_snpmask_path)
+            df['CHROM'] = df['CHROM'].astype(str)
+            
+            return df
+
+        except pd.errors.EmptyDataError:
+            self.log.fail(f"Error: File '{snpmask_path}' is empty.")
+
+        except Exception as e:
+            self.log.fail(f"An unexpected error occurred: {e}")
+
+    def _load_dataframe(self, snpmask_path):
+        try:
+            df = pd.read_csv(snpmask_path, sep="\t")
+        except pd.errors.ParserError:
+            self.log.note(f"snpmask file doesn't appear to be formatted for pandas. Formatting....")
+            df = self._format_vcf(snpmask_path)
+        return df
 
     def _format_vcf(self, snpmask_path):
         self.log.warning("Parsing VCFs doesn't always go well. If you get a lot of errors during this process, it could be worthwile to format the snpmask file yourself. Required headers are 'CHROM POS REF ALT'")
@@ -450,54 +512,6 @@ class BSAVariables:
         self.log.success(f"vcf_df loaded and saved: {snpmask_path}")
 
         return df
-
-    def _load_dataframe(self, snpmask_path):
-        try:
-            df = pd.read_csv(snpmask_path, sep="\t")
-        except pd.errors.ParserError:
-            self.log.note(f"snpmask file doesn't appear to be formatted for pandas. Formatting....")
-            df = self._format_vcf(snpmask_path)
-        return df
-
-    def _download_file(self, snpmask_path, snpmask_url):
-        self.log.attempt(f"{snpmask_path} does not exist, attempting to download from {snpmask_url}")
-        response = requests.get(snpmask_url)
-        with open(snpmask_path, 'wb') as f:
-            f.write(response.content)
-        self.log.success(f"Successfully downloaded {snpmask_path}")
-
-    def load_snpmask(self, snpmask_path, snpmask_url)->pd.DataFrame:
-        """
-        Handles SNP mask file and dataframe. If the file is a generic VCF file,
-        this function will make a backup of the original VCF and create a pandas
-        friendly SNP mask from the original VCF.
-
-        Args:  
-        snpmask_path - path to the vcf table to be loaded into df
-        snpmask_url - url to download the vcf file if it doesn't exist
-
-        Returns: 
-        Pandas dataframe containing the information loaded from vcf_table_path
-        """
-        file_utils = FileUtilities(self.log)
-        self.log.attempt(f"Attempting to load {snpmask_path}")
-        try:
-            directories = [REFERENCE_DIR] 
-            processed_snpmask_path = file_utils.process_path(directories, snpmask_path)
-            
-            if not processed_snpmask_path:
-                processed_snpmask_path = file_utils.parse_file(
-                    snpmask_path, snpmask_url, REFERENCE_DIR
-                )
-            
-            df = self._load_dataframe(processed_snpmask_path)
-            return df
-
-        except pd.errors.EmptyDataError:
-            self.log.fail(f"Error: File '{snpmask_path}' is empty.")
-
-        except Exception as e:
-            self.log.fail(f"An unexpected error occurred: {e}")
 
     def gen_bsa_out_prefix(self, name, ulid, vcf_ulid): #called in core_bsa.py
         try:

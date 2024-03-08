@@ -158,8 +158,8 @@ main() {
     print_message "Calling haplotypes. This may take awhile..."
     # Haplotype caller looks for regions with variance and locally reconstructs
     # the region using the available reads, and calls variants for the region. 
-    # Time-consuming but accurate. Calling variants in parallel allows faster
-    # processing time. 
+    # Time-consuming but accurate. Calling variants in parallel allows (much) 
+    # faster processing time. 
     if [ "$call_variants_in_parallel" = True ]; then
         split_and_call_haplotypes \
         ${output_prefix} \
@@ -169,16 +169,6 @@ main() {
         ${threads_limit} \
         ${gatk_haplotypecaller_output}
 
-        if [ $? -ne 0 ]; then
-            print_message "split_and_call_haplotypes failed. Falling back to non-parallel variant calling."
-            gatk HaplotypeCaller \
-            -R $reference_chrs_fa_path \
-            -I $picard_addorreplacereadgroups_output_mu \
-            -I $picard_addorreplacereadgroups_output_wt \
-            -O $gatk_haplotypecaller_output \
-            -output-mode EMIT_ALL_CONFIDENT_SITES \
-            --native-pair-hmm-threads $threads_limit
-        fi
     else
         gatk HaplotypeCaller \
         -R $reference_chrs_fa_path \

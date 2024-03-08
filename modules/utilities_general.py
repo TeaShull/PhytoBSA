@@ -69,13 +69,6 @@ class FileUtilities:
         else:
             return None
 
-    def _write_lines_class_attrs(self, lines_instance, file):
-        for attr in dir(lines_instance):
-            if not attr.startswith("__"):
-                value = getattr(lines_instance, attr)
-                if not callable(value):
-                    file.write(f"  {attr}: {value}\n")
-
     def write_instance_vars_to_file(self, instances, filename):
         with open(filename, 'w') as f:
             for instance in instances:
@@ -87,30 +80,12 @@ class FileUtilities:
                             f.write(f"  {attr}: {value}\n")
                 f.write("\n")
 
-    def _unzip_file(self, file_path: str) -> str:
-        self.log.attempt(f"Attempting to unzip {file_path}")
-        with gzip.open(file_path, 'rb') as f_in:
-            with open(file_path[:-3], 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        file_path = file_path[:-3]
-        self.log.success(f"File unzipped to {file_path}")
-
-        return file_path
-
-    def _download_file(self, file_path: str, file_source: str) -> str:
-        self.log.attempt(f"File doesn't exist, sourcing from: {file_source}")
-        parsed_url = urlparse(file_source)
-        source_extension = os.path.splitext(parsed_url.path)[1]
-        
-        if file_path.endswith(source_extension) is False:
-            self.log.note(f"Source extension {source_extension} and file name extension don't match. Attempting to fix...")
-            file_path += source_extension
-        
-        self.log.attempt(f"Downloading from URL: {file_source}")
-        urllib.request.urlretrieve(file_source, file_path)
-        self.log.success(f"File downloaded and saved at {file_path}")
-
-        return file_path 
+    def _write_lines_class_attrs(self, lines_instance, file):
+        for attr in dir(lines_instance):
+            if not attr.startswith("__"):
+                value = getattr(lines_instance, attr)
+                if not callable(value):
+                    file.write(f"  {attr}: {value}\n")
 
     def parse_file(self, file_path: str, file_source: str, destination: str)-> str:
         self.log.attempt("Attempting to parse file...")
@@ -134,6 +109,32 @@ class FileUtilities:
             self.log.error(e)
             
             return None
+
+    def _download_file(self, file_path: str, file_source: str) -> str:
+        self.log.attempt(f"File doesn't exist, sourcing from: {file_source}")
+        parsed_url = urlparse(file_source)
+        source_extension = os.path.splitext(parsed_url.path)[1]
+        
+        if file_path.endswith(source_extension) is False:
+            self.log.note(f"Source extension {source_extension} and file name extension don't match. Attempting to fix...")
+            file_path += source_extension
+        
+        self.log.attempt(f"Downloading from URL: {file_source}")
+        urllib.request.urlretrieve(file_source, file_path)
+        self.log.success(f"File downloaded and saved at {file_path}")
+
+        return file_path 
+
+    def _unzip_file(self, file_path: str) -> str:
+        self.log.attempt(f"Attempting to unzip {file_path}")
+        with gzip.open(file_path, 'rb') as f_in:
+            with open(file_path[:-3], 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        file_path = file_path[:-3]
+        self.log.success(f"File unzipped to {file_path}")
+
+        return file_path
+
 
 class LogDbUtilites:
     def __init__(self):
@@ -299,8 +300,7 @@ class RefDbUtilities:
             self.conn = sqlite3.connect(self.db_path)
             self.cursor = self.conn.cursor()
         except Exception as e:
-            self.log.note(f"Failed to connect to the database: {e}")
-            raise
+            self.log.error(f"Failed to connect to the database: {e}")
 
     def fetch_ref_var(self, field):
         self.log.attempt(f"Attempting to retrieve {field} for {self.ref_name}")
@@ -313,6 +313,7 @@ class RefDbUtilities:
             
             row = self.cursor.fetchone()
             if row is None:
+                self.log.error(f"Entry for self.ref_name not found! Ensure you have the correct reference set in set_reference_name, or use refdb_manager to configure your reference. ./refdb_manager -h for options")
                 return None
             
             self.log.success(f"{field} for {self.ref_name} retrieved!")

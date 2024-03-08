@@ -229,7 +229,6 @@ class LogHandler:
         self.logger.info(message)
         print(message)
 
-
     def delimiter(self, message):
         delimiter_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
         log_message = (f"""
