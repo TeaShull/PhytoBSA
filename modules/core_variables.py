@@ -369,7 +369,8 @@ class BSAVariables:
 
     __slots__ = ['log', 'lines', 'loess_span', 'smooth_edges_bounds', 
         'shuffle_iterations', 'filter_indels', 'filter_ems', 'snpmask_path', 
-        'snpmask_url', 'ratio_cutoff','critical_cutoff', 'mask_snps'
+        'snpmask_url', 'ratio_cutoff','critical_cutoff', 'mask_snps', 
+        'method'
     ]
     
     def __init__(self, logger,
@@ -383,7 +384,8 @@ class BSAVariables:
         snpmask_url,
         mask_snps,
         ratio_cutoff,
-        critical_cutoff
+        critical_cutoff,
+        method
         ):
         self.log = logger
         
@@ -398,6 +400,7 @@ class BSAVariables:
         self.mask_snps = mask_snps
         self.ratio_cutoff = ratio_cutoff
         self.critical_cutoff = critical_cutoff
+        self.method = method
 
     def load_vcf_table(self, vcf_table_path)->pd.DataFrame:
         """

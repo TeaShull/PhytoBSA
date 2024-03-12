@@ -247,7 +247,8 @@ class LogHandler:
 
     def nocandidates(self):
         script_name, function_name = self._obtain_execution_frames()
-        nocands_msg= """
+        prefix=""
+        message= """
 !*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*
                       NO LIKELY CANDIDATES IDENTIFIED 
 
@@ -285,7 +286,7 @@ mutation or information on why there are no candidates.
         """
         
         log_message = self._construct_message(
-            nocands_msg, script_name, function_name, message
+             prefix, script_name, function_name, message
         )
         self.logger.info(log_message)
         print(log_message)

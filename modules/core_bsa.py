@@ -8,9 +8,9 @@ import statsmodels.api as sm
 from scipy import stats
 from itertools import groupby
 from multiprocessing import Pool
-from plotnine import (ggplot, aes, xlab, ylab, geom_histogram, geom_ribbon, 
-    geom_text, geom_point, geom_line, geom_hline, geom_vline, ggtitle, 
-    facet_wrap, facet_grid, theme, element_rect, element_line, element_text
+from plotnine import (ggplot, aes, xlab, ylab, geom_ribbon, 
+    geom_text, geom_point, geom_line, geom_hline, ggtitle, facet_wrap, 
+    facet_grid, theme, element_rect, element_line, element_text
 )    
 
 from modules.utilities_logging import LogHandler
@@ -38,8 +38,8 @@ class BSA:
                 self._filter_data(line, bsa_log)        
                 self._produce_features(line, bsa_log)
                 self._produce_null_models(line, bsa_log)
+                self._tidy_columns(line, bsa_log)
                 self._save_and_plot_outputs(line, bsa_log)
-            
             except Exception as e:
                 self.log.error(f"Running BSA for line {line.name} failed unexpectedly. {e}")
                 self.log.error("Continuing to attempt analysis of other lines...")
@@ -67,12 +67,20 @@ class BSA:
             segregation_type = line.segregation_type
         )
 
+        self.bsa_vars.log = bsa_log #Redirect logging in bsa_vars to the bsa_log instead of core
+
         return bsa_log
 
     def _load_data(self, line, bsa_log):
-
         line.vcf_df = self.bsa_vars.load_vcf_table(line.vcf_table_path)
+
+        # Get the unique chromosome values in their original order
         line.vcf_df['chrom'] = line.vcf_df['chrom'].astype(str)
+        chr_order = line.vcf_df['chrom'].unique()
+        category_dtype = pd.CategoricalDtype(categories=chr_order, ordered=True)
+        
+        # Convert 'chrom' column to a categorical type with a specified order
+        line.vcf_df['chrom'] = line.vcf_df['chrom'].astype(category_dtype)
 
     def _filter_data(self, line, bsa_log):
         #Filter data based on boolean values set in Check config.ini or argparse
@@ -119,11 +127,18 @@ class BSA:
             self.smoothing_function, 
             self.bsa_vars.loess_span, 
             self.bsa_vars.shuffle_iterations, 
-            self.bsa_vars.ratio_cutoff
+            self.bsa_vars.ratio_cutoff,
+            self.bsa_vars.method
         )
-        #Trim out extra data from edge bias adjustment
+
+    def _tidy_columns(self, line, bsa_log):
+        #Init Feature production class
+        feature_prod = FeatureProduction(bsa_log, line.name)
+
+        #Trim out edge bias adjustment data, Sort based on original chrom order. 
         line.vcf_df = feature_prod.remove_extra_data(line.vcf_df)
-    
+        line.vcf_df = line.vcf_df.sort_values('chrom').reset_index(drop=True)
+
     def _save_and_plot_outputs(self, line, bsa_log):
         line.analysis_out_prefix = self.bsa_vars.gen_bsa_out_prefix(line.name, 
             line.analysis_ulid, line.vcf_ulid
@@ -146,7 +161,6 @@ class BSA:
         out_vars = f"{line.analysis_out_prefix}.bsa_vars.txt"
         class_instances = [self.bsa_vars, line]
         file_utils.write_instance_vars_to_file(class_instances, out_vars)
-
 
 class DataFiltering:
     def __init__ (self, logger, name):
@@ -212,7 +226,7 @@ class DataFiltering:
         minor variation in read depth can cause large swings in g stat and ratio values. 
         '''
         
-        self.log.attempt('Trying to drop those loci with summed read depths below the 0.5 percentile...')
+        self.log.attempt('Trying to drop those loci with summed read depths below the 5 percentile...')
         try:
             # Calculate the sum directly using numpy
             readdepth_sums = np.sum(vcf_df[['mu_ref', 'mu_alt', 'wt_ref', 'wt_alt']].values, axis=1)
@@ -486,9 +500,11 @@ class FeatureProduction:
         self.log.attempt(f"span: {loess_span}, Edge bias correction: {smooth_edges_bounds}") 
         try:
             vcf_df = self._fit_chrom_facets(vcf_df, smoothing_function, loess_span, smooth_edges_bounds)
-        
-            self.log.success("LOESS smoothing calculations successful.")    
+            vcf_df = vcf_df.sort_values('chrom').reset_index(drop=True)
             
+            self.log.success("LOESS smoothing calculations successful.")    
+            self.log.note(f'Dataframe length with mirrored edges: {len(vcf_df)}')
+
             return vcf_df
         
         except Exception as e:
@@ -567,7 +583,7 @@ class FeatureProduction:
             
             return df_chrom
 
-    def bootstrap_and_label_chroms(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
+    def bootstrap_and_label_chroms(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float, method)->tuple:
         self.log.note(f"Generating numpy arrays for bootstrapping process..")
         chr_array = vcf_df['chrom'].values
         psuedo_pos = vcf_df['pseudo_pos'].values
@@ -591,7 +607,8 @@ class FeatureProduction:
                 smoothing_function, 
                 loess_span, 
                 shuffle_iterations,
-                ratio_cutoff 
+                ratio_cutoff,
+                method 
             )
             self.log.success(f'Bootstrapping complete for chromosome:{chrom}')
             #Agregate unsmoothed values
@@ -611,7 +628,7 @@ class FeatureProduction:
                 
         return final_df
 
-    def _bootstrap_null_models(self, psuedo_pos, read_depth_array, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
+    def _bootstrap_null_models(self, psuedo_pos, read_depth_array, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float, method)->tuple:
         '''
         Process that generates the null models. This is fairly resource hungry, 
         so it is run in parallel. For each position, shuffle_iterations(n) 
@@ -646,7 +663,7 @@ class FeatureProduction:
             self.log.note(f"Total values to be generated:{total_values}")
 
             args = [(psuedo_pos, read_depth_array, smoothing_function, 
-                loess_span, ratio_cutoff) for _ in range(THREADS_LIMIT)]
+                loess_span, ratio_cutoff, method) for _ in range(THREADS_LIMIT)]
 
             iteration = 0
             total_values_added = 0
@@ -654,9 +671,9 @@ class FeatureProduction:
                 while not all(count == shuffle_iterations for count in position_counts.values()):
                     results = pool.starmap(FeatureProduction._null_models, args)
                     iteration += 1
-                    self.log.note(f"Iteration: {iteration}")
-
-                    self.log.note(f"Progress: {total_values_added}/{total_values}")
+                    if iteration % 10 == 0:
+                        self.log.note(f"Iteration: {iteration}")
+                        self.log.note(f"Progress: {total_values_added}/{total_values}")
                     
                     for result in results:
                         for pseudo_pos, ratio, ratio_y, gstat, gstat_y, rs_g, rs_g_y in zip(*result):
@@ -704,7 +721,7 @@ class FeatureProduction:
             self.log.error(f"Initializing structured array for {list_name} null model failed: {e}")
 
     @staticmethod
-    def _null_models(psuedo_pos, read_depth_array, smoothing_function, loess_span: float, ratio_cutoff: float):
+    def _null_models(psuedo_pos, read_depth_array, smoothing_function, loess_span: float, ratio_cutoff: float, method: str):
         '''
         This process is parallelized, so logging is removed here, as classes 
         won't pickle correctly
@@ -727,11 +744,45 @@ class FeatureProduction:
         sm_mu_ref = np.empty_like(psuedo_pos)
         sm_mu_alt = np.empty_like(psuedo_pos)
 
-        # Shuffle read depths
-        sm_wt_ref = np.random.choice(read_depth_array[:, 0], size=len(psuedo_pos))
-        sm_wt_alt = np.random.choice(read_depth_array[:, 1], size=len(psuedo_pos))
-        sm_mu_ref = np.random.choice(read_depth_array[:, 2], size=len(psuedo_pos))
-        sm_mu_alt = np.random.choice(read_depth_array[:, 3], size=len(psuedo_pos))
+        if method == 'bootstrap':
+            sm_wt_ref = np.random.choice(read_depth_array[:, 0], size=len(psuedo_pos))
+            sm_wt_alt = np.random.choice(read_depth_array[:, 1], size=len(psuedo_pos))
+            sm_mu_ref = np.random.choice(read_depth_array[:, 2], size=len(psuedo_pos))
+            sm_mu_alt = np.random.choice(read_depth_array[:, 3], size=len(psuedo_pos))
+        elif method == 'simulate':
+
+            wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
+            mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
+
+            # Start with a prior Gamma distribution for alpha and beta
+            alpha_prior = 2
+            beta_prior = 2
+
+            # Update the prior with the observed data
+            sm_wt_ref = np.random.choice(read_depth_array[:, 0], size=len(psuedo_pos))
+            sm_wt_alt = np.random.choice(read_depth_array[:, 1], size=len(psuedo_pos))
+            alpha_posterior_wt = alpha_prior + sm_wt_ref
+            beta_posterior_wt = beta_prior + sm_wt_alt
+            p1_posterior_wt = np.random.beta(alpha_posterior_wt, beta_posterior_wt)
+
+            # Update the prior with the observed data for the mutant
+            sm_mu_ref =  np.random.choice(read_depth_array[:, 2], size=len(psuedo_pos))
+            sm_mu_alt = np.random.choice(read_depth_array[:, 3], size=len(psuedo_pos))
+            alpha_posterior_mu = alpha_prior + sm_mu_ref
+            beta_posterior_mu = beta_prior + sm_mu_alt
+            p1_posterior_mu = np.random.beta(alpha_posterior_mu, beta_posterior_mu)
+
+            # Use the posterior distributions to simulate the wild type and mutant
+            p2_wt = 1 - p1_posterior_wt  # Derived allele frequencies in wild type
+            p2_mu = 1 - p1_posterior_mu  # Derived allele frequencies in mutant
+            sm_wt_ref = np.random.binomial(wt_coverage, p2_wt)  # Reference reads in wild type
+            sm_wt_alt = wt_coverage - sm_wt_ref  # Alternate reads in wild type
+            sm_mu_ref = np.random.binomial(mu_coverage, p2_mu)  # Reference reads in mutant
+            sm_mu_alt = mu_coverage - sm_mu_ref  # Alternate reads in mutant
+
+
+        else:
+            raise ValueError(f"Invalid shuffle_method: {shuffle_method}")
 
         #calc delta snp
         smRatio = FeatureProduction._delta_snp_array(
@@ -743,14 +794,15 @@ class FeatureProduction:
         )
         # calc ratio scaled g-stat
         smRS_G = smRatio * smGstat
-
+        
         #Mask those values and positions below the delta snp ratio cutoff 
         #(makes null model fit trimmed data)
-        mask = smRatio >= ratio_cutoff
-        psuedo_pos = psuedo_pos[mask] 
-        smRatio = smRatio[mask]
-        smGstat = smGstat[mask]
-        smRS_G = smRS_G[mask]
+        if method == 'bootstrap':
+            mask = smRatio >= ratio_cutoff
+            psuedo_pos = psuedo_pos[mask] 
+            smRatio = smRatio[mask]
+            smGstat = smGstat[mask]
+            smRS_G = smRS_G[mask]
 
         # Calculate smoothed values for each chromosome separately
         smRatio_y = []
@@ -983,10 +1035,9 @@ class TableAndPlots:
         percentile of their null models are considered. 
         '''
         conditions = (
-            (vcf_df['ratio_percentile'] > self.critical_cutoff) |
-            (vcf_df['ratio_yhat_percentile'] > self.critical_cutoff) |
-            (vcf_df['G_S_percentile'] > self.critical_cutoff) |
-            (vcf_df['G_S_yhat_percentile'] > self.critical_cutoff) |
+            # (vcf_df['ratio_percentile'] > self.critical_cutoff) |
+            # (vcf_df['G_S_percentile'] > self.critical_cutoff) |
+            # (vcf_df['G_S_yhat_percentile'] > self.critical_cutoff) |
             (vcf_df['RS_G_percentile'] > self.critical_cutoff) |
             (vcf_df['RS_G_yhat_percentile'] > self.critical_cutoff) 
         )
@@ -1091,7 +1142,7 @@ class TableAndPlots:
                 plot += geom_ribbon(aes(ymin=y_column +'_null_5', ymax=y_column +'_null_95'), fill='gray', alpha=0.2)
                 plot += geom_ribbon(aes(ymin=y_column +'_null_25', ymax=y_column +'_null_75'), fill='gray', alpha=0.2)
                 plot += geom_line(aes(y=y_column +'_null_50'), size=0.15, color='gray', alpha=0.4)
-                plot += geom_text(data=label_df, mapping=aes(x='mid_pos', y='avg_50_percentile', label="r'$H_{0}^{*}$'"), size=6, ha='center', color='purple', alpha=1)
+                plot += geom_text(data=label_df, mapping=aes(x='mid_pos', y='avg_50_percentile', label="r'$H_{0}^{*}$'"), size=6, ha='center', color='purple', alpha=0.7)
                 # Add "null" annotation to the average 50th percentile position in each facet
 
             plot += geom_point(color='goldenrod', size=0.9)

@@ -34,16 +34,24 @@ class VCFGenerator:
         for line in self.vcf_vars.lines:
             self.log.delimiter(f'Initializing vcf_generation subprocess log for {line.name}')
             try:
-                self._initialize_vcf_log(line)
-                self._generate_output_paths(line)
-                self._run_vcfgen_subprocess(line)
-                self._format_vcf_output(line)
+                vcf_log = self._initialize_vcf_log(line)
+                self._generate_output_paths(line, vcf_log)
+                self._run_vcfgen_subprocess(line, vcf_log)
+                self._format_vcf_output(line, vcf_log)
                 if self.vcf_vars.cleanup:
-                    self._cleanup_files(line.vcf_output_dir, self.vcf_vars.cleanup_filetypes)
+                    self._cleanup_files(line.vcf_output_dir, self.vcf_vars.cleanup_filetypes, vcf_log)
             except Exception as e:
                 self.log.error(f"There was an error while running vcf_generation process for {line.name}:{e}.")
                 self.log.error("Continuing to see if other lines can be run...")
                 continue
+
+    def _parse_reference_genome_path(self):
+        file_utils = FileUtilities(self.log)
+        self.vcf_vars.reference_genome_path = file_utils.parse_file(
+            self.vcf_vars.reference_genome_path, 
+            self.vcf_vars.reference_genome_source,
+            REFERENCE_DIR
+        )
 
     def _create_chromosomal_fasta(self, input_file: str, output_file: str, *patterns: list):
         if not os.path.isfile(output_file):
@@ -59,15 +67,7 @@ class VCFGenerator:
             self.log.note(f"Chromosomal fasta exists: {output_file}")
             self.log.note("Proceeding...")
 
-    def _parse_reference_genome_path(self):
-        file_utils = FileUtilities(self.log)
-        self.vcf_vars.reference_genome_path = file_utils.parse_file(
-            self.vcf_vars.reference_genome_path, 
-            self.vcf_vars.reference_genome_source,
-            REFERENCE_DIR
-        )
-
-    def _initialize_vcf_log(self, line):
+    def _initialize_vcf_log(self, line, vcf_log):
         vcf_log = LogHandler(f'vcf_{line.name}')
         line.vcf_ulid = vcf_log.ulid
         vcf_log.add_db_record(
@@ -80,7 +80,11 @@ class VCFGenerator:
             threads_limit=THREADS_LIMIT
         )
 
-    def _generate_output_paths(self, line):
+        self.vcf_vars.log = vcf_log # redirect logging in vcf_vars to the vcf log
+
+        return vcf_log
+
+    def _generate_output_paths(self, line, vcf_log):
         vcf_out_paths = self.vcf_vars.gen_vcf_output_paths(
             line.name, line.vcf_ulid
         )
@@ -93,7 +97,7 @@ class VCFGenerator:
             line.snpsift_out_path
         ) = vcf_out_paths
 
-    def _run_vcfgen_subprocess(self, line):
+    def _run_vcfgen_subprocess(self, line, vcf_log):
         line.vcf_gen_cmd = self.vcf_vars.make_vcfgen_command(line)
         process = subprocess.Popen(
             line.vcf_gen_cmd, 
@@ -110,10 +114,10 @@ class VCFGenerator:
         vcf_log.note(f"VCF file generated for {line.name}.") 
         vcf_log.success("VCF file generation process complete")
 
-    def _format_vcf_output(self, line):
+    def _format_vcf_output(self, line, vcf_log):
         try:
             self.log.attempt("Attempting to format vcf table...")
-            vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path, self.log)
+            vcf_format = VCFFormat(line.snpsift_out_path, line.vcf_table_path, vcf_log)
             vcf_format.format_fields()
             vcf_format.remove_complex_genotypes()
         except Exception as e:
