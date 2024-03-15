@@ -1,0 +1,159 @@
+#!/usr/bin/env python
+import argparse
+import configparser
+import sqlite3
+import os
+import sys
+
+class ConfigReader:
+    def __init__(self, config_file):
+        self.config_file = config_file
+        self.config = configparser.ConfigParser()
+        self.config.read(self.config_file)
+
+    def get_refdb_config(self):
+        config = dict(self.config.items('RefDB'))
+        return config
+
+class RefDbUtilities:
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.conn = None
+        self.cursor = None
+
+    def open_connection(self):
+        try:
+            self.conn = sqlite3.connect(self.db_path)
+            self.cursor = self.conn.cursor()
+        except Exception as e:
+            print(f"Failed to connect to the database: {e}")
+            raise
+
+    def close_connection(self):
+        if self.conn is not None:
+            self.conn.close()
+
+    def create_table(self):
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS RefVariables(
+            reference_name TEXT PRIMARY KEY,
+            reference_genome_path TEXT,
+            reference_genome_source TEXT, 
+            snpeff_species_db TEXT,
+            snpmask_path TEXT,
+            snpmask_url TEXT)
+        """)
+
+    def insert_ref_variables(self, reference_name, reference_genome_path, reference_genome_source, snpeff_species_db, snpmask_path, snpmask_url):
+        try:
+            self.cursor.execute("""
+                INSERT INTO RefVariables(reference_name, reference_genome_path, reference_genome_source, snpeff_species_db, snpmask_path, snpmask_url) 
+                VALUES(?,?,?,?,?,?)
+            """, (reference_name, reference_genome_path, reference_genome_source, snpeff_species_db, snpmask_path, snpmask_url))
+            self.conn.commit()
+        except Exception as e:
+            print(f"Failed to insert variables: {e}")
+            raise
+
+    def delete_ref_entry(self, reference_name):
+        try:
+            self.cursor.execute("""
+                DELETE FROM RefVariables WHERE reference_name = ?
+            """, (reference_name,))
+            self.conn.commit()
+        except Exception as e:
+            print(f"Failed to delete entry: {e}")
+            raise
+
+    def list_entries(self, abbreviate=False):
+        try:
+            self.cursor.execute("SELECT * FROM RefVariables")
+            rows = self.cursor.fetchall()
+
+            if abbreviate:
+                # Abbreviate URLs
+                rows = [list(row) for row in rows]
+                for row in rows:
+                    for i, data in enumerate(row):
+                        if '/' in str(data):
+                            if len(data) > 30:
+                                row[i] = '...' + data[-30:]
+
+            # Get column names
+            header = ["Reference Name", "Reference Genome Path", "Reference Genome Source", "SNPEff Species DB", "SNPMask Path", "SNPMask URL"]
+
+            # Find the maximum length of data in each column
+            lengths = [len(x) for x in header]
+            for row in rows:
+                for i, data in enumerate(row):
+                    length = len(str(data))
+                    if length > lengths[i]:
+                        lengths[i] = length
+            
+            # Generate the format string to print each row
+            row_format = "".join(["{:<" + str(length) + "} " for length in lengths])
+
+            # Print the header
+            print(row_format.format(*header))
+
+            # Print rows
+            for row in rows:
+                print(row_format.format(*row))
+
+        except Exception as e:
+            print(f"Failed to list entries: {e}")
+            raise
+
+
+def main():
+    # Create the parser
+    parser = argparse.ArgumentParser(description="Manage reference database. Fill out ref_form.ini and run ./refdb_manager create to add your configuration to the reference database. reference_name will be the name that you feed ./phytobsa to pull in your configuration.")
+
+    # Create subparsers
+    subparsers = parser.add_subparsers(dest="command")
+
+    # Create parser for "create" command
+    create_parser = subparsers.add_parser("create", help="Create a new entry")
+
+    # Create parser for "delete" command
+    delete_parser = subparsers.add_parser("delete", help="Delete an existing entry")
+    delete_parser.add_argument("--reference_name", type=str, required=True, help="Reference name to delete")
+
+    # Create parser for "list" command
+    list_parser = subparsers.add_parser("list", help="List all entries")
+    list_parser.add_argument("--abbreviate", '-ab',  help="Abbreviate URLs in the list command", action="store_true")
+
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Display help if nothing provided
+    if args.command is None:
+        parser.print_help()
+        sys.exit(1)
+
+    # Read configuration
+    config_reader = ConfigReader('ref_form.ini')
+    refdb_config = config_reader.get_refdb_config()
+
+    # Initialize RefDbUtilities 
+    refdb_utils = RefDbUtilities('references.db')
+
+    # Open connection and create table
+    refdb_utils.open_connection()
+    refdb_utils.create_table()
+
+    if args.command == "create":
+        # Insert ref variables
+        refdb_utils.insert_ref_variables(refdb_config['reference_name'], refdb_config['reference_genome_path'], refdb_config['reference_genome_source'], refdb_config['snpeff_species_db'], refdb_config['snpmask_path'], refdb_config['snpmask_url'])
+    elif args.command == "delete":
+        # Delete ref entry
+        refdb_utils.delete_ref_entry(args.reference_name)
+    elif args.command == "list":
+        # List all entries
+        refdb_utils.list_entries(args.abbreviate)
+
+    # Close connection
+    refdb_utils.close_connection()
+
+if __name__ == "__main__":
+    main()

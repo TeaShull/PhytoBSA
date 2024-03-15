@@ -17,6 +17,7 @@ main() {
         ["threads_limit"]="${12}"
         ["call_variants_in_parallel"]="${13}"
         ["cleanup"]="${14}"
+        ["tmp_prefix"]="${15}"
     )
     print_variable_info passed_variables "Variables passed to subprocess_VCFgen.sh"
     assign_values passed_variables #assign variables based on keys for easy access
@@ -97,11 +98,13 @@ main() {
     picard SortSam \
         -I $samtools_fixmate_output_mu \
         -O $samtools_sortsam_output_mu \
-        -SORT_ORDER coordinate &
+        -SORT_ORDER coordinate \
+        -TMP_DIR $tmp_prefix &
     picard SortSam \
         -I $samtools_fixmate_output_wt \
         -O $samtools_sortsam_output_wt \
-        -SORT_ORDER coordinate
+        -SORT_ORDER coordinate \
+        -TMP_DIR $tmp_prefix
     wait
 
     print_message "Marking duplicates"
@@ -152,11 +155,11 @@ main() {
         -O $picard_buildbamindex_output_wt
     wait
 
-    print_message "Calling haplotypes. This may take a while..."
+    print_message "Calling haplotypes. This may take awhile..."
     # Haplotype caller looks for regions with variance and locally reconstructs
     # the region using the available reads, and calls variants for the region. 
-    # Time-consuming but accurate. Calling variants in parallel allows faster
-    # processing time. 
+    # Time-consuming but accurate. Calling variants in parallel allows (much) 
+    # faster processing time. 
     if [ "$call_variants_in_parallel" = True ]; then
         split_and_call_haplotypes \
         ${output_prefix} \
@@ -165,16 +168,17 @@ main() {
         ${picard_addorreplacereadgroups_output_mu} \
         ${threads_limit} \
         ${gatk_haplotypecaller_output}
+
     else
         gatk HaplotypeCaller \
-            -R $reference_chrs_fa_path \
-            -I $picard_addorreplacereadgroups_output_mu \
-            -I $picard_addorreplacereadgroups_output_wt \
-            -O $gatk_haplotypecaller_output \
-            -output-mode EMIT_ALL_CONFIDENT_SITES \
-            --native-pair-hmm-threads $threads_limit
+        -R $reference_chrs_fa_path \
+        -I $picard_addorreplacereadgroups_output_mu \
+        -I $picard_addorreplacereadgroups_output_wt \
+        -O $gatk_haplotypecaller_output \
+        -output-mode EMIT_ALL_CONFIDENT_SITES \
+        --native-pair-hmm-threads $threads_limit
     fi
-
+    
     print_message "SnpEff: Labeling SNPs with annotations and potential impact on gene function"
     # snpEff labels the variants in haplotype caller with likely impact of variants 
     # on gene function (early stop/start codons, missense mutations, etc.) using
@@ -184,8 +188,8 @@ main() {
         -s $snpeff_report_path \
         $gatk_haplotypecaller_output > $snpeff_out_path
     wait
+    
     print_message "Haplotypes called and SNPs labeled. Extracting feilds with snpSift."
-
     # Extracting SNPeff data and variant information into a table
     # built-in data processing of snpEff labels... 
     extract_fields_snpSift \

@@ -229,7 +229,6 @@ class LogHandler:
         self.logger.info(message)
         print(message)
 
-
     def delimiter(self, message):
         delimiter_timestamp = datetime.now().strftime("%Y.%m.%d ~%H:%M")
         log_message = (f"""
@@ -248,7 +247,8 @@ class LogHandler:
 
     def nocandidates(self):
         script_name, function_name = self._obtain_execution_frames()
-        nocands_msg= """
+        prefix=""
+        message= """
 !*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*
                       NO LIKELY CANDIDATES IDENTIFIED 
 
@@ -286,7 +286,7 @@ mutation or information on why there are no candidates.
         """
         
         log_message = self._construct_message(
-            nocands_msg, script_name, function_name, message
+             prefix, script_name, function_name, message
         )
         self.logger.info(log_message)
         print(log_message)
@@ -334,6 +334,8 @@ mutation or information on why there are no candidates.
                 filter_indels TEXT,
                 filter_ems TEXT,
                 snpmask_path TEXT,
+                segregation_type TEXT,
+                shuffle_iterations INT,
                 PRIMARY KEY (analysis_ulid, name),
                 FOREIGN KEY (core_ulid) REFERENCES core(core_ulid),
                 FOREIGN KEY (vcf_ulid) REFERENCES vcf(vcf_ulid)
@@ -413,9 +415,11 @@ mutation or information on why there are no candidates.
                     smooth_edges_bounds, 
                     filter_indels, 
                     filter_ems, 
-                    snpmask_path
+                    snpmask_path,
+                    segregation_type,
+                    shuffle_iterations,
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
 
             try:
@@ -431,7 +435,9 @@ mutation or information on why there are no candidates.
                     kwargs['smooth_edges_bounds'], 
                     kwargs['filter_indels'], 
                     kwargs['filter_ems'], 
-                    kwargs['snpmask_path']
+                    kwargs['snpmask_path'],
+                    kwargs['segregation_type'],
+                    kwargs['shuffle_iterations']
                 )
             except KeyError as e:
                 raise ValueError(f"Missing required argument: {e}")

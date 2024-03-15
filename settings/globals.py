@@ -19,13 +19,10 @@ def check_data_dir(config):
         data_dir = os.path.join(data_dir_prefix, 'data')
         return data_dir
 
-def setup_data_dir(DATA_DIR, REFERENCE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR): # Doesn't FileUtilities.setup_directory because of circular import...
+def setup_data_dir(required_directories): # Doesn't FileUtilities.setup_directory because of circular import...
     '''
     Sets up the data direcotry based on the path set in ./settings/config.ini
     '''
-    required_directories = (
-        DATA_DIR, REFERENCE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR
-    )
     for directory in required_directories:
         if not os.path.exists(directory):
             try:
@@ -67,9 +64,17 @@ DATA_DIR = check_data_dir(config)
 REFERENCE_DIR = os.path.join(DATA_DIR, 'references')
 INPUT_DIR = os.path.join(DATA_DIR, 'input')
 OUTPUT_DIR = os.path.join(DATA_DIR, 'output')
+TMP_DIR = os.path.join(DATA_DIR, 'tmp')
+TMP_PREFIX = os.path.join(TMP_DIR, 'sortingcollect')
 LOG_DIR = os.path.join(DATA_DIR, 'logs')
 LOG_DATABASE_NAME = 'phytoBSAlog.db'
 LOG_DATABASE_PATH = os.path.join(LOG_DIR, LOG_DATABASE_NAME)
 
-#setup data directory, if it doesn't exist
-setup_data_dir(DATA_DIR, REFERENCE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR)
+required_directories= (
+    DATA_DIR, REFERENCE_DIR, INPUT_DIR, OUTPUT_DIR, LOG_DIR, TMP_DIR
+)
+
+setup_data_dir(required_directories)
+
+
+

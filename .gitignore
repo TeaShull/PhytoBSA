@@ -27,7 +27,7 @@
 #ignore python cache
 *.pyc*
 #ignore sqldb
-*.db*
+*log.db*
 #ignore sam files
 *.sam
 #ignore bam files
