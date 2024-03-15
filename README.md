@@ -15,12 +15,12 @@
   - [./phytobsa analysis](#phytobsa-analysis)
   - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
   - [Output](#output)
-- [Reference Database Manager](#reference-database-manager)
-  - [Reference Form Configuration](#reference-form-configuration)
 - [Log Database Utilities](#log-database-utilities)
   - [Functionality](#functionality)
   - [Logging Functions](#logging-functions)
   - [Usage](#usage-1)
+- [Reference Database Manager](#reference-database-manager)
+  - [Reference Form Configuration](#reference-form-configuration)
 # PhytoBSA
 
 PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. PhytoBSA has been extensivly tested in Arabidopsis EMS screen populations, and lightly
@@ -83,11 +83,9 @@ To set up the data directory:
 
 **Configure Data Directory**:
 
-    ```bash
-    ./phytobsa settings --set_data_dir <path-to-directory>
-    ```
+`./phytobsa settings --set_data_dir <path-to-directory>`
 
-  Replace `<path-to-directory>` with the desired path for the data directory.
+Replace `<path-to-directory>` with the desired path for the data directory.
 
 Upon first execultion of the program, the specified data directory 
   will be installed initialized.
@@ -236,6 +234,44 @@ SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut)
 Ratio Scaled G-statistics
 ![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/7a73e741-4722-4a
 
+# Log Database Utilities
+
+The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
+
+## Functionality
+
+1. **Print Analysis Log Data**
+   - Retrieves and prints information related to an analysis based on the analysis ID provided (ulid).
+   - Command: `logdb -an ANALYSIS_ULID`
+
+2. **Print VCF Log Data**
+   - Retrieves and prints information related to a Variant Call Format (VCF) based on the VCF ID or core ID provided (ulid).
+   - Command: `logdb -vcf VCF_ULID`
+
+3. **Get Line Name Data**
+   - Retrieves all entries related to a specific line name and returns the results as a list.
+   - Command: `logdb -name LINE_NAME`
+
+4. **Print Line Name Data**
+   - Prints all entries related to a specific line name, including both VCF data and Analysis data.
+   - Command: `logdb -name LINE_NAME`
+
+5. **Print Core ID Data**
+   - Retrieves and prints information related to a core ID, including core log data, VCF data, and Analysis data linked to that core ID.
+   - Command: `logdb -core CORE_ULID`
+
+## Logging Functions
+
+1. **Create Tables**
+   - Creates the necessary tables in the log database to store core, VCF, and analysis log data.
+
+2. **Add Database Record**
+   - Adds records to the log database based on the type of log (core, VCF, or analysis) and the provided parameters.
+
+## Usage
+
+Users can utilize the logdbutils functions to store, retrieve, and analyze runtime parameters and associated data in a structured manner. By logging this information, users can maintain a record of the processes and configurations used for each run, enabling reproducibility and comparison of results across different executions.
+
 # Reference Database Manager
 
 To use the Reference Database Manager, follow these steps:
@@ -282,45 +318,6 @@ reference_genome_source = ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fas
 snpeff_species_db = Solanum_lycopersicum
 snpmask_path = Solanum_lycopersicum_SL2.snpmask.vcf
 snpmask_url = ftp://ftp.ensemblgenomes.org/pub/plants/release-32/vcf/solanum_lycopersicum/solanum_lycopersicum.vcf.gz
-
-# Log Database Utilities
-
-The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
-
-## Functionality
-
-1. **Print Analysis Log Data**
-   - Retrieves and prints information related to an analysis based on the analysis ID provided (ulid).
-   - Command: `logdb -an ANALYSIS_ULID`
-
-2. **Print VCF Log Data**
-   - Retrieves and prints information related to a Variant Call Format (VCF) based on the VCF ID or core ID provided (ulid).
-   - Command: `logdb -vcf VCF_ULID`
-
-3. **Get Line Name Data**
-   - Retrieves all entries related to a specific line name and returns the results as a list.
-   - Command: `logdb -name LINE_NAME`
-
-4. **Print Line Name Data**
-   - Prints all entries related to a specific line name, including both VCF data and Analysis data.
-   - Command: `logdb -name LINE_NAME`
-
-5. **Print Core ID Data**
-   - Retrieves and prints information related to a core ID, including core log data, VCF data, and Analysis data linked to that core ID.
-   - Command: `logdb -core CORE_ULID`
-
-## Logging Functions
-
-1. **Create Tables**
-   - Creates the necessary tables in the log database to store core, VCF, and analysis log data.
-
-2. **Add Database Record**
-   - Adds records to the log database based on the type of log (core, VCF, or analysis) and the provided parameters.
-
-## Usage
-
-Users can utilize the logdbutils functions to store, retrieve, and analyze runtime parameters and associated data in a structured manner. By logging this information, users can maintain a record of the processes and configurations used for each run, enabling reproducibility and comparison of results across different executions.
-
 
 
 
