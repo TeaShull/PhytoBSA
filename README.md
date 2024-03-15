@@ -1,26 +1,27 @@
 - [PhytoBSA](#phytobsa)
   - [Experimental Design of BSA](#experimental-design-of-bsa)
   - [Key Features](#key-features)
+  - [Output](#output)
+    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
   - [Installation](#installation)
     - [Environment installation](#environment-installation)
     - [Setting up the Data Directory](#setting-up-the-data-directory)
-  - [Usage](#usage)
+- [Commands](#commands)
+  - [./phytobsa -a (Automatic mode)](#phytobsa--a-automatic-mode)
+  - [./phytobsa analysis](#phytobsa-analysis)
+  - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
 - [Default Settings](#default-settings)
   - [Set General Defaults](#set-general-defaults)
   - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
   - [Set BSA Defaults](#set-bsa-defaults)
-  - [./phytobsa analysis](#phytobsa-analysis)
-  - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
-  - [Output](#output)
-    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
-- [Log Database Utilities](#log-database-utilities)
+  - [Log Database Utilities](#log-database-utilities)
   - [Functionality](#functionality)
   - [Logging Functions](#logging-functions)
-  - [Usage](#usage-1)
+  - [Usage](#usage)
 - [Log Database Utilities](#log-database-utilities-1)
   - [Functionality](#functionality-1)
   - [Logging Functions](#logging-functions-1)
-  - [Usage](#usage-2)
+  - [Usage](#usage-1)
 - [Reference Database Manager](#reference-database-manager)
   - [Reference Form Configuration](#reference-form-configuration)
 # PhytoBSA
@@ -62,6 +63,69 @@ For a simple explanation of the experimental design of BSA, refer to [this artic
 - Robust Logging of Run Parameters
   - Incorporates robust logging of run parameters, making debugging and reproducibility of results easier to track. This logging system captures all relevant parameters used in each analysis, aiding in result interpretation and replication.
 
+## Output
+
+The tool will generate a total of 9 plots, including calculated ratios, G statistics, and ratio-scaled G statistics, along with their corresponding percentiles and lowess smoothed graphs.
+
+Ratio-scaled G-statistics are calculated by multiplying the G-statistic with the ratio. This combined metric tends to provide more stable results compared to using either feature alone.
+
+### Identification of Significant Polymorphisms
+
+In the generated plots, you will observe nested gray ribbons illustrating the null model, displaying percentiles (1st, 25th, 50th, 75th, and 99th) at each position. These null models are created through a Bayesian simulation process using bootstrapped reads.
+
+The tool employs chromosome-wise random resampling with replacement to sever the link between phenotypes and genotypes. This random resampling, along with the Bayesian simulation, imposes a soft constraint on the simulated values, guiding values towards a reference allele frequency of 0.5. Additionally, the random draw from the posterior introduces extra variance in the in the simulated read depths.  
+
+***Null Model Simulation***
+
+1. **Binomial Distribution for Reference Reads:**
+
+   Let X represent the count of reference allele occurrences in a locus in each bulk with coverage (C) reads. The distribution of X follows a binomial distribution with parameters C and θ, where:
+   
+   X ~ Binomial(C, θ)
+   
+   Here, C represents the total number of reads at the locus in each bulk, and θ denotes the position-wise reference allele frequency.
+
+2. **Conjugate Prior Beta Distribution for Allele Frequencies:**
+
+   The reference allele frequencies at each position are modeled using a beta distribution, serving as a conjugate prior for the binomial likelihood.
+
+   If θ represents the reference allele frequency at each position, then θ follows a beta distribution with parameters α and β, where:
+   
+   θ ~ Beta(α, β)
+   
+   Here, α and β are shape parameters of the beta distribution, characterizing the prior beliefs about the reference allele frequency.
+
+3. **Update of Allele Frequencies with Bootstrapped Values:**
+
+   Following each round of bootstrapping, a conservative prior distribution of allele frequencies (Beta(2, 2)) undergoes an update from the bootstrapped data. The reference allele frequency θ is randomly selected from the posterior, and the product of θ and coverage C produces the simulated reference read depth. The alternative read is then produced:
+    simulated alternative read depth = simulated reference read depth - C 
+
+4. ***Null model for smoothed values*** 
+   The Null model values are smoothed in each iteration of bootstrapping, producing
+   a distribution of potenial signals given the data. 
+
+5. ***Null model for unsmoothed values***
+  The Null model for unsmoothed values in each iteration are simply aggregated on
+  a chromosome-by-chromosme basis, and used to produce percentile values for each
+  value in the observed data. This allows simple filtering of those values over
+  the critical cutoff. 
+
+Significant polymorphisms are identified based on their position above the critical cutoff percentile in the null model.
+
+Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identifies early stop codon in *SHR*
+
+SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
+
+Ratios, Lowess smoothed  
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082" width="600">
+
+G-statistics, Lowess smoothed  
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/b3c8ca0b-a799-4252-9fc5-281edf9e5dfa" width="600">
+
+Ratio Scale G-statistics, Lowess smoothed  
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/709423e3-4313-4595-894a-3dc43ea89ee2" width="600">
+
+Finally, a list of the likely candidates will be produced, filtered based on where each locus lies in the null model percentiles and SNP impact. 
 
 ## Installation
 ### Environment installation
@@ -96,7 +160,9 @@ Upon first execultion of the program, the specified data directory
 Once the data directory is set up, the program will be able to access the required files and directories smoothly.
 
 
-## Usage
+# Commands
+## ./phytobsa -a (Automatic mode)
+***File Formating***
 Put the fq.gz files you want analyzed into the data/input folder. You can put 
 multiple experiments in the folder and they will be analyzed. 
 
@@ -116,70 +182,30 @@ The files must be formatted as follows:
     "line.R.wt.fq.gz"  
     "line.R.mu.fq.gz"       
 
-# Default Settings
+***Reference Configuration***
+Reference name must be configured. 
+Currently, there are a few preconfigured references that will autopopulate genomes, snpmasks and the appropriate SnpEff library
+- Arabidopsis_thaliana
+- Zea_mays
+- Oryza_sativa_Japanica
+- Solanum_lycopersicum
 
-PhytoBSA offers default settings that can be applied to streamline the analysis process. These default settings allow users to set preferred configurations for various parameters, ensuring consistency and reducing the need for manual configuration for each run. Below is a breakdown of the default settings available for configuration:
+An example of setting the Arabidopsis thaliana default via the command line- 
+`./phytobsa settings --set_reference_name Arabidopsis_thaliana`
 
-*Note - you can also configure these settings directly in settings/config.ini, if you so wish*
+This will autopopulate the program with reference genome names, the URL to download the reference genome files, the appropriate SnpEff library to use, 
+and a good general snpmask. 
 
-## Set General Defaults
-These settings are automatically applied if not explictly passed in any mode. 
+For more information about configuring new genomes for the reference database manager: [Reference Database Manager](#reference-database-manager)
 
-- `--set_data_dir`: 
-  - Set the data directory. This must be set for the program to run.
+***Settings configuration***
+For automatic mode to run well, configure your default settings using ./phytobsa settings (see [Default Settings](#default-settings) or ./phytobsa settings -h)
+Another option is to directly modify settings.ini
 
-- `--set_threads_limit`: 
-  - Set the threads limit for BSA and for VCF generation. If not set, threads will be detected, and threads -2 will be used.
-
-- `--set_reference_name`: 
-  - Set the name of the reference genome.
-
-## Set VCF Generation Defaults
-These settings are automatically applied if not explicitly provided in automatic or VCF generation mode.
-
-- `--set_call_variants_in_parallel`: 
-  - Set default for running GATK Haplotype Caller in parallel.
-
-- `--set_cleanup`: 
-  - Set default for cleanup. If true, intermediate files will be deleted; false for troubleshooting and archiving files.
-
-- `--set_cleanup_filetypes`: 
-  - Set default for cleanup file types. An ordered list of globs for files to clear out after VCF generation process.
-
-- `--set_omit_chrs_patterns`: 
-  - Set defaults for filtering reference chromosome contigs. Useful for filtering non-genomic reference contigs to speed up VCF generation.
-
-## Set BSA Defaults
-These settings are automatically applied if not explicitly passed to automatic or BSA mode.
-
-- `--set_loess_span`: 
-  - Set default Loess span. (Float between 0 and 1)
-
-- `--set_shuffle_iterations`: 
-  - Set default shuffle iterations. (int, ideally between 100 and 10000)
-
-- `--set_smooth_edges_bounds`: 
-  - Set default smooth edges bounds. (int, determines correction for loess edge bias)
-
-- `--set_filter_indels`: 
-  - Set default filter indels. (True or False)
-
-- `--set_filter_ems`: 
-  - Set default filter EMS. (True or False)
-
-- `--set_ratio_cutoff`: 
-  - Set default ratio cutoff bound. (int between -1 and 1, sets lower bound of cutoff for the ratio value. Between 0 and 0.3 is best. 0.1 performs well  )
-
-- `--set_mask_snps`: 
-  - Set default mask SNPs boolean value. (True or False)
-
-- `--set_critical_cutoff`: 
-  - Set default critical cutoff value. (float between 0-1. 0.95 or 0.99 work well)
-
-Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
 
 ## ./phytobsa analysis 
-This command line argument allows the running of independant analysis.
+This command line argument allows the running of analysis independantly oh the automatic workflow.
+This can make the fine tuning of analysis easier. 
 
 ***Required***
 If running analysis seperately, these variables can't be set using the config. 
@@ -271,71 +297,71 @@ As with all other commands, you can set the default settings using ./phytobsa se
   - Header patterns to omit from reference chromosomes. Useful for removing >mt (mitochondrial) and other unneeded reference sequences.
   - Type: list
 
-## Output
 
-The tool will generate a total of 9 plots, including calculated ratios, G statistics, and ratio-scaled G statistics, along with their corresponding percentiles and lowess smoothed graphs.
+# Default Settings
 
-Ratio-scaled G-statistics are calculated by multiplying the G-statistic with the ratio. This combined metric tends to provide more stable results compared to using either feature alone.
+PhytoBSA offers default settings that can be applied to streamline the analysis process. These default settings allow users to set preferred configurations for various parameters, ensuring consistency and reducing the need for manual configuration for each run. Below is a breakdown of the default settings available for configuration:
 
-### Identification of Significant Polymorphisms
+*Note - you can also configure these settings directly in settings/config.ini, if you so wish*
 
-In the generated plots, you will observe nested gray ribbons illustrating the null model, displaying percentiles (1st, 25th, 50th, 75th, and 99th) at each position. These null models are created through a Bayesian simulation process using bootstrapped reads.
+## Set General Defaults
+These settings are automatically applied if not explictly passed in any mode. 
 
-The tool employs chromosome-wise random resampling with replacement to sever the link between phenotypes and genotypes. This random resampling, along with the Bayesian simulation, imposes a soft constraint on the simulated values, guiding values towards a reference allele frequency of 0.5. Additionally, the random draw from the posterior introduces extra variance in the in the simulated read depths.  
+- `--set_reference_name`: 
+  - Set the name of the reference genome.
 
-***Null Model Simulation***
+- `--set_data_dir`: 
+  - Set the data directory. This must be set for the program to run.
 
-1. **Binomial Distribution for Reference Reads:**
+- `--set_threads_limit`: 
+  - Set the threads limit for BSA and for VCF generation. If not set, threads will be detected, and threads -2 will be used.
 
-   Let X represent the count of reference allele occurrences in a locus in each bulk with coverage (C) reads. The distribution of X follows a binomial distribution with parameters C and θ, where:
-   
-   X ~ Binomial(C, θ)
-   
-   Here, C represents the total number of reads at the locus in each bulk, and θ denotes the position-wise reference allele frequency.
 
-2. **Conjugate Prior Beta Distribution for Allele Frequencies:**
+## Set VCF Generation Defaults
+These settings are automatically applied if not explicitly provided in automatic or VCF generation mode.
 
-   The reference allele frequencies at each position are modeled using a beta distribution, serving as a conjugate prior for the binomial likelihood.
+- `--set_call_variants_in_parallel`: 
+  - Set default for running GATK Haplotype Caller in parallel.
 
-   If θ represents the reference allele frequency at each position, then θ follows a beta distribution with parameters α and β, where:
-   
-   θ ~ Beta(α, β)
-   
-   Here, α and β are shape parameters of the beta distribution, characterizing the prior beliefs about the reference allele frequency.
+- `--set_cleanup`: 
+  - Set default for cleanup. If true, intermediate files will be deleted; false for troubleshooting and archiving files.
 
-3. **Update of Allele Frequencies with Bootstrapped Values:**
+- `--set_cleanup_filetypes`: 
+  - Set default for cleanup file types. An ordered list of globs for files to clear out after VCF generation process.
 
-   Following each round of bootstrapping, a conservative prior distribution of allele frequencies (Beta(2, 2)) undergoes an update from the bootstrapped data. The reference allele frequency θ is randomly selected from the posterior, and the product of θ and coverage C produces the simulated reference read depth. The alternative read is then produced:
-    simulated alternative read depth = simulated reference read depth - C 
+- `--set_omit_chrs_patterns`: 
+  - Set defaults for filtering reference chromosome contigs. Useful for filtering non-genomic reference contigs to speed up VCF generation.
 
-4. ***Null model for smoothed values*** 
-   The Null model values are smoothed in each iteration of bootstrapping, producing
-   a distribution of potenial signals given the data. 
+## Set BSA Defaults
+These settings are automatically applied if not explicitly passed to automatic or BSA mode.
 
-5. ***Null model for unsmoothed values***
-  The Null model for unsmoothed values in each iteration are simply aggregated on
-  a chromosome-by-chromosme basis, and used to produce percentile values for each
-  value in the observed data. This allows simple filtering of those values over
-  the critical cutoff. 
+- `--set_loess_span`: 
+  - Set default Loess span. (Float between 0 and 1)
 
-Significant polymorphisms are identified based on their position above the critical cutoff percentile in the null model.
+- `--set_shuffle_iterations`: 
+  - Set default shuffle iterations. (int, ideally between 100 and 10000)
 
-Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identifies early stop codon in *SHR*
+- `--set_smooth_edges_bounds`: 
+  - Set default smooth edges bounds. (int, determines correction for loess edge bias)
 
-SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
+- `--set_filter_indels`: 
+  - Set default filter indels. (True or False)
 
-Ratios, Lowess smoothed  
-<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082" width="600">
+- `--set_filter_ems`: 
+  - Set default filter EMS. (True or False)
 
-G-statistics, Lowess smoothed  
-<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/b3c8ca0b-a799-4252-9fc5-281edf9e5dfa" width="600">
+- `--set_ratio_cutoff`: 
+  - Set default ratio cutoff bound. (int between -1 and 1, sets lower bound of cutoff for the ratio value. Between 0 and 0.3 is best. 0.1 performs well  )
 
-Ratio Scale G-statistics, Lowess smoothed  
-<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/709423e3-4313-4595-894a-3dc43ea89ee2" width="600">
+- `--set_mask_snps`: 
+  - Set default mask SNPs boolean value. (True or False)
 
-Finally, a list of the likely candidates will be produced: 
+- `--set_critical_cutoff`: 
+  - Set default critical cutoff value. (float between 0-1. 0.95 or 0.99 work well)
 
-# Log Database Utilities
+Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
+
+## Log Database Utilities
 
 The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
 

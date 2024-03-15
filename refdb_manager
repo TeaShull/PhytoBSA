@@ -3,6 +3,7 @@ import argparse
 import configparser
 import sqlite3
 import os
+import sys
 
 class ConfigReader:
     def __init__(self, config_file):
