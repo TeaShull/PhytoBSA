@@ -61,7 +61,7 @@ For a simple explanation of the experimental design of BSA, refer to [this artic
   - Utilizes ULIDs (Universally Unique Lexicographically Sortable Identifiers) to ensure that each generated file and analysis is uniquely identified. This allows the program to handle concurrent analyses pointing to the same output directory without conflicts. Every process has a log, which is linked to the generated files through the ULID. 
 
 - Robust Logging of Run Parameters
-  - Incorporates robust logging of run parameters, making debugging and reproducibility of results easier to track. This logging system captures all relevant parameters used in each analysis, aiding in result interpretation and replication.
+  - Incorporates robust logging of run parameters. This logging system captures all relevant parameters used in each analysis, aiding in result interpretation and replication.
 
 ## Output
 
