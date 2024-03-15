@@ -417,7 +417,7 @@ mutation or information on why there are no candidates.
                     filter_ems, 
                     snpmask_path,
                     segregation_type,
-                    shuffle_iterations,
+                    shuffle_iterations
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''

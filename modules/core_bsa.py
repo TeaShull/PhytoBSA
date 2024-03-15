@@ -65,7 +65,7 @@ class BSA:
             filter_ems = self.bsa_vars.filter_ems, 
             snpmask_path = self.bsa_vars.snpmask_path,
             segregation_type = line.segregation_type,
-            shuffle_iterations = self.bsa_vars.shuffle_iterations,
+            shuffle_iterations = self.bsa_vars.shuffle_iterations
         )
 
         self.bsa_vars.log = bsa_log #Redirect logging in bsa_vars to the bsa_log instead of core
