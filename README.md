@@ -10,13 +10,13 @@
   - [VCF Generation Default Settings](#vcf-generation-default-settings)
   - [BSA Default Settings](#bsa-default-settings)
       - [Reference Name](#reference-name)
-    - [Running](#running)
-    - [Command Line Arguments](#command-line-arguments)
-      - [./phytobsa analysis](#phytobsa-analysis)
-      - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
-    - [Output](#output)
-    - [Reference Database Manager](#reference-database-manager)
-      - [Reference Form Configuration](#reference-form-configuration)
+- [Running](#running)
+  - [Automatic Mode](#automatic-mode)
+  - [./phytobsa analysis](#phytobsa-analysis)
+  - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
+  - [Output](#output)
+- [Reference Database Manager](#reference-database-manager)
+  - [Reference Form Configuration](#reference-form-configuration)
 # PhytoBSA
 
 PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. PhytoBSA has been extensivly tested in Arabidopsis EMS screen populations, and lightly
@@ -26,6 +26,14 @@ tested on Rice and Tomoto QTL analysis.
 For a simple explanation of the experimental design of BSA, refer to [this article](https://doi.org/10.1104/pp.17.00415).
 
 ## Key Features
+
+- Automatic mode
+  - when files and configuration settings are formatted, running PhytoBSA is as simple as running ./phytobsa -a 
+    - This allows bulk processing of data, so that users can simply label thier files upon creation and automatically process them.
+
+- SNP masking. 
+  - SNP masking allows the inclusion of files that contain lists of background SNPS in VCF format, so that known snps are excluded from analysis. 
+    - This feature is particularly useful if your lines are divergent from the reference genome. 
 
 - Paralell Haplotype Calling
   - if activated, Haplotypes can be called on chunks of chromosomes, scaled to the CPU resources available. This dramatically increases runtime efficiency during this
@@ -143,13 +151,18 @@ Users can apply these default settings using the `phytobsa settings` command wit
   --New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
   - Type: str
   
-### Running
+# Running
  
+## Automatic Mode
+ Assuming the data directory is configured, phytobsa conda environment is activated and you files are properly formated, 
+ all that is needed to run the analysis is the following: 
+
  `./phytobsa.py -a` 
 
-### Command Line Arguments
 
-#### ./phytobsa analysis 
+## ./phytobsa analysis 
+This command line argument allows the running of independant analysis.
+
 - `-ls`, `--loess_span`: 
   - Influences smoothing parameters.
   - Type: float
@@ -186,7 +199,9 @@ Users can apply these default settings using the `phytobsa settings` command wit
   - Set the method of generating the null hypothesis. Either simulate or bootstrap.
   - Type: str
 
-#### ./phytobsa vcf_generator
+## ./phytobsa vcf_generator
+This command allows the generation of VCF files independantly of running the analysis. 
+As with all other commands, you can set the default settings using ./phytobsa settings
 
 - `-p`, `--call_variants_in_parallel`: 
   - Run GATK haplotype caller in parallel.
@@ -204,7 +219,7 @@ Users can apply these default settings using the `phytobsa settings` command wit
   - Header patterns to omit from reference chromosomes. Useful for removing >mt (mitochondrial) and other unneeded reference sequences.
   - Type: list
 
-### Output
+## Output
 
 Will output 6 plots: Calculated ratios, G statistics, and ratio-scaled G statistics as well as their corresponding lowess smoothed graphs. Red dashed lines represent calculated empirical cutoffs for likely candidate genes. Causal SNPs nearly always appear clearly at the top of a the lowess smoothed ratio-scaled g statistic graph. 
 
@@ -215,7 +230,7 @@ SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut)
 Ratio Scaled G-statistics
 ![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/7a73e741-4722-4a
 
-### Reference Database Manager
+# Reference Database Manager
 
 To use the Reference Database Manager, follow these steps:
 
@@ -229,7 +244,7 @@ To use the Reference Database Manager, follow these steps:
    - `list`: Lists all entries currently stored in the reference database. Optionally, abbreviates long URLs for better readability.
 
 
-#### Reference Form Configuration
+## Reference Form Configuration
 
 The `ref_form.ini` file contains configuration settings for reference genomes used in the `phytobsa` pipeline. Each entry in the file corresponds to a specific reference genome and provides essential information for analysis.
 
