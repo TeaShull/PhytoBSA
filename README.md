@@ -162,7 +162,7 @@ Once the data directory is set up, the program will be able to access the requir
 
 # Commands
 ## ./phytobsa -a (Automatic mode)
-***File Formating***
+***File Formating***  
 Put the fq.gz files you want analyzed into the data/input folder. You can put 
 multiple experiments in the folder and they will be analyzed. 
 
@@ -182,7 +182,7 @@ The files must be formatted as follows:
     "line.R.wt.fq.gz"  
     "line.R.mu.fq.gz"       
 
-***Reference Configuration***
+***Reference Configuration***  
 Reference name must be configured. 
 Currently, there are a few preconfigured references that will autopopulate genomes, snpmasks and the appropriate SnpEff library
 - Arabidopsis_thaliana
@@ -198,7 +198,7 @@ and a good general snpmask.
 
 For more information about configuring new genomes for the reference database manager: [Reference Database Manager](#reference-database-manager)
 
-***Settings configuration***
+***Settings configuration***   
 For automatic mode to run well, configure your default settings using ./phytobsa settings (see [Default Settings](#default-settings) or ./phytobsa settings -h)
 Another option is to directly modify settings.ini
 
@@ -207,7 +207,7 @@ Another option is to directly modify settings.ini
 This command line argument allows the running of analysis independantly oh the automatic workflow.
 This can make the fine tuning of analysis easier. 
 
-***Required***
+***Required***  
 If running analysis seperately, these variables can't be set using the config. 
 - `-n, --name`: 
   - Specify the name of the line you wish to analyze, which will be used to name output files.
@@ -263,7 +263,7 @@ If running analysis seperately, these variables can't be set using the config.
 ## ./phytobsa vcf_generator
 This command allows the generation of VCF files independantly of running the analysis. 
 As with all other commands, you can set the default settings using ./phytobsa settings
-***Required***
+***Required***  
 - `-n, --name`: 
   - Specify the name of the line you wish to generate a VCF file for, which will be used to name output files.
   
@@ -367,23 +367,23 @@ The Log Database Utilities module provides functions to interact with a log data
 
 ## Functionality
 
-1. **Print Analysis Log Data**
+1. **Print Analysis Log Data**  
    - Retrieves and prints information related to an analysis based on the analysis ID provided (ulid).
    - Command: `logdb -an ANALYSIS_ULID`
 
-2. **Print VCF Log Data**
+2. **Print VCF Log Data**  
    - Retrieves and prints information related to a Variant Call Format (VCF) based on the VCF ID or core ID provided (ulid).
    - Command: `logdb -vcf VCF_ULID`
 
-3. **Get Line Name Data**
+3. **Get Line Name Data**  
    - Retrieves all entries related to a specific line name and returns the results as a list.
    - Command: `logdb -name LINE_NAME`
 
-4. **Print Line Name Data**
+4. **Print Line Name Data**  
    - Prints all entries related to a specific line name, including both VCF data and Analysis data.
    - Command: `logdb -name LINE_NAME`
 
-5. **Print Core ID Data**
+5. **Print Core ID Data**  
    - Retrieves and prints information related to a core ID, including core log data, VCF data, and Analysis data linked to that core ID.
    - Command: `logdb -core CORE_ULID`
 
