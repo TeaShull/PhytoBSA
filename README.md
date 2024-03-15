@@ -234,36 +234,35 @@ The tool will generate a total of 9 plots, including calculated ratios, G statis
 Ratio-scaled G-statistics are calculated by multiplying the G-statistic with the ratio. This combined metric tends to provide more stable results compared to using either feature alone.
 
 ### Identification of Significant Polymorphisms
-In the plots, you will notice nested gray ribbons that represent the null model, showing percentiles (1st, 25th, 50th, 75th, and 99th) at each position. These null models are generated through a Bayesian simulation process using bootstrapped reads.
 
-Using bootstrapping, the tool breaks the link between phenotypes and genotypes, while the Bayesian simulation introduces a soft constraint to the simulated values, guiding extreme values towards a reference allele frequency of 0.5.
+In the generated plots, you will observe nested gray ribbons illustrating the null model, displaying percentiles (1st, 25th, 50th, 75th, and 99th) at each position. These null models are created through a Bayesian simulation process using bootstrapped reads.
+
+The tool employs chromosome-wise random resampling with replacement to sever the link between phenotypes and genotypes. This random resampling, along with the Bayesian simulation, imposes a soft constraint on the simulated values, guiding extreme values towards a reference allele frequency of 0.5.
 
 ***Null Model Simulation***
-1. **Binomial distribution for reference reads:**
 
-   Let's denote the distribution of reference reads as follows:
+1. **Binomial Distribution for Reference Reads:**
 
-   If X represents the number of occurrences of a reference allele in a sample of n reads, then X follows a binomial distribution with parameters n and θ, where:
+   Let X represent the count of reference allele occurrences in a locus with coverage (C) reads. The distribution of X follows a binomial distribution with parameters C and θ, where:
    
-   X ~ Binomial(n, θ)
+   X ~ Binomial(C, θ)
    
-   Here, n represents the total number of reads in the sample, and θ represents the probability of observing a reference allele in each read.
+   Here, C represents the total number of reads at the locus, and θ denotes the position-wise reference allele frequency.
 
-2. **Conjugate prior beta distribution for allele frequencies:**
+2. **Conjugate Prior Beta Distribution for Allele Frequencies:**
 
-   The distribution of reference allele frequencies in each bulk sample can be described using a beta distribution. The beta distribution is used as a conjugate prior for the binomial likelihood.
+   The reference allele frequencies at each position are modeled using a beta distribution, serving as a conjugate prior for the binomial likelihood.
 
-   Let's denote the distribution of reference allele frequencies as follows:
-
-   If θ represents the reference allele frequency in a bulk sample, then θ follows a beta distribution with parameters α and β, where:
+   If θ represents the reference allele frequency at each position, then θ follows a beta distribution with parameters α and β, where:
    
    θ ~ Beta(α, β)
    
-   Here, α and β are shape parameters of the beta distribution, representing the prior knowledge or beliefs about the reference allele frequency.
+   Here, α and β are shape parameters of the beta distribution, characterizing the prior beliefs about the reference allele frequency.
 
-3. **Update of allele frequencies with bootstrapped values:**
+3. **Update of Allele Frequencies with Bootstrapped Values:**
 
-   After obtaining bootstrapped values from the data, the posterior distribution of allele frequencies is updated to incorporate this new information. This updating process can be represented using Bayesian inference techniques, such as Bayesian updating or posterior sampling, to refine the estimates of allele frequencies based on the observed data.
+   Following each round of bootstrapping, the prior distribution of allele frequencies (initialized with a conservatively uniformed prior of Beta(2, 2)) undergoes an update. The reference allele frequency θ is randomly selected from the posterior distribution, and the product of θ and coverage C is utilized to derive the final simulated allele frequencies.
+
 
 
 Significant polymorphisms are identified based on their position above the critical cutoff percentile in the null model.
