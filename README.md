@@ -28,8 +28,10 @@ For a simple explanation of the experimental design of BSA, refer to [this artic
 ## Key Features
 
 - Automatic mode
-  - when files and configuration settings are formatted, running PhytoBSA is as simple as running ./phytobsa -a 
-    - This allows bulk processing of data, so that users can simply label thier files upon creation and automatically process them.
+  - Once the install is configured and your files are formatted, running PhytoBSA is as simple as running 
+```bash
+./phytobsa -a 
+```
 
 - SNP masking. 
   - SNP masking allows the inclusion of files that contain lists of background SNPS in VCF format, so that known snps are excluded from analysis. 
