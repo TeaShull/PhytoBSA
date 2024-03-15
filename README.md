@@ -56,14 +56,15 @@ For a simple explanation of the experimental design of BSA, refer to [this artic
 - G-Statistic Calculation
   - Implements the G-statistic calculation described in the publication [here](https://doi.org/10.1186/s12859-020-3435-8). This statistic helps identify likely causal polymorphisms by comparing the ratio of reference to non-reference reads in each bulk.
 
+- Bayesian Simulation of Null Models
+  - Utilizes Bayesian simulation to produce analytically tractable and robust critical cutoff values for SNPs. This approach enhances the reliability of identifying significant polymorphisms.
+
 - ULIDs for File and Analysis Identification
-  - Utilizes ULIDs (Universally Unique Lexicographically Sortable Identifiers) to ensure that each generated file and analysis is uniquely identified. This allows the program to handle concurrent analyses pointing to the same output directory without conflicts.
+  - Utilizes ULIDs (Universally Unique Lexicographically Sortable Identifiers) to ensure that each generated file and analysis is uniquely identified. This allows the program to handle concurrent analyses pointing to the same output directory without conflicts. Every process has a log, which is linked to the generated files through the ULID. 
 
 - Robust Logging of Run Parameters
   - Incorporates robust logging of run parameters, making debugging and reproducibility of results easier to track. This logging system captures all relevant parameters used in each analysis, aiding in result interpretation and replication.
 
-- Bayesian-Based Simulation for Critical Cutoff Values
-  - Utilizes Bayesian-based simulation to produce analytically tractable and robust critical cutoff values for SNPs. This approach enhances the reliability of identifying significant polymorphisms.
 
 ## Installation
 ### Environment installation
@@ -142,15 +143,32 @@ These settings are automatically applied if not explicitly provided in automatic
 ## BSA Default Settings
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.
 
-- `--set_loess_span`: Set default Loess span.
-- `--set_shuffle_iterations`: Set default shuffle iterations.
-- `--set_smooth_edges_bounds`: Set default smooth edges bounds.
-- `--set_filter_indels`: Set default filter indels.
-- `--set_filter_ems`: Set default filter EMS.
-- `--set_ratio_cutoff`: Set default ratio cutoff bound.
-- `--set_mask_snps`: Set default mask SNPs boolean value.
-- `--set_critical_cutoff`: Set default critical cutoff value.
-- `--set_method`: Set the default method of generating the null hypothesis. Either 'simulate' or 'bootstrap'.
+- `--set_loess_span`: 
+  - Set default Loess span. (Float between 0 and 1)
+
+- `--set_shuffle_iterations`: 
+  - Set default shuffle iterations. (int, ideally between 100 and 10000)
+
+- `--set_smooth_edges_bounds`: 
+  - Set default smooth edges bounds. (int, determines correction for loess edge bias)
+
+- `--set_filter_indels`: 
+  - Set default filter indels. (True or False)
+
+- `--set_filter_ems`: 
+  - Set default filter EMS. (True or False)
+
+- `--set_ratio_cutoff`: 
+  - Set default ratio cutoff bound. (int between -1 and 1, sets lower bound of cutoff for the ratio value. Between 0 and 0.3 is best. 0.1 performs well  )
+
+- `--set_mask_snps`: 
+  - Set default mask SNPs boolean value. (True or False)
+
+- `--set_critical_cutoff`: 
+  - Set default critical cutoff value. (float between 0-1. 0.95 or 0.99 work well)
+
+- `--set_method`: 
+  - Set the default method of generating the null hypothesis. Either 'simulate' or 'bootstrap'.
 
 Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
 
@@ -158,8 +176,7 @@ Users can apply these default settings using the `phytobsa settings` command wit
 
 - `-r`, `--reference_name`: 
   - Name of the reference genome for the input sequences. This name maps to a reference genome, SnpEff library and a snp mask.
-  --New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
-  - Type: str
+  -New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
   
 # Running
  
