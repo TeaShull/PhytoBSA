@@ -66,7 +66,6 @@ class BSA:
             snpmask_path = self.bsa_vars.snpmask_path,
             segregation_type = line.segregation_type,
             shuffle_iterations = self.bsa_vars.shuffle_iterations,
-            method = self.bsa_vars.method
         )
 
         self.bsa_vars.log = bsa_log #Redirect logging in bsa_vars to the bsa_log instead of core
@@ -130,7 +129,6 @@ class BSA:
             self.bsa_vars.loess_span, 
             self.bsa_vars.shuffle_iterations, 
             self.bsa_vars.ratio_cutoff,
-            self.bsa_vars.method
         )
 
     def _tidy_columns(self, line, bsa_log):
@@ -585,7 +583,7 @@ class FeatureProduction:
             
             return df_chrom
 
-    def bootstrap_and_label_chroms(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float, method)->tuple:
+    def bootstrap_and_label_chroms(self, vcf_df: pd.DataFrame, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
         self.log.note(f"Generating numpy arrays for bootstrapping process..")
         chr_array = vcf_df['chrom'].values
         psuedo_pos = vcf_df['pseudo_pos'].values
@@ -609,8 +607,7 @@ class FeatureProduction:
                 smoothing_function, 
                 loess_span, 
                 shuffle_iterations,
-                ratio_cutoff,
-                method 
+                ratio_cutoff
             )
             self.log.success(f'Bootstrapping complete for chromosome:{chrom}')
             #Agregate unsmoothed values
@@ -630,7 +627,7 @@ class FeatureProduction:
                 
         return final_df
 
-    def _bootstrap_null_models(self, psuedo_pos, read_depth_array, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float, method)->tuple:
+    def _bootstrap_null_models(self, psuedo_pos, read_depth_array, smoothing_function, loess_span: float, shuffle_iterations: int, ratio_cutoff: float)->tuple:
         '''
         Process that generates the null models. This is fairly resource hungry, 
         so it is run in parallel. For each position, shuffle_iterations(n) 
@@ -665,7 +662,7 @@ class FeatureProduction:
             self.log.note(f"Total values to be generated:{total_values}")
 
             args = [(psuedo_pos, read_depth_array, smoothing_function, 
-                loess_span, ratio_cutoff, method) for _ in range(THREADS_LIMIT)]
+                loess_span, ratio_cutoff) for _ in range(THREADS_LIMIT)]
 
             iteration = 0
             total_values_added = 0
@@ -723,7 +720,7 @@ class FeatureProduction:
             self.log.error(f"Initializing structured array for {list_name} null model failed: {e}")
 
     @staticmethod
-    def _null_models(psuedo_pos, read_depth_array, smoothing_function, loess_span: float, ratio_cutoff: float, method: str):
+    def _null_models(psuedo_pos, read_depth_array, smoothing_function, loess_span: float, ratio_cutoff: float):
         '''
         This process is parallelized, so logging is removed here, as classes 
         won't pickle correctly
@@ -746,50 +743,40 @@ class FeatureProduction:
         sm_mu_ref = np.empty_like(psuedo_pos)
         sm_mu_alt = np.empty_like(psuedo_pos)
 
-        if method == 'bootstrap':
-            sm_wt_ref = np.random.choice(read_depth_array[:, 0], size=len(psuedo_pos))
-            sm_wt_alt = np.random.choice(read_depth_array[:, 1], size=len(psuedo_pos))
-            sm_mu_ref = np.random.choice(read_depth_array[:, 2], size=len(psuedo_pos))
-            sm_mu_alt = np.random.choice(read_depth_array[:, 3], size=len(psuedo_pos))
-        elif method == 'simulate':
+        wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
+        mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
 
-            wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
-            mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
+        wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
+        mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
 
-            wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
-            mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
+        # Start with prior assumption that allele frequency p is beta distributed
+        # symetrically around 0.5 (Signifying random segregation) Where data is dense, 
+        # this will get drowned out. Where data is sparse, it will act as a soft constraint
 
-            # Start with prior assumption that allele frequency p is beta distributed
-            # symetrically around 0.5 (Signifying random segregation) Where data is dense, 
-            # this will get drowned out. Where data is sparse, it will act as a soft constraint
+        alpha_prior = 2
+        beta_prior = 2
 
-            alpha_prior = 2
-            beta_prior = 2
+        # Update the prior with the observed data
+        sm_wt_ref = np.random.choice(read_depth_array[:, 0], size=len(psuedo_pos))
+        sm_wt_alt = np.random.choice(read_depth_array[:, 1], size=len(psuedo_pos))
+        alpha_posterior_wt = alpha_prior + sm_wt_ref
+        beta_posterior_wt = beta_prior + sm_wt_alt
+        p1_posterior_wt = np.random.beta(alpha_posterior_wt, beta_posterior_wt)
 
-            # Update the prior with the observed data
-            sm_wt_ref = np.random.choice(read_depth_array[:, 0], size=len(psuedo_pos))
-            sm_wt_alt = np.random.choice(read_depth_array[:, 1], size=len(psuedo_pos))
-            alpha_posterior_wt = alpha_prior + sm_wt_ref
-            beta_posterior_wt = beta_prior + sm_wt_alt
-            p1_posterior_wt = np.random.beta(alpha_posterior_wt, beta_posterior_wt)
+        # Update the prior with the observed data for the mutant
+        sm_mu_ref =  np.random.choice(read_depth_array[:, 2], size=len(psuedo_pos))
+        sm_mu_alt = np.random.choice(read_depth_array[:, 3], size=len(psuedo_pos))
+        alpha_posterior_mu = alpha_prior + sm_mu_ref
+        beta_posterior_mu = beta_prior + sm_mu_alt
+        p1_posterior_mu = np.random.beta(alpha_posterior_mu, beta_posterior_mu)
 
-            # Update the prior with the observed data for the mutant
-            sm_mu_ref =  np.random.choice(read_depth_array[:, 2], size=len(psuedo_pos))
-            sm_mu_alt = np.random.choice(read_depth_array[:, 3], size=len(psuedo_pos))
-            alpha_posterior_mu = alpha_prior + sm_mu_ref
-            beta_posterior_mu = beta_prior + sm_mu_alt
-            p1_posterior_mu = np.random.beta(alpha_posterior_mu, beta_posterior_mu)
-
-            # Use the posterior distributions to simulate the wild type and mutant
-            p2_wt = 1 - p1_posterior_wt  # Derived allele frequencies in wild type
-            p2_mu = 1 - p1_posterior_mu  # Derived allele frequencies in mutant
-            sm_wt_ref = np.random.binomial(wt_coverage, p2_wt)  # Reference reads in wild type
-            sm_wt_alt = wt_coverage - sm_wt_ref  # Alternate reads in wild type
-            sm_mu_ref = np.random.binomial(mu_coverage, p2_mu)  # Reference reads in mutant
-            sm_mu_alt = mu_coverage - sm_mu_ref  # Alternate reads in mutant
-
-        else:
-            raise ValueError(f"Invalid shuffle_method: {shuffle_method}")
+        # Use the posterior distributions to simulate the wild type and mutant
+        p2_wt = 1 - p1_posterior_wt  # Derived allele frequencies in wild type
+        p2_mu = 1 - p1_posterior_mu  # Derived allele frequencies in mutant
+        sm_wt_ref = np.random.binomial(wt_coverage, p2_wt)  # Reference reads in wild type
+        sm_wt_alt = wt_coverage - sm_wt_ref  # Alternate reads in wild type
+        sm_mu_ref = np.random.binomial(mu_coverage, p2_mu)  # Reference reads in mutant
+        sm_mu_alt = mu_coverage - sm_mu_ref  # Alternate reads in mutant
 
         #calc delta snp
         smRatio = FeatureProduction._delta_snp_array(
@@ -802,15 +789,6 @@ class FeatureProduction:
         # calc ratio scaled g-stat
         smRS_G = smRatio * smGstat
         
-        #Mask those values and positions below the delta snp ratio cutoff 
-        #(makes null model fit trimmed data)
-        if method == 'bootstrap':
-            mask = smRatio >= ratio_cutoff
-            psuedo_pos = psuedo_pos[mask] 
-            smRatio = smRatio[mask]
-            smGstat = smGstat[mask]
-            smRS_G = smRS_G[mask]
-
         # Calculate smoothed values for each chromosome separately
         smRatio_y = []
         smGstat_y = []

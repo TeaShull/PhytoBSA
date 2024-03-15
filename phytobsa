@@ -162,8 +162,7 @@ def _setup_bsa_variables(core_log, lines, args):
         snpmask_url=refdb_utils.fetch_ref_var('snpmask_url'),
         mask_snps=args.mask_snps,
         ratio_cutoff=args.ratio_cutoff,
-        critical_cutoff=args.critical_cutoff,
-        method=args.method
+        critical_cutoff=args.critical_cutoff
     )
     return bsa_vars
 

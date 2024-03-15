@@ -336,7 +336,6 @@ mutation or information on why there are no candidates.
                 snpmask_path TEXT,
                 segregation_type TEXT,
                 shuffle_iterations INT,
-                method TEXT,
                 PRIMARY KEY (analysis_ulid, name),
                 FOREIGN KEY (core_ulid) REFERENCES core(core_ulid),
                 FOREIGN KEY (vcf_ulid) REFERENCES vcf(vcf_ulid)
@@ -419,9 +418,8 @@ mutation or information on why there are no candidates.
                     snpmask_path,
                     segregation_type,
                     shuffle_iterations,
-                    method
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
 
             try:
@@ -439,8 +437,7 @@ mutation or information on why there are no candidates.
                     kwargs['filter_ems'], 
                     kwargs['snpmask_path'],
                     kwargs['segregation_type'],
-                    kwargs['shuffle_iterations'],
-                    kwargs['method']
+                    kwargs['shuffle_iterations']
                 )
             except KeyError as e:
                 raise ValueError(f"Missing required argument: {e}")

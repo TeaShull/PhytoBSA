@@ -6,12 +6,9 @@
     - [Setting up the Data Directory](#setting-up-the-data-directory)
   - [Usage](#usage)
 - [Default Settings](#default-settings)
-  - [General Settings](#general-settings)
-  - [VCF Generation Default Settings](#vcf-generation-default-settings)
-  - [BSA Default Settings](#bsa-default-settings)
-      - [Reference Name](#reference-name)
-- [Running](#running)
-  - [Automatic Mode](#automatic-mode)
+  - [Set General Defaults](#set-general-defaults)
+  - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
+  - [Set BSA Defaults](#set-bsa-defaults)
   - [./phytobsa analysis](#phytobsa-analysis)
   - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
   - [Output](#output)
@@ -125,22 +122,34 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 
 *Note - you can also configure these settings directly in settings/config.ini, if you so wish*
 
-## General Settings
+## Set General Defaults
 These settings are automatically applied if not explictly passed in any mode. 
 
-- `--set_data_dir`: Set the data directory. This must be set for the program to run.
-- `--set_threads_limit`: Set the threads limit for BSA and for VCF generation. If not set, threads will be detected, and threads -2 will be used.
-- `--set_reference_name`: Set the name of the reference genome.
+- `--set_data_dir`: 
+  - Set the data directory. This must be set for the program to run.
 
-## VCF Generation Default Settings
+- `--set_threads_limit`: 
+  - Set the threads limit for BSA and for VCF generation. If not set, threads will be detected, and threads -2 will be used.
+
+- `--set_reference_name`: 
+  - Set the name of the reference genome.
+
+## Set VCF Generation Defaults
 These settings are automatically applied if not explicitly provided in automatic or VCF generation mode.
 
-- `--set_call_variants_in_parallel`: Set default for running GATK Haplotype Caller in parallel.
-- `--set_cleanup`: Set default for cleanup. If true, intermediate files will be deleted; false for troubleshooting and archiving files.
-- `--set_cleanup_filetypes`: Set default for cleanup file types. An ordered list of globs for files to clear out after VCF generation process.
-- `--set_omit_chrs_patterns`: Set defaults for filtering reference chromosome contigs. Useful for filtering non-genomic reference contigs to speed up VCF generation.
+- `--set_call_variants_in_parallel`: 
+  - Set default for running GATK Haplotype Caller in parallel.
 
-## BSA Default Settings
+- `--set_cleanup`: 
+  - Set default for cleanup. If true, intermediate files will be deleted; false for troubleshooting and archiving files.
+
+- `--set_cleanup_filetypes`: 
+  - Set default for cleanup file types. An ordered list of globs for files to clear out after VCF generation process.
+
+- `--set_omit_chrs_patterns`: 
+  - Set defaults for filtering reference chromosome contigs. Useful for filtering non-genomic reference contigs to speed up VCF generation.
+
+## Set BSA Defaults
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.
 
 - `--set_loess_span`: 
@@ -167,25 +176,7 @@ These settings are automatically applied if not explicitly passed to automatic o
 - `--set_critical_cutoff`: 
   - Set default critical cutoff value. (float between 0-1. 0.95 or 0.99 work well)
 
-- `--set_method`: 
-  - Set the default method of generating the null hypothesis. Either 'simulate' or 'bootstrap'.
-
 Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
-
- #### Reference Name
-
-- `-r`, `--reference_name`: 
-  - Name of the reference genome for the input sequences. This name maps to a reference genome, SnpEff library and a snp mask.
-  -New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
-  
-# Running
- 
-## Automatic Mode
- Assuming the data directory is configured, phytobsa conda environment is activated and you files are properly formated, 
- all that is needed to run the analysis is the following: 
-
- `./phytobsa.py -a` 
-
 
 ## ./phytobsa analysis 
 This command line argument allows the running of independant analysis.
@@ -202,7 +193,11 @@ If running analysis seperately, these variables can't be set using the config.
   - Specify the segregation type as 'Recessive (R)', 'Dominant (D)' or Quantitative Trait Locus(QTL).
   - Technically not required, but highly recomended as this is a useful filtering step
   
-***Options***
+***Options*** (see [General Settings](#general-settings)) set alter default values
+- `-r`, `--reference_name`: 
+  - Name of the reference genome. This name maps to a reference genome, SnpEff library and a snp mask.
+  - New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
+
 - `-ls`, `--loess_span`: 
   - Influences smoothing parameters.
   - Type: float
@@ -254,7 +249,12 @@ As with all other commands, you can set the default settings using ./phytobsa se
   - Specify the path to the mutant bulk fasta file(s).
   - Files can be hard coded paths are just files that can be found in data/input
 
-***Options***
+***Options*** (see [General Settings](#general-settings)) set alter default values
+
+- `-r`, `--reference_name`: 
+  - Name of the reference genome. This name maps to a reference genome, SnpEff library and a snp mask.
+  - New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
+
 - `-p`, `--call_variants_in_parallel`: 
   - Run GATK haplotype caller in parallel.
   - Type: bool
