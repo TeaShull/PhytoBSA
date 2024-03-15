@@ -1,4 +1,5 @@
 [01HS1PNQVNJ32VQH6V7GYYT2Q0-_4743_likely_candidates.csv](https://github.com/TeaShull/PhytoBSA/files/14619674/01HS1PNQVNJ32VQH6V7GYYT2Q0-_4743_likely_candidates.csv)- [PhytoBSA](#phytobsa)
+- [PhytoBSA](#phytobsa)
   - [Experimental Design of BSA](#experimental-design-of-bsa)
   - [Key Features](#key-features)
   - [Installation](#installation)
@@ -19,6 +20,10 @@
   - [Functionality](#functionality)
   - [Logging Functions](#logging-functions)
   - [Usage](#usage-1)
+- [Log Database Utilities](#log-database-utilities-1)
+  - [Functionality](#functionality-1)
+  - [Logging Functions](#logging-functions-1)
+  - [Usage](#usage-2)
 - [Reference Database Manager](#reference-database-manager)
   - [Reference Form Configuration](#reference-form-configuration)
 # PhytoBSA
@@ -230,16 +235,14 @@ Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identi
 
 SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
 
-
 Ratio Scale G-statistics, Lowess smoothed
-![01HS1PNQVNJ32VQH6V7GYYT2Q0-_4743_ratio_yhat](https://github.com/TeaShull/PhytoBSA/assets/125574642/709423e3-4313-4595-894a-3dc43ea89ee2)
-
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/709423e3-4313-4595-894a-3dc43ea89ee2" width="200">
 
 G-statistics, Lowess smoothed
-![01HS1PNQVNJ32VQH6V7GYYT2Q0-_4743_g_s_yhat](https://github.com/TeaShull/PhytoBSA/assets/125574642/b3c8ca0b-a799-4252-9fc5-281edf9e5dfa)
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/b3c8ca0b-a799-4252-9fc5-281edf9e5dfa" width="200">
 
-Ratio, Lowess smooted 
-![01HS1PNQVNJ32VQH6V7GYYT2Q0-_4743_ratio_yhat](https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082)
+Ratio, Lowess smoothed 
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082" width="200">
 
 Finally, a list of the likely candidates will be produced: 
 
