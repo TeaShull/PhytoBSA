@@ -1,12 +1,6 @@
 - [PhytoBSA](#phytobsa)
   - [Experimental Design of BSA](#experimental-design-of-bsa)
   - [Key Features](#key-features)
-    - [Delta-Allele Calculation](#delta-allele-calculation)
-    - [G-Statistic Calculation](#g-statistic-calculation)
-    - [ULIDs for File and Analysis Identification](#ulids-for-file-and-analysis-identification)
-    - [Robust Logging of Run Parameters](#robust-logging-of-run-parameters)
-    - [Bayesian-Based Simulation for Critical Cutoff Values](#bayesian-based-simulation-for-critical-cutoff-values)
-    - [Modular Code Infrastructure](#modular-code-infrastructure)
   - [Installation](#installation)
     - [Environment installation](#environment-installation)
     - [Setting up the Data Directory](#setting-up-the-data-directory)
@@ -28,26 +22,21 @@ PhytoBSA is a Python program designed for analyzing and visualizing bulk segrega
 For a simple explanation of the experimental design of BSA, refer to [this article](https://doi.org/10.1104/pp.17.00415).
 
 ## Key Features
-PhytoBSA offers several key features:
 
-### Delta-Allele Calculation
-The program calculates the delta-allele, which is the ratio of reference read depth to total read depth in each bulk. By subtracting these ratios from one another, it creates a value indicating phenotypic linkage.
+- Delta-Allele Calculation
+  - Calculates the delta-allele, which is the ratio of reference read depth to total read depth in each bulk. By subtracting these ratios from one another, it creates a value indicating phenotypic linkage.
 
-### G-Statistic Calculation
-PhytoBSA implements the G-statistic calculation described in the publication [here](https://doi.org/10.1186/s12859-020-3435-8). This statistic helps identify likely causal polymorphisms by comparing the ratio of reference to non-reference reads in each bulk.
+- G-Statistic Calculation
+  - Implements the G-statistic calculation described in the publication [here](https://doi.org/10.1186/s12859-020-3435-8). This statistic helps identify likely causal polymorphisms by comparing the ratio of reference to non-reference reads in each bulk.
 
-### ULIDs for File and Analysis Identification
-The implementation of ULIDs (Universally Unique Lexicographically Sortable Identifiers) ensures that each generated file and analysis is uniquely identified. This allows the program to handle concurrent analyses pointing to the same output directory without conflicts.
+- ULIDs for File and Analysis Identification
+  - Utilizes ULIDs (Universally Unique Lexicographically Sortable Identifiers) to ensure that each generated file and analysis is uniquely identified. This allows the program to handle concurrent analyses pointing to the same output directory without conflicts.
 
-### Robust Logging of Run Parameters
-PhytoBSA incorporates robust logging of run parameters, making debugging and reproducibility of results easier to track. This logging system captures all relevant parameters used in each analysis, aiding in result interpretation and replication.
+- Robust Logging of Run Parameters
+  - Incorporates robust logging of run parameters, making debugging and reproducibility of results easier to track. This logging system captures all relevant parameters used in each analysis, aiding in result interpretation and replication.
 
-### Bayesian-Based Simulation for Critical Cutoff Values
-The program utilizes Bayesian-based simulation to produce analytically tractable and robust critical cutoff values for SNPs of interest. This approach enhances the reliability and accuracy of identifying significant polymorphisms.
-
-### Modular Code Infrastructure
-PhytoBSA features a modular code infrastructure, enabling simple scaling and implementation of new features. This architecture allows for easy customization and adaptation to specific research needs and experimental setups.
-
+- Bayesian-Based Simulation for Critical Cutoff Values
+  - Utilizes Bayesian-based simulation to produce analytically tractable and robust critical cutoff values for SNPs. This approach enhances the reliability of identifying significant polymorphisms.
 
 ## Installation
 ### Environment installation
