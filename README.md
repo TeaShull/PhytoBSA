@@ -1,4 +1,3 @@
-[01HS1PNQVNJ32VQH6V7GYYT2Q0-_4743_likely_candidates.csv](https://github.com/TeaShull/PhytoBSA/files/14619674/01HS1PNQVNJ32VQH6V7GYYT2Q0-_4743_likely_candidates.csv)- [PhytoBSA](#phytobsa)
 - [PhytoBSA](#phytobsa)
   - [Experimental Design of BSA](#experimental-design-of-bsa)
   - [Key Features](#key-features)
