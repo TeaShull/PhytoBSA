@@ -15,6 +15,7 @@
   - [./phytobsa analysis](#phytobsa-analysis)
   - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
   - [Output](#output)
+    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
 - [Log Database Utilities](#log-database-utilities)
   - [Functionality](#functionality)
   - [Logging Functions](#logging-functions)
@@ -228,15 +229,42 @@ As with all other commands, you can set the default settings using ./phytobsa se
 
 ## Output
 
-The tool will generate a total of 6 plots, including calculated ratios, G statistics, and ratio-scaled G statistics, along with their corresponding lowess smoothed graphs.
+The tool will generate a total of 9 plots, including calculated ratios, G statistics, and ratio-scaled G statistics, along with their corresponding percentiles and lowess smoothed graphs.
 
 Ratio-scaled G-statistics are calculated by multiplying the G-statistic with the ratio. This combined metric tends to provide more stable results compared to using either feature alone.
 
+### Identification of Significant Polymorphisms
 In the plots, you will notice nested gray ribbons that represent the null model, showing percentiles (1st, 25th, 50th, 75th, and 99th) at each position. These null models are generated through a Bayesian simulation process using bootstrapped reads.
 
-During the simulation, the reference reads are distributed binomially, and a conjugate prior (beta) describes the frequency of reference alleles in each bulk sample. The allele frequencies of the reference alleles are simulated from the posterior distribution after updating with the bootstrapped values.
+Using bootstrapping, the tool breaks the link between phenotypes and genotypes, while the Bayesian simulation introduces a soft constraint to the simulated values, guiding extreme values towards a reference allele frequency of 0.5.
 
-By using bootstrapping, the tool breaks the link between phenotypes and genotypes, while the Bayesian simulation introduces a soft constraint to the simulated values, guiding extreme values towards a reference allele frequency of 0.5.
+***Null Model Simulation***
+1. **Binomial distribution for reference reads:**
+
+   Let's denote the distribution of reference reads as follows:
+
+   If X represents the number of occurrences of a reference allele in a sample of n reads, then X follows a binomial distribution with parameters n and θ, where:
+   
+   X ~ Binomial(n, θ)
+   
+   Here, n represents the total number of reads in the sample, and θ represents the probability of observing a reference allele in each read.
+
+2. **Conjugate prior beta distribution for allele frequencies:**
+
+   The distribution of reference allele frequencies in each bulk sample can be described using a beta distribution. The beta distribution is used as a conjugate prior for the binomial likelihood.
+
+   Let's denote the distribution of reference allele frequencies as follows:
+
+   If θ represents the reference allele frequency in a bulk sample, then θ follows a beta distribution with parameters α and β, where:
+   
+   θ ~ Beta(α, β)
+   
+   Here, α and β are shape parameters of the beta distribution, representing the prior knowledge or beliefs about the reference allele frequency.
+
+3. **Update of allele frequencies with bootstrapped values:**
+
+   After obtaining bootstrapped values from the data, the posterior distribution of allele frequencies is updated to incorporate this new information. This updating process can be represented using Bayesian inference techniques, such as Bayesian updating or posterior sampling, to refine the estimates of allele frequencies based on the observed data.
+
 
 Significant polymorphisms are identified based on their position above the critical cutoff percentile in the null model.
 
