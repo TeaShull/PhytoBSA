@@ -63,7 +63,7 @@ def main():
         
         #Parse user input into Lines Class. Input checks are done here
         line.usr_in_line_variables(
-            reference_genome_path=args.reference_genome_path, 
+            name=args.name, 
             wt_input=args.wt_input, 
             mu_input=args.mu_input
         ) 

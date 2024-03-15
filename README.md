@@ -122,6 +122,8 @@ The files must be formatted as follows:
 
 PhytoBSA offers default settings that can be applied to streamline the analysis process. These default settings allow users to set preferred configurations for various parameters, ensuring consistency and reducing the need for manual configuration for each run. Below is a breakdown of the default settings available for configuration:
 
+*Note - you can also configure these settings directly in settings/config.ini, if you so wish*
+
 ## General Settings
 These settings are automatically applied if not explictly passed in any mode. 
 
@@ -171,6 +173,19 @@ Users can apply these default settings using the `phytobsa settings` command wit
 ## ./phytobsa analysis 
 This command line argument allows the running of independant analysis.
 
+***Required***
+If running analysis seperately, these variables can't be set using the config. 
+- `-n, --name`: 
+  - Specify the name of the line you wish to analyze, which will be used to name output files.
+
+- `-vt, --vcf_table_path`: 
+  - Provide the path to the VCF table you wish to analyze. Can be hard coded, or just the name of a file in data/input or data/output
+
+- `-st, --segregation_type`: 
+  - Specify the segregation type as 'Recessive (R)', 'Dominant (D)' or Quantitative Trait Locus(QTL).
+  - Technically not required, but highly recomended as this is a useful filtering step
+  
+***Options***
 - `-ls`, `--loess_span`: 
   - Influences smoothing parameters.
   - Type: float
@@ -210,7 +225,19 @@ This command line argument allows the running of independant analysis.
 ## ./phytobsa vcf_generator
 This command allows the generation of VCF files independantly of running the analysis. 
 As with all other commands, you can set the default settings using ./phytobsa settings
+***Required***
+- `-n, --name`: 
+  - Specify the name of the line you wish to generate a VCF file for, which will be used to name output files.
+  
+- `-wt, --wt_input`: 
+  - Specify the path to the wild-type bulk fasta file(s).
+  - Files can be hard coded paths are just files that can be found in data/input
 
+- `-mu, --mu_input`: 
+  - Specify the path to the mutant bulk fasta file(s).
+  - Files can be hard coded paths are just files that can be found in data/input
+
+***Options***
 - `-p`, `--call_variants_in_parallel`: 
   - Run GATK haplotype caller in parallel.
   - Type: bool
