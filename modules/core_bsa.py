@@ -64,7 +64,9 @@ class BSA:
             filter_indels = self.bsa_vars.filter_indels, 
             filter_ems = self.bsa_vars.filter_ems, 
             snpmask_path = self.bsa_vars.snpmask_path,
-            segregation_type = line.segregation_type
+            segregation_type = line.segregation_type,
+            shuffle_iterations = self.bsa_vars.shuffle_iterations,
+            method = self.bsa_vars.method
         )
 
         self.bsa_vars.log = bsa_log #Redirect logging in bsa_vars to the bsa_log instead of core
@@ -754,7 +756,13 @@ class FeatureProduction:
             wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
             mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
 
-            # Start with a prior Gamma distribution for alpha and beta
+            wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
+            mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
+
+            # Start with prior assumption that allele frequency p is beta distributed
+            # symetrically around 0.5 (Signifying random segregation) Where data is dense, 
+            # this will get drowned out. Where data is sparse, it will act as a soft constraint
+
             alpha_prior = 2
             beta_prior = 2
 
@@ -779,7 +787,6 @@ class FeatureProduction:
             sm_wt_alt = wt_coverage - sm_wt_ref  # Alternate reads in wild type
             sm_mu_ref = np.random.binomial(mu_coverage, p2_mu)  # Reference reads in mutant
             sm_mu_alt = mu_coverage - sm_mu_ref  # Alternate reads in mutant
-
 
         else:
             raise ValueError(f"Invalid shuffle_method: {shuffle_method}")

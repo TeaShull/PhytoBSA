@@ -161,6 +161,9 @@ class LogDbUtilites:
             print(f"filter_indels: {result[9]}")
             print(f"filter_ems: {result[10]}")
             print(f"snpmask_path: {result[11]}")
+            print(f"segregation_type: {result[12]}")
+            print(f"shuffle_iterations: {result[13]}")
+            print(f"method: {result[14]}")
         else:
             print(f"No database entry found for {ulid}")
 
@@ -234,56 +237,55 @@ class LogDbUtilites:
         else:
             print("No results found for this line name.")
 
-    def print_core_ulid_data(self, core_ulid):
-        """Retrieve all entries based on the core ulid"""
-        cursor = self.conn.execute('''
-        SELECT core.*, vcf.*, analysis.* 
-            FROM core 
-            LEFT JOIN vcf 
-            ON core.core_ulid = vcf.core_ulid 
-            LEFT JOIN analysis 
-            ON core.core_ulid = analysis.core_ulid 
-            WHERE core.core_ulid = ?
-        ''', (core_ulid,))
-        results = cursor.fetchall()
+def print_core_ulid_data(self, core_ulid):
+    """Retrieve all entries based on the core ulid"""
+    cursor = self.conn.execute('''
+    SELECT core.*, vcf.*, analysis.* 
+        FROM core 
+        LEFT JOIN vcf 
+        ON core.core_ulid = vcf.core_ulid 
+        LEFT JOIN analysis 
+        ON core.core_ulid = analysis.core_ulid 
+        WHERE core.core_ulid = ?
+    ''', (core_ulid,))
+    results = cursor.fetchall()
 
-        if results:
-            for result in results:
-                print("\nCore Data:")
-                print(f"core_ulid: {result[0]}")
-                print(f"core_log_path: {result[1]}")
-                print(f"core_timestamp: {result[2]}")
+    if results:
+        for result in results:
+            print("\nCore Data:")
+            print(f"core_ulid: {result[0]}")
+            print(f"core_log_path: {result[1]}")
+            print(f"core_timestamp: {result[2]}")
 
-                if result[3] is not None:
-                    print("\nVCF Data:")
-                    print(f"vcf_ulid: {result[3]}")
-                    print(f"vcf_log_path: {result[4]}")
-                    print(f"vcf_timestamp: {result[5]}")
-                    print(f"name: {result[6]}")
-                    print(f"core_ulid: {result[7]}")
-                    print(f"reference_genome_path: {result[8]}")
-                    print(f"snpeff_species_db: {result[9]}")
-                    print(f"reference_genome_source: {result[10]}")
-                    print(f"threads_limit: {result[11]}")
+            if result[3] is not None:
+                print("\nVCF Data:")
+                print(f"vcf_ulid: {result[3]}")
+                print(f"vcf_log_path: {result[4]}")
+                print(f"vcf_timestamp: {result[5]}")
+                print(f"name: {result[6]}")
+                print(f"core_ulid: {result[7]}")
+                print(f"reference_genome_path: {result[8]}")
+                print(f"snpeff_species_db: {result[9]}")
+                print(f"reference_genome_source: {result[10]}")
+                print(f"threads_limit: {result[11]}")
 
-                if result[12] is not None:
-                    print("\nAnalysis Data:")
-                    print(f"analysis_ulid: {result[12]}")
-                    print(f"analysis_log_path: {result[13]}")
-                    print(f"analysis_timestamp: {result[14]}")
-                    print(f"name: {result[15]}")
-                    print(f"core_ulid:{result[16]}")
-                    print(f"vcf_ulid: {result[17]}")
-                    print(f"ratio_cutoff: {result[18]}")
-                    print(f"loess_span: {result[19]}")
-                    print(f"smooth_edges_bounds: {result[20]}")
-                    print(f"filter_indels: {result[21]}")
-                    print(f"filter_ems: {result[22]}")
-                    print(f"snpmask_path: {result[23]}")
-
-                print("\n")  # for separating different entries
-        else:
-            print(f"No database entries found for core ULID: {core_ulid}")
+            if result[12] is not None:
+                print("\nAnalysis Data:")
+                print(f"analysis_ulid: {result[12]}")
+                print(f"analysis_log_path: {result[13]}")
+                print(f"analysis_timestamp: {result[14]}")
+                print(f"name: {result[15]}")
+                print(f"core_ulid:{result[16]}")
+                print(f"vcf_ulid: {result[17]}")
+                print(f"ratio_cutoff: {result[18]}")
+                print(f"loess_span: {result[19]}")
+                print(f"smooth_edges_bounds: {result[20]}")
+                print(f"filter_indels: {result[21]}")
+                print(f"filter_ems: {result[22]}")
+                print(f"snpmask_path: {result[23]}")
+                print(f"segregation_type: {result[24]}")
+                print(f"shuffle_iterations: {result[25]}")
+                print(f"method: {result[26]}")
 
 class RefDbUtilities:
     def __init__(self, logger, ref_name):
