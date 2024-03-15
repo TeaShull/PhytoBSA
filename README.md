@@ -77,7 +77,7 @@ directory in which the outputs of the program will be stored.
 
 To set up the data directory:
 
-1. **Configure Data Directory**:
+**Configure Data Directory**:
 
     ```bash
     ./phytobsa settings --set_data_dir <path-to-directory>
@@ -85,7 +85,7 @@ To set up the data directory:
 
     Replace `<path-to-directory>` with the desired path for the data directory.
 
-2. **Run the Program**: After configuring the data directory, and upon first execultion of the program, the specified data directory 
+Upon first execultion of the program, the specified data directory 
   will be installed initialized.
 
 Once the data directory is set up, the program will be able to access the required files and directories smoothly.
