@@ -6,7 +6,6 @@
     - [Setting up the Data Directory](#setting-up-the-data-directory)
   - [Usage](#usage)
 - [Default Settings](#default-settings)
-- [Default Settings](#default-settings-1)
   - [General Settings](#general-settings)
   - [VCF Generation Default Settings](#vcf-generation-default-settings)
   - [BSA Default Settings](#bsa-default-settings)
@@ -101,10 +100,6 @@ The files must be formatted as follows:
     example experiment:    
     "line.R.wt.fq.gz"  
     "line.R.mu.fq.gz"       
-
-# Default Settings
-
-PhytoBSA offers default settings that can be applied to streamline the analysis process. These default settings allow users to set preferred configurations for various parameters, ensuring consistency and reducing the need for manual configuration for each run. Below is a breakdown of the default settings available for configuration:
 
 # Default Settings
 
