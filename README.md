@@ -229,20 +229,30 @@ As with all other commands, you can set the default settings using ./phytobsa se
 
 ## Output
 
-Will output 6 plots: Calculated ratios, G statistics, and ratio-scaled G statistics as well as their corresponding lowess smoothed graphs. Red dashed lines represent calculated empirical cutoffs for likely candidate genes. Causal SNPs nearly always appear clearly at the top of a the lowess smoothed ratio-scaled g statistic graph. 
+The tool will generate a total of 6 plots, including calculated ratios, G statistics, and ratio-scaled G statistics, along with their corresponding lowess smoothed graphs.
+
+Ratio-scaled G-statistics are calculated by multiplying the G-statistic with the ratio. This combined metric tends to provide more stable results compared to using either feature alone.
+
+In the plots, you will notice nested gray ribbons that represent the null model, showing percentiles (1st, 25th, 50th, 75th, and 99th) at each position. These null models are generated through a Bayesian simulation process using bootstrapped reads.
+
+During the simulation, the reference reads are distributed binomially, and a conjugate prior (beta) describes the frequency of reference alleles in each bulk sample. The allele frequencies of the reference alleles are simulated from the posterior distribution after updating with the bootstrapped values.
+
+By using bootstrapping, the tool breaks the link between phenotypes and genotypes, while the Bayesian simulation introduces a soft constraint to the simulated values, guiding extreme values towards a reference allele frequency of 0.5.
+
+Significant polymorphisms are identified based on their position above the critical cutoff percentile in the null model.
 
 Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identifies early stop codon in *SHR*
 
 SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
 
-Ratio Scale G-statistics, Lowess smoothed  
-<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/709423e3-4313-4595-894a-3dc43ea89ee2" width="600">
+Ratios, Lowess smoothed  
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082" width="600">
 
 G-statistics, Lowess smoothed  
 <img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/b3c8ca0b-a799-4252-9fc5-281edf9e5dfa" width="600">
 
-Ratio, Lowess smoothed  
-<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082" width="600">
+Ratio Scale G-statistics, Lowess smoothed  
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/709423e3-4313-4595-894a-3dc43ea89ee2" width="600">
 
 Finally, a list of the likely candidates will be produced: 
 
