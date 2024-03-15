@@ -79,7 +79,7 @@ class Lines:
             paths = details.split() #for space seperated lists mu_input and wt_input
             dir = [INPUT_DIR]
             processed_paths = [file_utils.process_path(dir, path) for path in paths]
-            return ' '.join(processed_paths)
+            return "' '".join(processed_paths)
         else:
             return details
     

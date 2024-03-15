@@ -67,7 +67,7 @@ class VCFGenerator:
             self.log.note(f"Chromosomal fasta exists: {output_file}")
             self.log.note("Proceeding...")
 
-    def _initialize_vcf_log(self, line, vcf_log):
+    def _initialize_vcf_log(self, line):
         vcf_log = LogHandler(f'vcf_{line.name}')
         line.vcf_ulid = vcf_log.ulid
         vcf_log.add_db_record(
