@@ -235,14 +235,14 @@ Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identi
 
 SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
 
-Ratio Scale G-statistics, Lowess smoothed
-<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/709423e3-4313-4595-894a-3dc43ea89ee2" width="200">
+Ratio Scale G-statistics, Lowess smoothed  
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/709423e3-4313-4595-894a-3dc43ea89ee2" width="600">
 
-G-statistics, Lowess smoothed
-<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/b3c8ca0b-a799-4252-9fc5-281edf9e5dfa" width="200">
+G-statistics, Lowess smoothed  
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/b3c8ca0b-a799-4252-9fc5-281edf9e5dfa" width="600">
 
-Ratio, Lowess smoothed 
-<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082" width="200">
+Ratio, Lowess smoothed  
+<img src="https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082" width="600">
 
 Finally, a list of the likely candidates will be produced: 
 
