@@ -131,7 +131,6 @@ class ArgumentParser:
         bsa_settings.add_argument('--set_smooth_edges_bounds', type=int, help="Set default smooth_edges_bounds.")
         bsa_settings.add_argument('--set_filter_indels', type=bool, help="Set default filter_indels.")
         bsa_settings.add_argument('--set_filter_ems', type=bool, help="Set default filter_ems.")
-        bsa_settings.add_argument('--set_snpmask_path', type=str, help="Set default snp mask VCF path. VCF should contain known background SNPs")
         bsa_settings.add_argument('--set_ratio_cutoff', type=float, help="Set default ratio cutoff bound.")
         bsa_settings.add_argument('--set_mask_snps', type=bool, help="set default mask_snps boolean value.")
         bsa_settings.add_argument('--set_critical_cutoff', type=float, help="Set default critical cutoff value.")

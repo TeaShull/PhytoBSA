@@ -140,7 +140,6 @@ These settings are automatically applied if not explicitly passed to automatic o
 - `--set_smooth_edges_bounds`: Set default smooth edges bounds.
 - `--set_filter_indels`: Set default filter indels.
 - `--set_filter_ems`: Set default filter EMS.
-- `--set_snpmask_path`: Set default SNP mask VCF path. VCF should contain known background SNPs.
 - `--set_ratio_cutoff`: Set default ratio cutoff bound.
 - `--set_mask_snps`: Set default mask SNPs boolean value.
 - `--set_critical_cutoff`: Set default critical cutoff value.
@@ -243,6 +242,44 @@ Ratio, Lowess smooted
 ![01HS1PNQVNJ32VQH6V7GYYT2Q0-_4743_ratio_yhat](https://github.com/TeaShull/PhytoBSA/assets/125574642/3158aac9-60da-4ce9-9e70-c099e80c1082)
 
 Finally, a list of the likely candidates will be produced: 
+
+# Log Database Utilities
+
+The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
+
+## Functionality
+
+1. **Print Analysis Log Data**
+   - Retrieves and prints information related to an analysis based on the analysis ID provided (ulid).
+   - Command: `logdb -an ANALYSIS_ULID`
+
+2. **Print VCF Log Data**
+   - Retrieves and prints information related to a Variant Call Format (VCF) based on the VCF ID or core ID provided (ulid).
+   - Command: `logdb -vcf VCF_ULID`
+
+3. **Get Line Name Data**
+   - Retrieves all entries related to a specific line name and returns the results as a list.
+   - Command: `logdb -name LINE_NAME`
+
+4. **Print Line Name Data**
+   - Prints all entries related to a specific line name, including both VCF data and Analysis data.
+   - Command: `logdb -name LINE_NAME`
+
+5. **Print Core ID Data**
+   - Retrieves and prints information related to a core ID, including core log data, VCF data, and Analysis data linked to that core ID.
+   - Command: `logdb -core CORE_ULID`
+
+## Logging Functions
+
+1. **Create Tables**
+   - Creates the necessary tables in the log database to store core, VCF, and analysis log data.
+
+2. **Add Database Record**
+   - Adds records to the log database based on the type of log (core, VCF, or analysis) and the provided parameters.
+
+## Usage
+
+Users can utilize the logdbutils functions to store, retrieve, and analyze runtime parameters and associated data in a structured manner. By logging this information, users can maintain a record of the processes and configurations used for each run, enabling reproducibility and comparison of results across different executions.
 
 # Log Database Utilities
 
