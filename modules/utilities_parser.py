@@ -100,6 +100,7 @@ class ArgumentParser:
         ## VCF generation subparser
         parser_vcf_gen = subparsers.add_parser('vcf_generator', help='Run PhytoBSA VCF Generator seperately')
         ### REQUIRED
+        parser_vcf_gen.add_argument('-n', '--name', required=True, type=str, help='name of the line you are generating a VCF file for. Will be used to name output files.')
         parser_vcf_gen.add_argument('-wt', '--wt_input', required=True, default=None, type=str, help='Wild-type bulk fasta file(s)')
         parser_vcf_gen.add_argument('-mu', '--mu_input', required=True, default=None, type=str, help='mutant bulk fast files')
         ### OPTIONAL - the below arguments can be input via command line or sourced from ./settings/config.ini
