@@ -1,7 +1,15 @@
 - [PhytoBSA](#phytobsa)
+  - [Experimental Design of BSA](#experimental-design-of-bsa)
+  - [Key Features](#key-features)
+    - [Delta-Allele Calculation](#delta-allele-calculation)
+    - [G-Statistic Calculation](#g-statistic-calculation)
+    - [ULIDs for File and Analysis Identification](#ulids-for-file-and-analysis-identification)
+    - [Robust Logging of Run Parameters](#robust-logging-of-run-parameters)
+    - [Bayesian-Based Simulation for Critical Cutoff Values](#bayesian-based-simulation-for-critical-cutoff-values)
+    - [Modular Code Infrastructure](#modular-code-infrastructure)
   - [Installation](#installation)
     - [Environment installation](#environment-installation)
-    - [Setup directories](#setup-directories)
+    - [Setting up the Data Directory](#setting-up-the-data-directory)
   - [Usage](#usage)
     - [Variables](#variables)
       - [Reference Name](#reference-name)
@@ -11,22 +19,35 @@
       - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
     - [Output](#output)
     - [Reference Database Manager](#reference-database-manager)
-      - [Features](#features)
-      - [Implementation Details](#implementation-details)
       - [Reference Form Configuration](#reference-form-configuration)
-        - [Fields Explanation:](#fields-explanation)
-        - [Example:](#example)
 # PhytoBSA
 
-This python program analyzes and visualizes bulk segregant analysis (BSA) data. It takes sequenced segrigant bulks as an input and outputs a list of likely casual polymorphisms underlying the phenotypic segrigation of the two bulks. Likely causal polymorphisms are identified using g-statistics and a comparison of the ratio of reference to non-reference reads in each bulk. Currently, this script is optimized for running Arabidopsis BSA experiments, but can handle other organisms with some tinkering.
+PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. While currently optimized for Arabidopsis BSA experiments, it can be adapted for other organisms with some modifications.
 
-For a simple explanation of the experimental design of BSA -> [link to article](https://doi.org/10.1104/pp.17.00415)
+## Experimental Design of BSA
+For a simple explanation of the experimental design of BSA, refer to [this article](https://doi.org/10.1104/pp.17.00415).
 
-This pipeline uses:
+## Key Features
+PhytoBSA offers several key features:
 
-  - Delta-allele calculation. The ratio of reference read depth to total read depth in each bulk are subtracted from one another, creating a ratio that indicates phenotypic linkage.
-  
-  - The G-statistic calculation described in the publication: [link to publication](https://doi.org/10.1186/s12859-020-3435-8)
+### Delta-Allele Calculation
+The program calculates the delta-allele, which is the ratio of reference read depth to total read depth in each bulk. By subtracting these ratios from one another, it creates a value indicating phenotypic linkage.
+
+### G-Statistic Calculation
+PhytoBSA implements the G-statistic calculation described in the publication [here](https://doi.org/10.1186/s12859-020-3435-8). This statistic helps identify likely causal polymorphisms by comparing the ratio of reference to non-reference reads in each bulk.
+
+### ULIDs for File and Analysis Identification
+The implementation of ULIDs (Universally Unique Lexicographically Sortable Identifiers) ensures that each generated file and analysis is uniquely identified. This allows the program to handle concurrent analyses pointing to the same output directory without conflicts.
+
+### Robust Logging of Run Parameters
+PhytoBSA incorporates robust logging of run parameters, making debugging and reproducibility of results easier to track. This logging system captures all relevant parameters used in each analysis, aiding in result interpretation and replication.
+
+### Bayesian-Based Simulation for Critical Cutoff Values
+The program utilizes Bayesian-based simulation to produce analytically tractable and robust critical cutoff values for SNPs of interest. This approach enhances the reliability and accuracy of identifying significant polymorphisms.
+
+### Modular Code Infrastructure
+PhytoBSA features a modular code infrastructure, enabling simple scaling and implementation of new features. This architecture allows for easy customization and adaptation to specific research needs and experimental setups.
+
 
 ## Installation
 ### Environment installation
@@ -42,9 +63,26 @@ or, if you are attempting to use conda (not recommended, but probably possible)
 
 `conda activate phytobsa`
 
-### Setup directories
-run:  
-`./setup.py`
+### Setting up the Data Directory
+
+Before running the program, it's essential to set up the data directory. The data directory serves as the storage location for various files required by the program, including reference databases and large genomic files. Adequate storage space should be available in this directory to accommodate these files. This is also the 
+directory in which the outputs of the program will be stored. 
+
+To set up the data directory:
+
+1. **Configure Data Directory**:
+
+    ```bash
+    ./phytobsa settings --set_data_dir <path-to-directory>
+    ```
+
+    Replace `<path-to-directory>` with the desired path for the data directory.
+
+2. **Run the Program**: After configuring the data directory, and upon first execultion of the program, the specified data directory 
+  will be installed initialized.
+
+Once the data directory is set up, the program will be able to access the required files and directories smoothly.
+
 
 ## Usage
 Put the fq.gz files you want analyzed into the data/input folder. You can put 
@@ -139,7 +177,6 @@ The files must be formatted as follows:
   - Header patterns to omit from reference chromosomes. Useful for removing >mt (mitochondrial) and other unneeded reference sequences.
   - Type: list
 
-
 ### Output
 
 Will output 6 plots: Calculated ratios, G statistics, and ratio-scaled G statistics as well as their corresponding lowess smoothed graphs. Red dashed lines represent calculated empirical cutoffs for likely candidate genes. Causal SNPs nearly always appear clearly at the top of a the lowess smoothed ratio-scaled g statistic graph. 
@@ -164,26 +201,10 @@ To use the Reference Database Manager, follow these steps:
    - `delete`: Deletes an existing entry from the reference database. Requires specifying the `reference_name` of the entry to delete.
    - `list`: Lists all entries currently stored in the reference database. Optionally, abbreviates long URLs for better readability.
 
-#### Features
-
-- **Database Management**: Utilizes SQLite to manage the reference database, ensuring data integrity and efficient querying.
-- **Configuration Reader**: Reads configuration information from the `ref_form.ini` file, simplifying the process of adding new entries.
-- **User-Friendly Interface**: Offers a clear command-line interface with intuitive commands for creating, deleting, and listing entries.
-
-#### Implementation Details
-
-The Reference Database Manager consists of several components:
-- **ConfigReader**: Reads configuration information from the `ref_form.ini` file.
-- **RefDbUtilities**: Handles interactions with the SQLite database, including opening/closing connections, creating tables, inserting/deleting entries, and listing entries.
-- **Argument Parsing**: Uses the `argparse` module to parse command-line arguments and execute the appropriate actions based on user input.
-
-This manager provides a convenient way to manage reference information, facilitating the organization and retrieval of essential data for the `phytobsa` pipeline.
 
 #### Reference Form Configuration
 
 The `ref_form.ini` file contains configuration settings for reference genomes used in the `phytobsa` pipeline. Each entry in the file corresponds to a specific reference genome and provides essential information for analysis.
-
-##### Fields Explanation:
 
 - `reference_name`: 
   - Description: This is the name used as the reference name when running `./phytobsa` processes. All other information in this form is retrieved based on this name.
@@ -203,7 +224,7 @@ The `ref_form.ini` file contains configuration settings for reference genomes us
 - `snpmask_url`: 
   - Description: If a SNPMask is available online, provide the link here. The file will be saved with the specified filename in the `./data/references/` directory.
 
-##### Example:
+Example:
 
 ```ini
 [RefDB]
