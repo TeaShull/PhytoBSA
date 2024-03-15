@@ -261,7 +261,8 @@ The tool employs chromosome-wise random resampling with replacement to sever the
 
 3. **Update of Allele Frequencies with Bootstrapped Values:**
 
-   Following each round of bootstrapping, the prior distribution of allele frequencies (initialized with a conservatively uniformed prior of Beta(2, 2)) undergoes an update. The reference allele frequency θ is randomly selected from the posterior distribution, and the product of θ and coverage C is utilized to derive the final simulated allele frequencies.
+   Following each round of bootstrapping, a conservative prior distribution of allele frequencies (Beta(2, 2)) undergoes an update from the bootstrapped data. The reference allele frequency θ is randomly selected from the posterior, and the product of θ and coverage C produces the simulated reference read depth. The alternative read is then produced:
+    simulated alternative read depth = simulated reference read depth - C 
 
 4. ***Null model for smoothed values*** 
    The Null model values are smoothed in each iteration of bootstrapping, producing
