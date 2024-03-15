@@ -193,7 +193,7 @@ If running analysis seperately, these variables can't be set using the config.
   - Specify the segregation type as 'Recessive (R)', 'Dominant (D)' or Quantitative Trait Locus(QTL).
   - Technically not required, but highly recomended as this is a useful filtering step
   
-***Options*** (see [General Settings](#general-settings)) set alter default values
+***Options*** (see [Default Settings](#default-settings) to alter default values)
 - `-r`, `--reference_name`: 
   - Name of the reference genome. This name maps to a reference genome, SnpEff library and a snp mask.
   - New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
@@ -249,7 +249,7 @@ As with all other commands, you can set the default settings using ./phytobsa se
   - Specify the path to the mutant bulk fasta file(s).
   - Files can be hard coded paths are just files that can be found in data/input
 
-***Options*** (see [General Settings](#general-settings)) set alter default values
+***Options*** (see [Default Settings](#default-settings) to alter default values)
 
 - `-r`, `--reference_name`: 
   - Name of the reference genome. This name maps to a reference genome, SnpEff library and a snp mask.
