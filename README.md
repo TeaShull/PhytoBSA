@@ -20,12 +20,17 @@
       - [Reference Form Configuration](#reference-form-configuration)
 # PhytoBSA
 
-PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. While currently optimized for Arabidopsis BSA experiments, it can be adapted for other organisms with some modifications.
+PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. PhytoBSA has been extensivly tested in Arabidopsis EMS screen populations, and lightly
+tested on Rice and Tomoto QTL analysis. 
 
 ## Experimental Design of BSA
 For a simple explanation of the experimental design of BSA, refer to [this article](https://doi.org/10.1104/pp.17.00415).
 
 ## Key Features
+
+- Paralell Haplotype Calling
+  - if activated, Haplotypes can be called on chunks of chromosomes, scaled to the CPU resources available. This dramatically increases runtime efficiency during this
+    step of VCF generation  
 
 - Delta-Allele Calculation
   - Calculates the delta-allele, which is the ratio of reference read depth to total read depth in each bulk. By subtracting these ratios from one another, it creates a value indicating phenotypic linkage.
