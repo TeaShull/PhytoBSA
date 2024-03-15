@@ -1,3 +1,15 @@
+- [PhytoBSA](#phytobsa)
+  - [Installation](#installation)
+    - [Environment installation](#environment-installation)
+    - [Setup directories](#setup-directories)
+  - [Usage](#usage)
+    - [Variables](#variables)
+    - [Running](#running)
+    - [Command Line Arguments](#command-line-arguments)
+      - [BSA Analysis Options](#bsa-analysis-options)
+      - [VCF Generation Options](#vcf-generation-options)
+      - [Reference Name](#reference-name)
+    - [Output](#output)
 # PhytoBSA
 
 This python program analyzes and visualizes bulk segregant analysis (BSA) data. It takes sequenced segrigant bulks as an input and outputs a list of likely casual polymorphisms underlying the phenotypic segrigation of the two bulks. Likely causal polymorphisms are identified using g-statistics and a comparison of the ratio of reference to non-reference reads in each bulk. Currently, this script is optimized for running Arabidopsis BSA experiments, but can handle other organisms with some tinkering.
@@ -57,8 +69,86 @@ The files must be formatted as follows:
  
  `./phytobsa.py -cl` 
 
+### Command Line Arguments
 
-## Output
+#### BSA Analysis Options
+- `-ls`, `--loess_span`: 
+  - Type: float
+  - Default: None
+  - Description: Influences smoothing parameters.
+
+- `-si`, `--shuffle_iterations`: 
+  - Type: int
+  - Default: None
+  - Description: Iterations of bootstrapping during empirical cutoff calculations. Below 1000 can yield inconsistent results.
+
+- `-sb`, `--smooth_edges_bounds`: 
+  - Type: int
+  - Default: None
+  - Description: Number of mirrored datapoints at chromosome edges to correct for loess edge bias. Increase if edge bias seems high.
+
+- `-fin`, `--filter_indels`: 
+  - Type: str
+  - Default: None
+  - Description: Filter out insertion-deletion mutations.
+
+- `-fems`, `--filter_ems`: 
+  - Type: str
+  - Default: None
+  - Description: Filter results to only include mutations likely to arise from EMS treatment.
+
+- `-rco`, `--ratio_cutoff`: 
+  - Type: float
+  - Default: None
+  - Description: Used to filter results based on a ratio cutoff number. Increase to 0.2 or 0.3 if there is a lot of noise at lower ratio bounds.
+
+- `-msk`, `--mask_snps`: 
+  - Type: bool
+  - Default: None
+  - Description: Set to true if you have a snpmask file configured and would like to mask known SNPs in your analysis.
+
+- `-cc`, `--critical_cutoff`: 
+  - Type: float
+  - Default: None
+  - Description: Set the critical cutoff value for what is considered a significant polymorphism.
+
+- `-m`, `--method`: 
+  - Type: str
+  - Default: None
+  - Description: Set the method of generating the null hypothesis. Either simulate or bootstrap.
+
+#### VCF Generation Options
+
+- `-p`, `--call_variants_in_parallel`: 
+  - Type: bool
+  - Default: None
+  - Description: Run GATK haplotype caller in parallel.
+
+- `-c`, `--cleanup`: 
+  - Type: bool
+  - Default: None
+  - Description: If true, intermediate files will be deleted. False for troubleshooting and archiving files.
+
+- `-cft`, `--cleanup_filetypes`: 
+  - Type: list
+  - Default: None
+  - Description: Filetypes to clean out after VCF generation is complete. Format should be ['file_suffix', exc]. Example: ['.tmp', '*.metrics']
+
+- `-ocp`, `--omit_chrs_patterns`: 
+  - Type: list
+  - Default: None
+  - Description: Header patterns to omit from reference chromosomes. Useful for removing >mt (mitochondrial) and other unneeded reference sequences.
+
+
+#### Reference Name
+
+- `-r`, `--reference_name`: 
+  - Type: str
+  - Required: False
+  - Description: Name of the reference genome.
+
+
+### Output
 
 Will output 6 plots: Calculated ratios, G statistics, and ratio-scaled G statistics as well as their corresponding lowess smoothed graphs. Red dashed lines represent calculated empirical cutoffs for likely candidate genes. Causal SNPs nearly always appear clearly at the top of a the lowess smoothed ratio-scaled g statistic graph. 
 
@@ -67,20 +157,7 @@ Example: 474-3 in https://doi.org/10.1104/pp.17.00415. Pipeline correctly identi
 SRA Runs - SRR5029628(474_3_wt); SRR5029636 (474_3_mut) 
 
 Ratio Scaled G-statistics
-![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/7a73e741-4722-4a1b-86be-1cc10b185535)
+![RS_G_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/7a73e741-4722-4a
 
-Ratio Scale G-statistics, Lowess smoothed
-![RS_G_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/b7e8dd00-af16-42c7-a396-cad954f27de9)
 
-G-statistics
-![GS_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/0214466f-749e-4f3f-910b-50560840b647)
 
-G-statistics, Lowess smoothed
-![GS_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/3217b417-aac3-4e72-993c-71995421a01a)
-
-Ratio
-![SNP_ratio_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/21b42e24-5dbb-4c5b-b32d-ff7d2072b42e)
-
-Ratio, Lowess smooted 
-![ratio_yhat_4773](https://github.com/TeaShull/PyAtBSA/assets/125574642/074361b6-3c43-4d12-9976-1a7e530e2535)
-finally, a table of the likely candidates will be created, which should contain your mutation of interest.
