@@ -237,7 +237,7 @@ Ratio-scaled G-statistics are calculated by multiplying the G-statistic with the
 
 In the generated plots, you will observe nested gray ribbons illustrating the null model, displaying percentiles (1st, 25th, 50th, 75th, and 99th) at each position. These null models are created through a Bayesian simulation process using bootstrapped reads.
 
-The tool employs chromosome-wise random resampling with replacement to sever the link between phenotypes and genotypes. This random resampling, along with the Bayesian simulation, imposes a soft constraint on the simulated values, guiding extreme values towards a reference allele frequency of 0.5.
+The tool employs chromosome-wise random resampling with replacement to sever the link between phenotypes and genotypes. This random resampling, along with the Bayesian simulation, imposes a soft constraint on the simulated values, guiding values towards a reference allele frequency of 0.5. Additionally, the random draw from the posterior introduces extra variance in the in the simulated read depths.  
 
 ***Null Model Simulation***
 
