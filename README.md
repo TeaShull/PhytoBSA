@@ -243,11 +243,11 @@ The tool employs chromosome-wise random resampling with replacement to sever the
 
 1. **Binomial Distribution for Reference Reads:**
 
-   Let X represent the count of reference allele occurrences in a locus with coverage (C) reads. The distribution of X follows a binomial distribution with parameters C and θ, where:
+   Let X represent the count of reference allele occurrences in a locus in each bulk with coverage (C) reads. The distribution of X follows a binomial distribution with parameters C and θ, where:
    
    X ~ Binomial(C, θ)
    
-   Here, C represents the total number of reads at the locus, and θ denotes the position-wise reference allele frequency.
+   Here, C represents the total number of reads at the locus in each bulk, and θ denotes the position-wise reference allele frequency.
 
 2. **Conjugate Prior Beta Distribution for Allele Frequencies:**
 
