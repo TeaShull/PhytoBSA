@@ -263,7 +263,15 @@ The tool employs chromosome-wise random resampling with replacement to sever the
 
    Following each round of bootstrapping, the prior distribution of allele frequencies (initialized with a conservatively uniformed prior of Beta(2, 2)) undergoes an update. The reference allele frequency θ is randomly selected from the posterior distribution, and the product of θ and coverage C is utilized to derive the final simulated allele frequencies.
 
+4. ***Null model for smoothed values*** 
+   The Null model values are smoothed in each iteration of bootstrapping, producing
+   a distribution of potenial signals given the data. 
 
+5. ***Null model for unsmoothed values***
+  The Null model for unsmoothed values in each iteration are simply aggregated on
+  a chromosome-by-chromosme basis, and used to produce percentile values for each
+  value in the observed data. This allows simple filtering of those values over
+  the critical cutoff. 
 
 Significant polymorphisms are identified based on their position above the critical cutoff percentile in the null model.
 
