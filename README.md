@@ -5,7 +5,11 @@
     - [Environment installation](#environment-installation)
     - [Setting up the Data Directory](#setting-up-the-data-directory)
   - [Usage](#usage)
-    - [Variables](#variables)
+- [Default Settings](#default-settings)
+- [Default Settings](#default-settings-1)
+  - [General Settings](#general-settings)
+  - [VCF Generation Default Settings](#vcf-generation-default-settings)
+  - [BSA Default Settings](#bsa-default-settings)
       - [Reference Name](#reference-name)
     - [Running](#running)
     - [Command Line Arguments](#command-line-arguments)
@@ -93,18 +97,52 @@ The files must be formatted as follows:
     "line.R.wt.fq.gz"  
     "line.R.mu.fq.gz"       
 
- ### Variables
- Edit ./settings/vcf_gen_variables.sh to alter the variables for VCF file generation. The script assumes recessive polymorphisms by default. If your mutation of interest is dominant, change the mutation variable accordingly. 
+# Default Settings
 
- If you are analyzing an organism different than Arabidopsis, this is the place to put your reference genome and background SNPs link. In order for SNPeff to run properly, your organism needs to be named as it is in the SNPeff database. This is currently clunky to configure. Easier support for other organisms is on the roadmap. 
+PhytoBSA offers default settings that can be applied to streamline the analysis process. These default settings allow users to set preferred configurations for various parameters, ensuring consistency and reducing the need for manual configuration for each run. Below is a breakdown of the default settings available for configuration:
+
+# Default Settings
+
+PhytoBSA offers default settings that can be applied to streamline the analysis process. These default settings allow users to set preferred configurations for various parameters, ensuring consistency and reducing the need for manual configuration for each run. Below is a breakdown of the default settings available for configuration:
+
+## General Settings
+These settings are automatically applied if not explictly passed in any mode. 
+
+- `--set_data_dir`: Set the data directory. This must be set for the program to run.
+- `--set_threads_limit`: Set the threads limit for BSA and for VCF generation. If not set, threads will be detected, and threads -2 will be used.
+- `--set_reference_name`: Set the name of the reference genome.
+
+## VCF Generation Default Settings
+These settings are automatically applied if not explicitly provided in automatic or VCF generation mode.
+
+- `--set_call_variants_in_parallel`: Set default for running GATK Haplotype Caller in parallel.
+- `--set_cleanup`: Set default for cleanup. If true, intermediate files will be deleted; false for troubleshooting and archiving files.
+- `--set_cleanup_filetypes`: Set default for cleanup file types. An ordered list of globs for files to clear out after VCF generation process.
+- `--set_omit_chrs_patterns`: Set defaults for filtering reference chromosome contigs. Useful for filtering non-genomic reference contigs to speed up VCF generation.
+
+## BSA Default Settings
+These settings are automatically applied if not explicitly passed to automatic or BSA mode.
+
+- `--set_loess_span`: Set default Loess span.
+- `--set_shuffle_iterations`: Set default shuffle iterations.
+- `--set_smooth_edges_bounds`: Set default smooth edges bounds.
+- `--set_filter_indels`: Set default filter indels.
+- `--set_filter_ems`: Set default filter EMS.
+- `--set_snpmask_path`: Set default SNP mask VCF path. VCF should contain known background SNPs.
+- `--set_ratio_cutoff`: Set default ratio cutoff bound.
+- `--set_mask_snps`: Set default mask SNPs boolean value.
+- `--set_critical_cutoff`: Set default critical cutoff value.
+- `--set_method`: Set the default method of generating the null hypothesis. Either 'simulate' or 'bootstrap'.
+
+Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
 
  #### Reference Name
 
 - `-r`, `--reference_name`: 
-  - Name of the reference genome for the input sequences. This name maps to a reference genome, SnpEff library and a snp mask. 
+  - Name of the reference genome for the input sequences. This name maps to a reference genome, SnpEff library and a snp mask.
   --New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
   - Type: str
-  - 
+  
 ### Running
  
  `./phytobsa.py -a` 
