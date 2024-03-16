@@ -1,4 +1,8 @@
-
+<style>
+  table {
+    font-size: 80%;
+  }
+</style>
 # PhytoBSA
 PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. PhytoBSA has been extensively tested in Arabidopsis EMS screen populations, and lightly
 tested on Rice and Tomato QTL analysis. 
