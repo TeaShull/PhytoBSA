@@ -68,12 +68,6 @@ Finally, a list of the likely candidates will be produced, filtered based on whe
 
 
 # Table of Contents
-- [PhytoBSA](#phytobsa)
-  - [Experimental Design of BSA](#experimental-design-of-bsa)
-  - [Key Features](#key-features)
-  - [Output](#output)
-    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
-- [Table of Contents](#table-of-contents)
 - [Installation](#installation)
   - [Environment installation](#environment-installation)
   - [Setting up the Data Directory](#setting-up-the-data-directory)
