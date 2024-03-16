@@ -1,31 +1,5 @@
-- [PhytoBSA](#phytobsa)
-  - [Experimental Design of BSA](#experimental-design-of-bsa)
-  - [Key Features](#key-features)
-  - [Output](#output)
-    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
-  - [Installation](#installation)
-    - [Environment installation](#environment-installation)
-    - [Setting up the Data Directory](#setting-up-the-data-directory)
-- [Commands](#commands)
-  - [./phytobsa -a (Automatic mode)](#phytobsa--a-automatic-mode)
-  - [./phytobsa analysis](#phytobsa-analysis)
-  - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
-- [Default Settings](#default-settings)
-  - [Set General Defaults](#set-general-defaults)
-  - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
-  - [Set BSA Defaults](#set-bsa-defaults)
-  - [Log Database Utilities](#log-database-utilities)
-  - [Functionality](#functionality)
-  - [Logging Functions](#logging-functions)
-  - [Usage](#usage)
-- [Log Database Utilities](#log-database-utilities-1)
-  - [Functionality](#functionality-1)
-  - [Logging Functions](#logging-functions-1)
-  - [Usage](#usage-1)
-- [Reference Database Manager](#reference-database-manager)
-  - [Reference Form Configuration](#reference-form-configuration)
-# PhytoBSA
 
+# PhytoBSA
 PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. PhytoBSA has been extensivly tested in Arabidopsis EMS screen populations, and lightly
 tested on Rice and Tomoto QTL analysis. 
 
@@ -73,42 +47,7 @@ Ratio-scaled G-statistics are calculated by multiplying the G-statistic with the
 
 In the generated plots, you will observe nested gray ribbons illustrating the null model, displaying percentiles (1st, 25th, 50th, 75th, and 99th) at each position. These null models are created through a Bayesian simulation process using bootstrapped reads.
 
-The tool employs chromosome-wise random resampling with replacement to sever the link between phenotypes and genotypes. This random resampling, along with the Bayesian simulation, imposes a soft constraint on the simulated values, guiding values towards a reference allele frequency of 0.5. Additionally, the random draw from the posterior introduces extra variance in the in the simulated read depths.  
-
-***Null Model Simulation***
-
-1. **Binomial Distribution for Reference Reads:**
-
-   Let X represent the count of reference allele occurrences in a locus in each bulk with coverage (C) reads. The distribution of X follows a binomial distribution with parameters C and θ, where:
-   
-   X ~ Binomial(C, θ)
-   
-   Here, C represents the total number of reads at the locus in each bulk, and θ denotes the position-wise reference allele frequency.
-
-2. **Conjugate Prior Beta Distribution for Allele Frequencies:**
-
-   The reference allele frequencies at each position are modeled using a beta distribution, serving as a conjugate prior for the binomial likelihood.
-
-   If θ represents the reference allele frequency at each position, then θ follows a beta distribution with parameters α and β, where:
-   
-   θ ~ Beta(α, β)
-   
-   Here, α and β are shape parameters of the beta distribution, characterizing the prior beliefs about the reference allele frequency.
-
-3. **Update of Allele Frequencies with Bootstrapped Values:**
-
-   Following each round of bootstrapping, a conservative prior distribution of allele frequencies (Beta(2, 2)) undergoes an update from the bootstrapped data. The reference allele frequency θ is randomly selected from the posterior, and the product of θ and coverage C produces the simulated reference read depth. The alternative read is then produced:
-    simulated alternative read depth = simulated reference read depth - C 
-
-4. ***Null model for smoothed values*** 
-   The Null model values are smoothed in each iteration of bootstrapping, producing
-   a distribution of potenial signals given the data. 
-
-5. ***Null model for unsmoothed values***
-  The Null model for unsmoothed values in each iteration are simply aggregated on
-  a chromosome-by-chromosme basis, and used to produce percentile values for each
-  value in the observed data. This allows simple filtering of those values over
-  the critical cutoff. 
+The tool employs chromosome-wise random resampling with replacement to sever the link between phenotypes and genotypes. This random resampling, along with the Bayesian simulation, imposes a soft constraint on the simulated values, guiding values towards a reference allele frequency of 0.5. Additionally, the random draw from the posterior introduces extra variance in the in the simulated read depths. More details can be found in the footnote: [Null Model Simulation](#null-model-simulation)
 
 Significant polymorphisms are identified based on their position above the critical cutoff percentile in the null model.
 
@@ -127,8 +66,34 @@ Ratio Scale G-statistics, Lowess smoothed
 
 Finally, a list of the likely candidates will be produced, filtered based on where each locus lies in the null model percentiles and SNP impact. 
 
-## Installation
-### Environment installation
+
+# Table of Contents
+- [Installation](#installation)
+  - [Environment installation](#environment-installation)
+  - [Setting up the Data Directory](#setting-up-the-data-directory)
+- [Commands](#commands)
+  - [./phytobsa -a (Automatic mode)](#phytobsa--a-automatic-mode)
+  - [./phytobsa analysis](#phytobsa-analysis)
+  - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
+- [Default Settings](#default-settings)
+  - [Set General Defaults](#set-general-defaults)
+  - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
+  - [Set BSA Defaults](#set-bsa-defaults)
+  - [Log Database Utilities](#log-database-utilities)
+  - [Functionality](#functionality)
+  - [Logging Functions](#logging-functions)
+  - [Usage](#usage)
+- [Log Database Utilities](#log-database-utilities-1)
+  - [Functionality](#functionality-1)
+  - [Logging Functions](#logging-functions-1)
+  - [Usage](#usage-1)
+- [Reference Database Manager](#reference-database-manager)
+  - [Reference Form Configuration](#reference-form-configuration)
+-[Footnotes](#footnotes)
+  -[Null Model Simulation](#null-model-simulation)
+
+# Installation
+## Environment installation
 Install and activate the conda environment from the environment.yml file in the ./conda folder. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda's environment solver is comparitivly very inefficient (conda sometimes freezes trying to resolve this environment).
 
 `mamba env create --f ./conda/environment.yml`
@@ -141,7 +106,7 @@ or, if you are attempting to use conda (not recommended, but probably possible)
 
 `conda activate phytobsa`
 
-### Setting up the Data Directory
+## Setting up the Data Directory
 
 Before running the program, it's essential to set up the data directory. The data directory serves as the storage location for various files required by the program, including reference databases and large genomic files. Adequate storage space should be available in this directory to accommodate these files. This is also the 
 directory in which the outputs of the program will be stored. 
@@ -260,7 +225,7 @@ If running analysis seperately, these variables can't be set using the config.
   - Set the method of generating the null hypothesis. Either simulate or bootstrap.
   - Type: str
 
-## ./phytobsa vcf_generator
+## ./phytobsa vcf_generator  
 This command allows the generation of VCF files independantly of running the analysis. 
 As with all other commands, you can set the default settings using ./phytobsa settings
 ***Required***  
@@ -298,13 +263,13 @@ As with all other commands, you can set the default settings using ./phytobsa se
   - Type: list
 
 
-# Default Settings
+# Default Settings  
 
 PhytoBSA offers default settings that can be applied to streamline the analysis process. These default settings allow users to set preferred configurations for various parameters, ensuring consistency and reducing the need for manual configuration for each run. Below is a breakdown of the default settings available for configuration:
 
 *Note - you can also configure these settings directly in settings/config.ini, if you so wish*
 
-## Set General Defaults
+## Set General Defaults  
 These settings are automatically applied if not explictly passed in any mode. 
 
 - `--set_reference_name`: 
@@ -317,7 +282,7 @@ These settings are automatically applied if not explictly passed in any mode.
   - Set the threads limit for BSA and for VCF generation. If not set, threads will be detected, and threads -2 will be used.
 
 
-## Set VCF Generation Defaults
+## Set VCF Generation Defaults  
 These settings are automatically applied if not explicitly provided in automatic or VCF generation mode.
 
 - `--set_call_variants_in_parallel`: 
@@ -332,8 +297,8 @@ These settings are automatically applied if not explicitly provided in automatic
 - `--set_omit_chrs_patterns`: 
   - Set defaults for filtering reference chromosome contigs. Useful for filtering non-genomic reference contigs to speed up VCF generation.
 
-## Set BSA Defaults
-These settings are automatically applied if not explicitly passed to automatic or BSA mode.
+## Set BSA Defaults  
+These settings are automatically applied if not explicitly passed to automatic or BSA mode.  
 
 - `--set_loess_span`: 
   - Set default Loess span. (Float between 0 and 1)
@@ -361,81 +326,25 @@ These settings are automatically applied if not explicitly passed to automatic o
 
 Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
 
-## Log Database Utilities
-
-The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
-
-## Functionality
-
-1. **Print Analysis Log Data**  
-   - Retrieves and prints information related to an analysis based on the analysis ID provided (ulid).
-   - Command: `logdb -an ANALYSIS_ULID`
-
-2. **Print VCF Log Data**  
-   - Retrieves and prints information related to a Variant Call Format (VCF) based on the VCF ID or core ID provided (ulid).
-   - Command: `logdb -vcf VCF_ULID`
-
-3. **Get Line Name Data**  
-   - Retrieves all entries related to a specific line name and returns the results as a list.
-   - Command: `logdb -name LINE_NAME`
-
-4. **Print Line Name Data**  
-   - Prints all entries related to a specific line name, including both VCF data and Analysis data.
-   - Command: `logdb -name LINE_NAME`
-
-5. **Print Core ID Data**  
-   - Retrieves and prints information related to a core ID, including core log data, VCF data, and Analysis data linked to that core ID.
-   - Command: `logdb -core CORE_ULID`
-
-## Logging Functions
-
-1. **Create Tables**
-   - Creates the necessary tables in the log database to store core, VCF, and analysis log data.
-
-2. **Add Database Record**
-   - Adds records to the log database based on the type of log (core, VCF, or analysis) and the provided parameters.
-
-## Usage
-
-Users can utilize the logdbutils functions to store, retrieve, and analyze runtime parameters and associated data in a structured manner. By logging this information, users can maintain a record of the processes and configurations used for each run, enabling reproducibility and comparison of results across different executions.
-
 # Log Database Utilities
 
 The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
 
-## Functionality
+- `--print_analysis_log_data`: 
+  - Retrieves and prints information related to an analysis based on the analysis ID provided (ulid).
 
-1. **Print Analysis Log Data**
-   - Retrieves and prints information related to an analysis based on the analysis ID provided (ulid).
-   - Command: `logdb -an ANALYSIS_ULID`
+- `--print_vcf_log_data`: 
+  - Retrieves and prints information related to a Variant Call Format (VCF) based on the VCF ID or core ID provided (ulid).
 
-2. **Print VCF Log Data**
-   - Retrieves and prints information related to a Variant Call Format (VCF) based on the VCF ID or core ID provided (ulid).
-   - Command: `logdb -vcf VCF_ULID`
+- `--get_line_name_data`: 
+  - Retrieves all entries related to a specific line name and returns the results as a list.
 
-3. **Get Line Name Data**
-   - Retrieves all entries related to a specific line name and returns the results as a list.
-   - Command: `logdb -name LINE_NAME`
+- `--print_line_name_data`: 
+  - Prints all entries related to a specific line name, including both VCF data and Analysis data.
 
-4. **Print Line Name Data**
-   - Prints all entries related to a specific line name, including both VCF data and Analysis data.
-   - Command: `logdb -name LINE_NAME`
+- `--print_core_id_data`: 
+  - Retrieves and prints information related to a core ID, including core log data, VCF data, and Analysis data linked to that core ID.
 
-5. **Print Core ID Data**
-   - Retrieves and prints information related to a core ID, including core log data, VCF data, and Analysis data linked to that core ID.
-   - Command: `logdb -core CORE_ULID`
-
-## Logging Functions
-
-1. **Create Tables**
-   - Creates the necessary tables in the log database to store core, VCF, and analysis log data.
-
-2. **Add Database Record**
-   - Adds records to the log database based on the type of log (core, VCF, or analysis) and the provided parameters.
-
-## Usage
-
-Users can utilize the logdbutils functions to store, retrieve, and analyze runtime parameters and associated data in a structured manner. By logging this information, users can maintain a record of the processes and configurations used for each run, enabling reproducibility and comparison of results across different executions.
 
 # Reference Database Manager
 
@@ -483,6 +392,58 @@ reference_genome_source = ftp://ftp.ensemblgenomes.org/pub/plants/release-32/fas
 snpeff_species_db = Solanum_lycopersicum
 snpmask_path = Solanum_lycopersicum_SL2.snpmask.vcf
 snpmask_url = ftp://ftp.ensemblgenomes.org/pub/plants/release-32/vcf/solanum_lycopersicum/solanum_lycopersicum.vcf.gz
+```
 
+# Footnotes
 
+## Null Model Simulation
+Null model generation begins by retrieving position and read depths in the wild type and mutant bulk for each chromosome. 
+
+The reference and alternative reads within each chromosome are then resampled, to represent random segregation of the two 
+bulks. This process breaks the link between phenotype and genotype. for each position, Coverage (C) is calculated, which is simply
+the sum of the reference and alternative reads at each position.  
+
+A new set of reference read depths are produced from the locus-wise posterior distributions, which is produced by the following 
+process.
+
+1. **Binomial Distribution for Reference Reads:**
+
+   Where R represents the count of reference allele occurrences in a locus in each bulk with coverage (C) reads, 
+   and θ is *p*, the reference allele frequency in each bulk. 
+   
+   The distribution of reference reads (R) follows a binomial distribution with parameters C and *p*, where:
+   
+   R ~Binomial(C, *p*)
+
+2. **Conjugate Prior Beta Distribution for Allele Frequencies:**
+
+   The reference allele frequencies at each position are modeled using a beta distribution, serving as a conjugate prior for the binomial likelihood.
+
+   If θ represents the reference allele frequency at each position, then θ follows a beta distribution with parameters α and β, where:
+   
+   *p* ~ Beta(α, β)
+   
+   Here, α and β are shape parameters of the beta distribution, characterizing the prior beliefs about the reference allele frequency.
+
+3. **Update of Allele Frequencies with Bootstrapped Values:**  
+
+   A conservative prior distribution of allele frequencies (Beta(2, 2)) undergoes an update from the bootstrapped data. The reference allele frequency *p* is then sampled from the posterior, 
+   
+   The product of *p* and coverage C produces the simulated reference read depth. The alternative read is then produced:
+  
+   simulated alternative read depth = simulated reference read depth - C
+
+4. **Calculate Features from the simulated data**  
+   G-statistics and delta-snp calculations are performed on the simulated arrays  
+
+***Smoothing of values***   
+   The Null model values are smoothed in each iteration of bootstrapping, producing a distribution of potenial signals given the data. 
+   From many interations, locus-specific null models are produced, which effectivly model the influence of near neighbors on the 
+   smoothed values. 
+
+***Unsmoothed values***  
+  The Null model for unsmoothed values in each iteration are simply aggregated on
+  a chromosome-by-chromosme basis, and used to produce percentile values for each
+  value in the observed data. This allows simple filtering of those values over
+  the critical cutoff. 
 
