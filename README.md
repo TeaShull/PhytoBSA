@@ -172,15 +172,17 @@ This command line argument allows the running of analysis independently oh the a
 This can make the fine tuning of analysis easier. 
 
 ***Required***  
+<small>
 If running analysis separately, these variables can't be set using the config. 
 | Command              | ab    | Description                                                                                      | Type |
 | -------------------- | ----- | ------------------------------------------------------------------------------------------------ | ---- |
 | `--name`             | `-n`  | name of the line which will be used to name output files.                                        | str  |
 | `--vcf_table_path`   | `-vt` | path to the VCF table. Can be hard-coded, or a file in data/input or data/output.                | str  |
 | `--segregation_type` | `-st` | Specify the segregation type. 'Recessive (R)', 'Dominant (D)' or Quantitative Trait Locus (QTL). | str  |
-
+<small>
   
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
+<small>
 | Command                 | ab      | Description                                                                               | Type  |
 | ----------------------- | ------- | ----------------------------------------------------------------------------------------- | ----- |
 | `--reference_name`      | `-r`    | Name of the reference genome. This name maps to a reference genome.                       | str   |
@@ -192,22 +194,23 @@ If running analysis separately, these variables can't be set using the config.
 | `--ratio_cutoff`        | `-rco`  | Used to filter results based on a ratio cutoff number.                                    | float |
 | `--mask_snps`           | `-msk`  | Mask known SNPs in analysis.                                                              | bool  |
 | `--critical_cutoff`     | `-cc`   | Set the critical cutoff value for significant polymorphism.                               | float |
-
+<small>
 
 
 ## ./phytobsa vcf_generator  
 This command allows the generation of VCF files independently of running the analysis. 
 As with all other commands, you can set the default settings using ./phytobsa settings
 ***Required***  
+<small>
 | Command           | ab    | Description                                                                                                           | Type |
 | ----------------- | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
 | `--name, -n`      | `-n`  | Specify the name which will be used to name output files.                                                             | str  |
 | `--wt_input, -wt` | `-wt` | Specify the path(s) to the wild-type bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2" | str  |
 | `--mu_input, -mu` | `-mu` | Specify the path(s) to the mutant bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2"    | str  |
-
+<small>
 
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
-
+<small>
 | Command                       | ab     | Description                                                                                         | Type |
 | ----------------------------- | ------ | --------------------------------------------------------------------------------------------------- | ---- |
 | `--reference_name`            | `-r`   | Name of the reference genome. This name maps to a reference genome, SnpEff library, and a snp mask. | str  |
@@ -215,7 +218,7 @@ As with all other commands, you can set the default settings using ./phytobsa se
 | `--cleanup`                   | `-c`   | Cleanup intermediate files?                                                                         | bool |
 | `--cleanup_filetypes`         | `-cft` | Filetypes to clean out after VCF generation is complete. Example: ['.tmp', '*.metrics']             | list |
 | `--omit_chrs_patterns`        | `-ocp` | Header patterns to omit from reference chromosomes. Removes unneeded reference sequences.           | list |
-
+<small>
 
 
 # Default Settings  
@@ -226,12 +229,13 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 
 ## Set General Defaults  
 These settings are automatically applied if not explictly passed in any mode. 
+<small>
 | Command                | Description                                                                          | Possible Values                                       |
 | ---------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | `--set_reference_name` | Set the name of the reference genome.                                                | string [see refdb info](#reference-database-manager)) |
 | `--set_data_dir`       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
 | `--set_threads_limit`  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
-
+<small>
 
 
 ## Set VCF Generation Defaults  
@@ -251,7 +255,7 @@ These settings are automatically applied if not explicitly provided in automatic
 
 ## Set BSA Defaults  
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.  
-
+<small>
 | Command                     | Description                          | Possible Values                      |
 | --------------------------- | ------------------------------------ | ------------------------------------ |
 | `--set_loess_span`          | Set default Loess span.              | Float between 0 and 1                |
@@ -262,21 +266,21 @@ These settings are automatically applied if not explicitly passed to automatic o
 | `--set_ratio_cutoff`        | Set default ratio cutoff bound.      | Float -1 and 1 (0.1-0.3 recommended) |
 | `--set_mask_snps`           | Set default mask SNPs boolean value. | True False                           |
 | `--set_critical_cutoff`     | Set default critical cutoff value.   | Float (0.95-0.99 recommended)        |
-
+<small>
 
 Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
 
 # Log Database Utilities
 
 The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
-
+<small>
 | Command                     | Description                                                                    | Possible Values |
 | --------------------------- | ------------------------------------------------------------------------------ | --------------- |
 | `--print_analysis_log_data` | prints info related to an analysis based on analysis ULID (ulid).              | analysis ULID   |
 | `--print_vcf_log_data`      | prints info related to a VCF process based on ULID.                            | vcf ULID        |
 | `--print_line_name_data`    | Prints info related to a line name, including both VCF data and Analysis data. | line name       |
 | `--print_core_id_data`      | Prints info related to a core ID based on core ULID.                           | core ULID       |
-
+<small>
 # Reference Database Manager
 
 To use the Reference Database Manager, follow these steps:
