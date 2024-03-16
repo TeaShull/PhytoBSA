@@ -1,7 +1,7 @@
 
 # PhytoBSA
-PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. PhytoBSA has been extensivly tested in Arabidopsis EMS screen populations, and lightly
-tested on Rice and Tomoto QTL analysis. 
+PhytoBSA is a Python program designed for analyzing and visualizing bulk segregant analysis (BSA) data. It takes sequenced segregant bulks as input and outputs a list of likely causal polymorphisms underlying the phenotypic segregation of the two bulks. PhytoBSA has been extensively tested in Arabidopsis EMS screen populations, and lightly
+tested on Rice and Tomato QTL analysis. 
 
 ## Experimental Design of BSA
 For a simple explanation of the experimental design of BSA, refer to [this article](https://doi.org/10.1104/pp.17.00415).
@@ -18,7 +18,7 @@ For a simple explanation of the experimental design of BSA, refer to [this artic
   - SNP masking allows the inclusion of files that contain lists of background SNPS in VCF format, so that known snps are excluded from analysis. 
     - This feature is particularly useful if your lines are divergent from the reference genome. 
 
-- Paralell Haplotype Calling
+- Parallel Haplotype Calling
   - if activated, Haplotypes can be called on chunks of chromosomes, scaled to the CPU resources available. This dramatically increases runtime efficiency during this
     step of VCF generation  
 
@@ -68,6 +68,12 @@ Finally, a list of the likely candidates will be produced, filtered based on whe
 
 
 # Table of Contents
+- [PhytoBSA](#phytobsa)
+  - [Experimental Design of BSA](#experimental-design-of-bsa)
+  - [Key Features](#key-features)
+  - [Output](#output)
+    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
+- [Table of Contents](#table-of-contents)
 - [Installation](#installation)
   - [Environment installation](#environment-installation)
   - [Setting up the Data Directory](#setting-up-the-data-directory)
@@ -79,22 +85,15 @@ Finally, a list of the likely candidates will be produced, filtered based on whe
   - [Set General Defaults](#set-general-defaults)
   - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
   - [Set BSA Defaults](#set-bsa-defaults)
-  - [Log Database Utilities](#log-database-utilities)
-  - [Functionality](#functionality)
-  - [Logging Functions](#logging-functions)
-  - [Usage](#usage)
-- [Log Database Utilities](#log-database-utilities-1)
-  - [Functionality](#functionality-1)
-  - [Logging Functions](#logging-functions-1)
-  - [Usage](#usage-1)
+- [Log Database Utilities](#log-database-utilities)
 - [Reference Database Manager](#reference-database-manager)
   - [Reference Form Configuration](#reference-form-configuration)
--[Footnotes](#footnotes)
-  -[Null Model Simulation](#null-model-simulation)
+- [Footnotes](#footnotes)
+  - [Null Model Simulation](#null-model-simulation)
 
 # Installation
 ## Environment installation
-Install and activate the conda environment from the environment.yml file in the ./conda folder. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda's environment solver is comparitivly very inefficient (conda sometimes freezes trying to resolve this environment).
+Install and activate the conda environment from the environment.yml file in the ./conda folder. I highly recommend using mamba (https://mamba.readthedocs.io) to install this environment, as the environment is fairly complex and conda's environment solver is comparatively very inefficient (conda sometimes freezes trying to resolve this environment).
 
 `mamba env create --f ./conda/environment.yml`
 
@@ -119,7 +118,7 @@ To set up the data directory:
 
 Replace `<path-to-directory>` with the desired path for the data directory.
 
-Upon first execultion of the program, the specified data directory 
+Upon first execution of the program, the specified data directory 
   will be installed initialized.
 
 Once the data directory is set up, the program will be able to access the required files and directories smoothly.
@@ -149,7 +148,7 @@ The files must be formatted as follows:
 
 ***Reference Configuration***  
 Reference name must be configured. 
-Currently, there are a few preconfigured references that will autopopulate genomes, snpmasks and the appropriate SnpEff library
+Currently, there are a few pre-configured references that will auto-populate genomes, snpmasks and the appropriate SnpEff library
 - Arabidopsis_thaliana
 - Zea_mays
 - Oryza_sativa_Japanica
@@ -169,11 +168,11 @@ Another option is to directly modify settings.ini
 
 
 ## ./phytobsa analysis 
-This command line argument allows the running of analysis independantly oh the automatic workflow.
+This command line argument allows the running of analysis independently oh the automatic workflow.
 This can make the fine tuning of analysis easier. 
 
 ***Required***  
-If running analysis seperately, these variables can't be set using the config. 
+If running analysis separately, these variables can't be set using the config. 
 - `-n, --name`: 
   - Specify the name of the line you wish to analyze, which will be used to name output files.
 
@@ -182,7 +181,7 @@ If running analysis seperately, these variables can't be set using the config.
 
 - `-st, --segregation_type`: 
   - Specify the segregation type as 'Recessive (R)', 'Dominant (D)' or Quantitative Trait Locus(QTL).
-  - Technically not required, but highly recomended as this is a useful filtering step
+  - Technically not required, but highly recommended as this is a useful filtering step
   
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
 - `-r`, `--reference_name`: 
@@ -226,7 +225,7 @@ If running analysis seperately, these variables can't be set using the config.
   - Type: str
 
 ## ./phytobsa vcf_generator  
-This command allows the generation of VCF files independantly of running the analysis. 
+This command allows the generation of VCF files independently of running the analysis. 
 As with all other commands, you can set the default settings using ./phytobsa settings
 ***Required***  
 - `-n, --name`: 
@@ -300,29 +299,17 @@ These settings are automatically applied if not explicitly provided in automatic
 ## Set BSA Defaults  
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.  
 
-- `--set_loess_span`: 
-  - Set default Loess span. (Float between 0 and 1)
+| Command                 | Description                                | Possible Values                                      |
+|-------------------------|--------------------------------------------|------------------------------------------------------|
+| `--set_loess_span`      | Set default Loess span.                    | Float between 0 and 1                                |
+| `--set_shuffle_iterations` | Set default shuffle iterations.          | Integer, ideally between 100 and 10000               |
+| `--set_smooth_edges_bounds` | Set default smooth edges bounds.         | Integer, determines correction for loess edge bias |
+| `--set_filter_indels`     | Set default filter indels.               | True or False                                        |
+| `--set_filter_ems`        | Set default filter EMS.                  | True or False                                        |
+| `--set_ratio_cutoff`      | Set default ratio cutoff bound.          | Integer between -1 and 1 (Between 0 and 0.3 is best. 0.1 performs well) |
+| `--set_mask_snps`         | Set default mask SNPs boolean value.     | True or False                                        |
+| `--set_critical_cutoff`   | Set default critical cutoff value.       | Float between 0 and 1 (0.95 or 0.99 work well)       |
 
-- `--set_shuffle_iterations`: 
-  - Set default shuffle iterations. (int, ideally between 100 and 10000)
-
-- `--set_smooth_edges_bounds`: 
-  - Set default smooth edges bounds. (int, determines correction for loess edge bias)
-
-- `--set_filter_indels`: 
-  - Set default filter indels. (True or False)
-
-- `--set_filter_ems`: 
-  - Set default filter EMS. (True or False)
-
-- `--set_ratio_cutoff`: 
-  - Set default ratio cutoff bound. (int between -1 and 1, sets lower bound of cutoff for the ratio value. Between 0 and 0.3 is best. 0.1 performs well  )
-
-- `--set_mask_snps`: 
-  - Set default mask SNPs boolean value. (True or False)
-
-- `--set_critical_cutoff`: 
-  - Set default critical cutoff value. (float between 0-1. 0.95 or 0.99 work well)
 
 Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
 
@@ -357,7 +344,7 @@ To use the Reference Database Manager, follow these steps:
 3. **Command Options**:
    - `create`: Creates a new entry in the reference database using the information provided in the `ref_form.ini` configuration file.
    - `delete`: Deletes an existing entry from the reference database. Requires specifying the `reference_name` of the entry to delete.
-   - `list`: Lists all entries currently stored in the reference database. Optionally, abbreviates long URLs for better readability.
+   - `list`: Lists all entries currently stored in the reference database. Optionally, `-ab` abbreviates long URLs for better readability.
 
 
 ## Reference Form Configuration
@@ -400,8 +387,7 @@ snpmask_url = ftp://ftp.ensemblgenomes.org/pub/plants/release-32/vcf/solanum_lyc
 Null model generation begins by retrieving position and read depths in the wild type and mutant bulk for each chromosome. 
 
 The reference and alternative reads within each chromosome are then resampled, to represent random segregation of the two 
-bulks. This process breaks the link between phenotype and genotype. for each position, Coverage (C) is calculated, which is simply
-the sum of the reference and alternative reads at each position.  
+bulks. This process breaks the link between phenotype and genotype. for each position, Coverage (C) is calculated, which is the sum of the reference and alternative reads at each position.  
 
 A new set of reference read depths are produced from the locus-wise posterior distributions, which is produced by the following 
 process.
@@ -437,13 +423,13 @@ process.
    G-statistics and delta-snp calculations are performed on the simulated arrays  
 
 ***Smoothing of values***   
-   The Null model values are smoothed in each iteration of bootstrapping, producing a distribution of potenial signals given the data. 
-   From many interations, locus-specific null models are produced, which effectivly model the influence of near neighbors on the 
+   The Null model values are smoothed in each iteration of bootstrapping, producing a distribution of potential signals given the data. 
+   From many iterations, locus-specific null models are produced, which effectively model the influence of near neighbors on the 
    smoothed values. 
 
 ***Unsmoothed values***  
   The Null model for unsmoothed values in each iteration are simply aggregated on
-  a chromosome-by-chromosme basis, and used to produce percentile values for each
+  a chromosome-by-chromosome basis, and used to produce percentile values for each
   value in the observed data. This allows simple filtering of those values over
   the critical cutoff. 
 
