@@ -107,6 +107,7 @@ def main():
         if args.core_ulid_log:
             logdb_utils.print_core_ulid_data(args.core_ulid_log)
 
+
 def _setup_vcf_variables(core_log, line, args):
     '''
     Setup VCFGenVariables class, which holds variables needed to run vcf_gen()
