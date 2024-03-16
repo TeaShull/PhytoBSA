@@ -173,66 +173,49 @@ This can make the fine tuning of analysis easier.
 
 ***Required***  
 If running analysis separately, these variables can't be set using the config. 
-- `-n, --name`: 
-  - Specify the name of the line you wish to analyze, which will be used to name output files.
+| Command              | ab    | Description                                                                                      | Type |
+| -------------------- | ----- | ------------------------------------------------------------------------------------------------ | ---- |
+| `--name`             | `-n`  | name of the line which will be used to name output files.                                        | str  |
+| `--vcf_table_path`   | `-vt` | path to the VCF table. Can be hard-coded, or a file in data/input or data/output.                | str  |
+| `--segregation_type` | `-st` | Specify the segregation type. 'Recessive (R)', 'Dominant (D)' or Quantitative Trait Locus (QTL). | str  |
 
-- `-vt, --vcf_table_path`: 
-  - Provide the path to the VCF table you wish to analyze. Can be hard coded, or just the name of a file in data/input or data/output
-
-- `-st, --segregation_type`: 
-  - Specify the segregation type as 'Recessive (R)', 'Dominant (D)' or Quantitative Trait Locus(QTL).
-  - Technically not required, but highly recommended as this is a useful filtering step
   
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
-| Command                        | Description                                                                                                                     | Type  |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| `-r`, `--reference_name`       | Name of the reference genome. This name maps to a reference genome)                                                             | str  |
-| `-ls`, `--loess_span`          | Influences smoothing parameters.                                                                                                | float |
-| `-si`, `--shuffle_iterations`  | Iterations of bootstrapping during empirical cutoff calculations. Below 1000 can yield inconsistent results.                    | int   |
-| `-sb`, `--smooth_edges_bounds` | Number of mirrored datapoints at chromosome edges to correct for loess edge bias. Increase if edge bias seems high.             | int   |
-| `-fin`, `--filter_indels`      | Filter out insertion-deletion mutations.                                                                                        | str   |
-| `-fems`, `--filter_ems`        | Filter results to only include mutations likely to arise from EMS treatment.                                                    | str   |
-| `-rco`, `--ratio_cutoff`       | Used to filter results based on a ratio cutoff number. Increase to 0.2 or 0.3 if there is a lot of noise at lower ratio bounds. | float |
-| `-msk`, `--mask_snps`          | Set to true if you have a snpmask file configured and would like to mask known SNPs in your analysis.                           | bool  |
-| `-cc`, `--critical_cutoff`     | Set the critical cutoff value for what is considered a significant polymorphism.                                                | float |
-| `-m`, `--method`               | Set the method of generating the null hypothesis. Either simulate or bootstrap.                                                 | str   |
+| Command                 | ab      | Description                                                                               | Type  |
+| ----------------------- | ------- | ----------------------------------------------------------------------------------------- | ----- |
+| `--reference_name`      | `-r`    | Name of the reference genome. This name maps to a reference genome.                       | str   |
+| `--loess_span`          | `-ls`   | Smoothing parameter.                                                                      | float |
+| `--shuffle_iterations`  | `-si`   | Iterations of bootstrapping during empirical cutoff calculations.                         | int   |
+| `--smooth_edges_bounds` | `-sb`   | Mirrored data at chrom edges to correct for loess edge bias. Increase if bias seems high. | int   |
+| `--filter_indels`       | `-fin`  | Filter out insertion-deletion mutations.                                                  | str   |
+| `--filter_ems`          | `-fems` | Filter results to only include mutations likely to arise from EMS treatment.              | str   |
+| `--ratio_cutoff`        | `-rco`  | Used to filter results based on a ratio cutoff number.                                    | float |
+| `--mask_snps`           | `-msk`  | Mask known SNPs in analysis.                                                              | bool  |
+| `--critical_cutoff`     | `-cc`   | Set the critical cutoff value for significant polymorphism.                               | float |
+
+
 
 ## ./phytobsa vcf_generator  
 This command allows the generation of VCF files independently of running the analysis. 
 As with all other commands, you can set the default settings using ./phytobsa settings
 ***Required***  
-- `-n, --name`: 
-  - Specify the name of the line you wish to generate a VCF file for, which will be used to name output files.
-  
-- `-wt, --wt_input`: 
-  - Specify the path to the wild-type bulk fasta file(s).
-  - Files can be hard coded paths are just files that can be found in data/input
+| Command           | ab    | Description                                                                                                           | Type |
+| ----------------- | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
+| `--name, -n`      | `-n`  | Specify the name which will be used to name output files.                                                             | str  |
+| `--wt_input, -wt` | `-wt` | Specify the path(s) to the wild-type bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2" | str  |
+| `--mu_input, -mu` | `-mu` | Specify the path(s) to the mutant bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2"    | str  |
 
-- `-mu, --mu_input`: 
-  - Specify the path to the mutant bulk fasta file(s).
-  - Files can be hard coded paths are just files that can be found in data/input
 
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
 
-- `-r`, `--reference_name`: 
-  - Name of the reference genome. This name maps to a reference genome, SnpEff library and a snp mask.
-  - New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
+| Command                       | ab     | Description                                                                                         | Type |
+| ----------------------------- | ------ | --------------------------------------------------------------------------------------------------- | ---- |
+| `--reference_name`            | `-r`   | Name of the reference genome. This name maps to a reference genome, SnpEff library, and a snp mask. | str  |
+| `--call_variants_in_parallel` | `-p`   | Run GATK haplotype caller in parallel.                                                              | bool |
+| `--cleanup`                   | `-c`   | Cleanup intermediate files?                                                                         | bool |
+| `--cleanup_filetypes`         | `-cft` | Filetypes to clean out after VCF generation is complete. Example: ['.tmp', '*.metrics']             | list |
+| `--omit_chrs_patterns`        | `-ocp` | Header patterns to omit from reference chromosomes. Removes unneeded reference sequences.           | list |
 
-- `-p`, `--call_variants_in_parallel`: 
-  - Run GATK haplotype caller in parallel.
-  - Type: bool
-
-- `-c`, `--cleanup`: 
-  - If true, intermediate files will be deleted. False for troubleshooting and archiving files.
-  - Type: bool
-
-- `-cft`, `--cleanup_filetypes`: 
-  - Filetypes to clean out after VCF generation is complete. Format should be ['file_suffix', exc]. Example: ['.tmp', '*.metrics']
-  - Type: list
-
-- `-ocp`, `--omit_chrs_patterns`: 
-  - Header patterns to omit from reference chromosomes. Useful for removing >mt (mitochondrial) and other unneeded reference sequences.
-  - Type: list
 
 
 # Default Settings  
@@ -248,6 +231,7 @@ These settings are automatically applied if not explictly passed in any mode.
 | `--set_reference_name` | Set the name of the reference genome.                                                | string [see refdb info](#reference-database-manager)) |
 | `--set_data_dir`       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
 | `--set_threads_limit`  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
+
 
 
 ## Set VCF Generation Defaults  
