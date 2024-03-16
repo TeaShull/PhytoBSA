@@ -184,45 +184,18 @@ If running analysis separately, these variables can't be set using the config.
   - Technically not required, but highly recommended as this is a useful filtering step
   
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
-- `-r`, `--reference_name`: 
-  - Name of the reference genome. This name maps to a reference genome, SnpEff library and a snp mask.
-  - New reference names can be added to the references database using the ./refdb_manager (see [Reference Database Manager](#reference-database-manager) section for more details)
-
-- `-ls`, `--loess_span`: 
-  - Influences smoothing parameters.
-  - Type: float
-
-- `-si`, `--shuffle_iterations`: 
-  - Iterations of bootstrapping during empirical cutoff calculations. Below 1000 can yield inconsistent results.
-  - Type: int
-
-- `-sb`, `--smooth_edges_bounds`: 
-  - Number of mirrored datapoints at chromosome edges to correct for loess edge bias. Increase if edge bias seems high.
-  - Type: int
-
-- `-fin`, `--filter_indels`: 
-  - Filter out insertion-deletion mutations.
-  - Type: str
-
-- `-fems`, `--filter_ems`: 
-  - Filter results to only include mutations likely to arise from EMS treatment.
-  - Type: str
-
-- `-rco`, `--ratio_cutoff`: 
-  - Used to filter results based on a ratio cutoff number. Increase to 0.2 or 0.3 if there is a lot of noise at lower ratio bounds.
-  - Type: float
-
-- `-msk`, `--mask_snps`: 
-  - Set to true if you have a snpmask file configured and would like to mask known SNPs in your analysis.
-  - Type: bool
-
-- `-cc`, `--critical_cutoff`: 
-  - Set the critical cutoff value for what is considered a significant polymorphism.
-  - Type: float
-
-- `-m`, `--method`: 
-  - Set the method of generating the null hypothesis. Either simulate or bootstrap.
-  - Type: str
+| Command                        | Description                                                                                                                     | Type  |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `-r`, `--reference_name`       | Name of the reference genome. This name maps to a reference genome)                                                             | str  |
+| `-ls`, `--loess_span`          | Influences smoothing parameters.                                                                                                | float |
+| `-si`, `--shuffle_iterations`  | Iterations of bootstrapping during empirical cutoff calculations. Below 1000 can yield inconsistent results.                    | int   |
+| `-sb`, `--smooth_edges_bounds` | Number of mirrored datapoints at chromosome edges to correct for loess edge bias. Increase if edge bias seems high.             | int   |
+| `-fin`, `--filter_indels`      | Filter out insertion-deletion mutations.                                                                                        | str   |
+| `-fems`, `--filter_ems`        | Filter results to only include mutations likely to arise from EMS treatment.                                                    | str   |
+| `-rco`, `--ratio_cutoff`       | Used to filter results based on a ratio cutoff number. Increase to 0.2 or 0.3 if there is a lot of noise at lower ratio bounds. | float |
+| `-msk`, `--mask_snps`          | Set to true if you have a snpmask file configured and would like to mask known SNPs in your analysis.                           | bool  |
+| `-cc`, `--critical_cutoff`     | Set the critical cutoff value for what is considered a significant polymorphism.                                                | float |
+| `-m`, `--method`               | Set the method of generating the null hypothesis. Either simulate or bootstrap.                                                 | str   |
 
 ## ./phytobsa vcf_generator  
 This command allows the generation of VCF files independently of running the analysis. 
@@ -270,15 +243,11 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 
 ## Set General Defaults  
 These settings are automatically applied if not explictly passed in any mode. 
-
-- `--set_reference_name`: 
-  - Set the name of the reference genome.
-
-- `--set_data_dir`: 
-  - Set the data directory. This must be set for the program to run.
-
-- `--set_threads_limit`: 
-  - Set the threads limit for BSA and for VCF generation. If not set, threads will be detected, and threads -2 will be used.
+| Command                | Description                                                                          | Possible Values                                       |
+| ---------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| `--set_reference_name` | Set the name of the reference genome.                                                | string [see refdb info](#reference-database-manager)) |
+| `--set_data_dir`       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
+| `--set_threads_limit`  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
 
 
 ## Set VCF Generation Defaults  
@@ -299,16 +268,16 @@ These settings are automatically applied if not explicitly provided in automatic
 ## Set BSA Defaults  
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.  
 
-| Command                 | Description                                | Possible Values                                      |
-|-------------------------|--------------------------------------------|------------------------------------------------------|
-| `--set_loess_span`      | Set default Loess span.                    | Float between 0 and 1                                |
-| `--set_shuffle_iterations` | Set default shuffle iterations.          | Integer, ideally between 100 and 10000               |
-| `--set_smooth_edges_bounds` | Set default smooth edges bounds.         | Integer, determines correction for loess edge bias |
-| `--set_filter_indels`     | Set default filter indels.               | True or False                                        |
-| `--set_filter_ems`        | Set default filter EMS.                  | True or False                                        |
-| `--set_ratio_cutoff`      | Set default ratio cutoff bound.          | Integer between -1 and 1 (Between 0 and 0.3 is best. 0.1 performs well) |
-| `--set_mask_snps`         | Set default mask SNPs boolean value.     | True or False                                        |
-| `--set_critical_cutoff`   | Set default critical cutoff value.       | Float between 0 and 1 (0.95 or 0.99 work well)       |
+| Command                     | Description                          | Possible Values                      |
+| --------------------------- | ------------------------------------ | ------------------------------------ |
+| `--set_loess_span`          | Set default Loess span.              | Float between 0 and 1                |
+| `--set_shuffle_iterations`  | Set default shuffle iterations.      | Int (100-10000 recommended)          |
+| `--set_smooth_edges_bounds` | Set default smooth edges bounds.     | int                                  |
+| `--set_filter_indels`       | Set default filter indels.           | True False                           |
+| `--set_filter_ems`          | Set default filter EMS.              | True False                           |
+| `--set_ratio_cutoff`        | Set default ratio cutoff bound.      | Float -1 and 1 (0.1-0.3 recommended) |
+| `--set_mask_snps`           | Set default mask SNPs boolean value. | True False                           |
+| `--set_critical_cutoff`     | Set default critical cutoff value.   | Float (0.95-0.99 recommended)        |
 
 
 Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
@@ -317,21 +286,12 @@ Users can apply these default settings using the `phytobsa settings` command wit
 
 The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
 
-- `--print_analysis_log_data`: 
-  - Retrieves and prints information related to an analysis based on the analysis ID provided (ulid).
-
-- `--print_vcf_log_data`: 
-  - Retrieves and prints information related to a Variant Call Format (VCF) based on the VCF ID or core ID provided (ulid).
-
-- `--get_line_name_data`: 
-  - Retrieves all entries related to a specific line name and returns the results as a list.
-
-- `--print_line_name_data`: 
-  - Prints all entries related to a specific line name, including both VCF data and Analysis data.
-
-- `--print_core_id_data`: 
-  - Retrieves and prints information related to a core ID, including core log data, VCF data, and Analysis data linked to that core ID.
-
+| Command                     | Description                                                                    | Possible Values |
+| --------------------------- | ------------------------------------------------------------------------------ | --------------- |
+| `--print_analysis_log_data` | prints info related to an analysis based on analysis ULID (ulid).              | analysis ULID   |
+| `--print_vcf_log_data`      | prints info related to a VCF process based on ULID.                            | vcf ULID        |
+| `--print_line_name_data`    | Prints info related to a line name, including both VCF data and Analysis data. | line name       |
+| `--print_core_id_data`      | Prints info related to a core ID based on core ULID.                           | core ULID       |
 
 # Reference Database Manager
 
