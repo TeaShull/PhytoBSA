@@ -193,7 +193,7 @@ If running analysis separately, these variables can't be set using the config.
 
 ## ./phytobsa vcf_generator  
 This command allows the generation of VCF files independently of running the analysis. 
-As with all other commands, you can set the default settings using ./phytobsa settings
+As with all other commands, you can set the default settings using ./phytobsa settings  
 ***Required***  
 
 | :Command:      | ab    | Description                                                                                                           | Type |
