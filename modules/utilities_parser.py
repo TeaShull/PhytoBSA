@@ -14,21 +14,35 @@ class ArgumentParser:
         self.config.read(self.config_ini)
 
         if self.args.command == 'settings':
-            print('Applying settings...')
-            self.apply_settings_to_config()
-
-        self.apply_defaults_from_config('GENERAL')
+            if not any(vars(self.args).values()):
+                parser.print_help()
+            elif self.args.list:
+                self.print_settings_from_config()
+            else:
+                print('Applying settings...')
+                self.apply_settings_to_config()
         
         if self.args.automatic:
+            self.apply_defaults_from_config('GENERAL')
             self.apply_defaults_from_config('VCF')
             self.apply_defaults_from_config('BSA')
         
         elif self.args.command == 'vcf_generator':
+            self.apply_defaults_from_config('GENERAL')
             self.apply_defaults_from_config('VCF')
         
         elif self.args.command == 'analysis':
+            self.apply_defaults_from_config('GENERAL')
             self.apply_defaults_from_config('BSA')
- 
+
+    def print_settings_from_config(self):
+        for section in self.config.sections():
+            print(f'[{section}]')
+            for key, value in self.config.items(section):
+                print(f'{key} = {value}')
+            print(" ")
+        quit()
+
     def apply_settings_to_config(self):
         for arg in vars(self.args):
             if arg.startswith('set_') and getattr(self.args, arg) is not None:
@@ -87,7 +101,7 @@ class ArgumentParser:
 
         subparsers = main_parser.add_subparsers(help='Sub-command help', dest='command')
         ## Analysis subparser
-        parser_analysis = subparsers.add_parser('analysis', help='Run PhytoBSA analysis seperately.')
+        parser_analysis = subparsers.add_parser('analysis', help='Run PhytoBSA analysis seperately.', add_help=True)
         ### REQUIRED
         parser_analysis.add_argument('-n', '--name', required=True, type=str, help='name of the line you wish to analyze. Will be used to name output files.')
         parser_analysis.add_argument('-vt', '--vcf_table_path', required=True, type=str, help='path to the vcf table you wish to analyze.')
@@ -97,7 +111,7 @@ class ArgumentParser:
         self.add_reference_name_argument(parser_analysis)
 
         ## VCF generation subparser
-        parser_vcf_gen = subparsers.add_parser('vcf_generator', help='Run PhytoBSA VCF Generator seperately')
+        parser_vcf_gen = subparsers.add_parser('vcf_generator', help='Run PhytoBSA VCF Generator seperately',add_help=True)
         ### REQUIRED
         parser_vcf_gen.add_argument('-n', '--name', required=True, type=str, help='name of the line you are generating a VCF file for. Will be used to name output files.')
         parser_vcf_gen.add_argument('-wt', '--wt_input', required=True, default=None, type=str, help='Wild-type bulk fasta file(s)')
@@ -107,17 +121,19 @@ class ArgumentParser:
         self.add_reference_name_argument(parser_vcf_gen)
 
         ## Log database subparser
-        parser_log_db = subparsers.add_parser('logdb', help='Gather log information from log database')
+        parser_log_db = subparsers.add_parser('logdb', help='Gather log information from log database', add_help=True)
         parser_log_db.add_argument('-vcf', "--vcf_ulid_log", default = None, type = str, help="Retrieve vcf log information based on vcf ulid input")
         parser_log_db.add_argument('-an', "--analysis_ulid_log", default = None, type = str, help="Retrieve analysis log information based on analysis ulid input")
         parser_log_db.add_argument('-name', "--line_name_log", default = None, type = str, help="Retrieve all information associated with the provided line name. ")    
         parser_log_db.add_argument('-core', '--core_ulid_log', default = None, type = str, help="Retrieve all information associated with the provided core log ulid")
         
         ## Settings subparser
-        parser_settings = subparsers.add_parser('settings', help='Update default settings.')
+        parser_settings = subparsers.add_parser('settings', help='Update default settings.', add_help=True)
         parser_settings.add_argument('--set_data_dir', default=None, type=str, help='set Data directory. This must be set for program to run')
         parser_settings.add_argument('--set_threads_limit', default=None, type=int, help="Set the threads limit for BSA and for VCF generation. If not set, threads will be detected and threads -2 will be used. ")
         parser_settings.add_argument('--set_reference_name', default=None, required=False, type=str, help='Name of the reference genome')
+        parser_settings.add_argument('--list', default=False, action='store_true', help='List settings')
+        
         #vcf_gen default run settings. 
         vcf_settings = parser_settings.add_argument_group('VCF generation default settings' 'These settings will be automatically applied if not explicity provided in automatic or VCF generation mode')
         vcf_settings.add_argument('--set_call_variants_in_parallel', default=None, type=bool, help='Set default for running gatk haplotype caller in parallel')
