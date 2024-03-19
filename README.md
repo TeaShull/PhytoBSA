@@ -68,13 +68,19 @@ Finally, a list of the likely candidates will be produced, filtered based on whe
 
 
 # Table of Contents
+- [PhytoBSA](#phytobsa)
+  - [Experimental Design of BSA](#experimental-design-of-bsa)
+  - [Key Features](#key-features)
+  - [Output](#output)
+    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
+- [Table of Contents](#table-of-contents)
 - [Installation](#installation)
   - [Environment installation](#environment-installation)
   - [Setting up the Data Directory](#setting-up-the-data-directory)
 - [Commands](#commands)
   - [./phytobsa -a (Automatic mode)](#phytobsa--a-automatic-mode)
-  - [./phytobsa analysis](#phytobsa-analysis)
   - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
+  - [./phytobsa analysis](#phytobsa-analysis)
 - [Default Settings](#default-settings)
   - [Set General Defaults](#set-general-defaults)
   - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
@@ -160,6 +166,27 @@ For more information about configuring new genomes for the reference database ma
 For automatic mode to run well, configure your default settings using ./phytobsa settings (see [Default Settings](#default-settings) or ./phytobsa settings -h)
 Another option is to directly modify settings.ini
 
+## ./phytobsa vcf_generator  
+This command allows the generation of VCF files independently of running the analysis. 
+As with all other commands, you can set the default settings using ./phytobsa settings  
+***Required***  
+
+| :Command:      | ab    | Description                                                                                                           | Type |
+| ------------ | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
+| `--name`     | `-n`  | Specify the name which will be used to name output files.                                                             | str  |
+| `--wt_input` | `-wt` | Specify the path(s) to the wild-type bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2" | str  |
+| `--mu_input` | `-mu` | Specify the path(s) to the mutant bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2"    | str  |
+
+
+***Options*** (see [Default Settings](#default-settings) to alter default values)
+
+| Command                       | ab     | Description                                                                                         | Type |
+| :-----------------------------: | ------ | --------------------------------------------------------------------------------------------------- | ---- |
+| `--reference_name`            | `-r`   | Name of the reference genome. This name maps to a reference genome, SnpEff library, and a snp mask. | str  |
+| `--call_variants_in_parallel` | `-p`   | Run GATK haplotype caller in parallel.                                                              | bool |
+| `--cleanup`                   | `-c`   | Cleanup intermediate files?                                                                         | bool |
+| `--cleanup_filetypes`         | `-cft` | Filetypes to clean out after VCF generation is complete. Example: ['.tmp', '*.metrics']             | list |
+| `--omit_chrs_patterns`        | `-ocp` | Header patterns to omit from reference chromosomes. Removes unneeded reference sequences.           | list |
 
 ## ./phytobsa analysis 
 This command line argument allows the running of analysis independently oh the automatic workflow.
@@ -188,32 +215,6 @@ If running analysis separately, these variables can't be set using the config.
 | `--ratio_cutoff`        | `-rco`  | Used to filter results based on a ratio cutoff number.                       | float |
 | `--mask_snps`           | `-msk`  | Mask known SNPs in analysis.                                                 | bool  |
 | `--critical_cutoff`     | `-cc`   | Set the critical cutoff value for significant polymorphism.                  | float |
-
-
-
-## ./phytobsa vcf_generator  
-This command allows the generation of VCF files independently of running the analysis. 
-As with all other commands, you can set the default settings using ./phytobsa settings  
-***Required***  
-
-| :Command:      | ab    | Description                                                                                                           | Type |
-| ------------ | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
-| `--name`     | `-n`  | Specify the name which will be used to name output files.                                                             | str  |
-| `--wt_input` | `-wt` | Specify the path(s) to the wild-type bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2" | str  |
-| `--mu_input` | `-mu` | Specify the path(s) to the mutant bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2"    | str  |
-
-
-***Options*** (see [Default Settings](#default-settings) to alter default values)
-
-| Command                       | ab     | Description                                                                                         | Type |
-| :-----------------------------: | ------ | --------------------------------------------------------------------------------------------------- | ---- |
-| `--reference_name`            | `-r`   | Name of the reference genome. This name maps to a reference genome, SnpEff library, and a snp mask. | str  |
-| `--call_variants_in_parallel` | `-p`   | Run GATK haplotype caller in parallel.                                                              | bool |
-| `--cleanup`                   | `-c`   | Cleanup intermediate files?                                                                         | bool |
-| `--cleanup_filetypes`         | `-cft` | Filetypes to clean out after VCF generation is complete. Example: ['.tmp', '*.metrics']             | list |
-| `--omit_chrs_patterns`        | `-ocp` | Header patterns to omit from reference chromosomes. Removes unneeded reference sequences.           | list |
-
-
 
 # Default Settings  
 
