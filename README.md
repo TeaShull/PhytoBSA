@@ -75,11 +75,11 @@ Finally, a list of the likely candidates will be produced, filtered based on whe
   - [./phytobsa -a (Automatic mode)](#phytobsa--a-automatic-mode)
   - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
   - [./phytobsa analysis](#phytobsa-analysis)
-- [Default Settings](#./phytobsa-settings-(default-settings))
+- [./phytobsa settings (Default Settings)](#phytobsa-settings-default-settings)
   - [Set General Defaults](#set-general-defaults)
   - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
   - [Set BSA Defaults](#set-bsa-defaults)
-- [Log Database Utilities](#./phytobsa-logdb-(log-database-utilities))
+- [./phytobsa logdb (Log Database Utilities)](#phytobsa-logdb-log-database-utilities)
 - [Reference Database Manager](#reference-database-manager)
   - [Reference Form Configuration](#reference-form-configuration)
 - [Footnotes](#footnotes)
@@ -168,7 +168,7 @@ and a good general snpmask.
 For more information about configuring new genomes for the reference database manager: [Reference Database Manager](#reference-database-manager)
 
 ***Settings configuration***   
-For automatic mode to run well, configure your default settings using ./phytobsa settings (see [Default Settings](#./phytobsa-settings-(default-settings)) or ./phytobsa settings -h)
+For automatic mode to run well, configure your default settings using ./phytobsa settings (see [./phytobsa settings (Default Settings)](#phytobsa-settings-default-settings) or ./phytobsa settings -h)
 Another option is to directly modify settings.ini
 
 ## ./phytobsa vcf_generator  
@@ -183,7 +183,7 @@ As with all other commands, you can set the default settings using ./phytobsa se
 | `--mu_input` | `-mu` | Specify the path(s) to the mutant bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2"    | str  |
 
 
-***Options*** (see [Default Settings](#./phytobsa-settings-(default-settings)) to alter default values)
+***Options*** (see [./phytobsa settings (Default Settings)](#phytobsa-settings-default-settings) to alter default values)
 
 | Command                       | ab     | Description                                                                                         | Type |
 | :-----------------------------: | ------ | --------------------------------------------------------------------------------------------------- | ---- |
@@ -207,7 +207,7 @@ If running analysis separately, these variables can't be set using the config.
 | `--segregation_type` | `-st` | Specify the segregation type. (R), (D) or (QTL).  | str  |
 
   
-***Options*** (see [Default Settings](#./phytobsa-settings-(default-settings)) to alter default values)
+***Options*** (see [./phytobsa settings (Default Settings)](#phytobsa-settings-default-settings) to alter default values)
 
 | Command                 | ab      | Description                                                                  | Type  |
 | :-----------------------: | ------- | ---------------------------------------------------------------------------- | ----- |
@@ -233,7 +233,7 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 These settings are automatically applied if not explicitly passed in any mode.
 | Command                | Description                                                                          | Possible Values                                       |
 | :----------------------: | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `--set_reference_name` | Set the name of the reference genome.                                                | string [see refdb info](#reference-database-manager)) |
+| `--set_reference_name` | Set the name of the reference genome.                                                | string (see [Reference Database Manager](#reference-database-manager)(#reference-database-manager)) |
 | `--set_data_dir`       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
 | `--set_threads_limit`  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
 
