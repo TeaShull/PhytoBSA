@@ -182,7 +182,7 @@ If running analysis separately, these variables can't be set using the config.
 | `--reference_name`      | `-r`    | Name of the reference genome. This name maps to a reference genome.          | str   |
 | `--loess_span`          | `-ls`   | Smoothing parameter.                                                         | float |
 | `--shuffle_iterations`  | `-si`   | Iterations of bootstrapping during null model generation.                    | int   |
-| --smooth_edges_bounds | `-sb`   | Mirrored data at chrom edges to correct for loess edge bias.                 | int   |
+| `--smooth_edges_bounds` | `-sb`   | Mirrored data at chrom edges to correct for loess edge bias.                 | int   |
 | `--filter_indels`       | `-fin`  | Filter out insertion-deletion mutations.                                     | str   |
 | `--filter_ems`          | `-fems` | Filter results to only include mutations likely to arise from EMS treatment. | str   |
 | `--ratio_cutoff`        | `-rco`  | Used to filter results based on a ratio cutoff number.                       | float |
