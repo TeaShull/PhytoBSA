@@ -169,7 +169,7 @@ This can make the fine tuning of analysis easier.
 
 If running analysis separately, these variables can't be set using the config. 
 | Command              | ab    | Description                                       | Type |
-| -------------------- | ----- | ------------------------------------------------- | ---- |
+| :--------------------: | ----- | ------------------------------------------------- | ---- |
 | `--name`             | `-n`  | name of the line for output files.                | str  |
 | `--vcf_table_path`   | `-vt` | path to the VCF table or file in input or output. | str  |
 | `--segregation_type` | `-st` | Specify the segregation type. (R), (D) or (QTL).  | str  |
@@ -178,7 +178,7 @@ If running analysis separately, these variables can't be set using the config.
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
 
 | Command                 | ab      | Description                                                                  | Type  |
-| ----------------------- | ------- | ---------------------------------------------------------------------------- | ----- |
+| :-----------------------: | ------- | ---------------------------------------------------------------------------- | ----- |
 | `--reference_name`      | `-r`    | Name of the reference genome. This name maps to a reference genome.          | str   |
 | `--loess_span`          | `-ls`   | Smoothing parameter.                                                         | float |
 | `--shuffle_iterations`  | `-si`   | Iterations of bootstrapping during null model generation.                    | int   |
@@ -196,7 +196,7 @@ This command allows the generation of VCF files independently of running the ana
 As with all other commands, you can set the default settings using ./phytobsa settings
 ***Required***  
 
-| Command      | ab    | Description                                                                                                           | Type |
+| :Command:      | ab    | Description                                                                                                           | Type |
 | ------------ | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
 | `--name`     | `-n`  | Specify the name which will be used to name output files.                                                             | str  |
 | `--wt_input` | `-wt` | Specify the path(s) to the wild-type bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2" | str  |
@@ -206,7 +206,7 @@ As with all other commands, you can set the default settings using ./phytobsa se
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
 
 | Command                       | ab     | Description                                                                                         | Type |
-| ----------------------------- | ------ | --------------------------------------------------------------------------------------------------- | ---- |
+| :-----------------------------: | ------ | --------------------------------------------------------------------------------------------------- | ---- |
 | `--reference_name`            | `-r`   | Name of the reference genome. This name maps to a reference genome, SnpEff library, and a snp mask. | str  |
 | `--call_variants_in_parallel` | `-p`   | Run GATK haplotype caller in parallel.                                                              | bool |
 | `--cleanup`                   | `-c`   | Cleanup intermediate files?                                                                         | bool |
@@ -224,7 +224,7 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 ## Set General Defaults  
 These settings are automatically applied if not explicitly passed in any mode. 
 | Command                | Description                                                                          | Possible Values                                       |
-| ---------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| :----------------------: | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | `--set_reference_name` | Set the name of the reference genome.                                                | string [see refdb info](#reference-database-manager)) |
 | `--set_data_dir`       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
 | `--set_threads_limit`  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
@@ -235,7 +235,7 @@ These settings are automatically applied if not explicitly passed in any mode.
 These settings are automatically applied if not explicitly provided in automatic or VCF generation mode.
 
 | Command                           | Description                                                           | Possible Values |
-| --------------------------------- | --------------------------------------------------------------------- | --------------- |
+| :---------------------------------: | --------------------------------------------------------------------- | --------------- |
 | `--set_call_variants_in_parallel` | Set default for running GATK Haplotype Caller in parallel.            | True, False     |
 | `--set_cleanup`                   | Set default for cleanup. If true, intermediate files will be deleted. | True, False     |
 | `--set_cleanup_filetypes`         | Set default for cleanup file types.                                   | List of globs   |
@@ -245,7 +245,7 @@ These settings are automatically applied if not explicitly provided in automatic
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.  
 
 | Command                     | Description                          | Possible Values                      |
-| --------------------------- | ------------------------------------ | ------------------------------------ |
+| :---------------------------: | ------------------------------------ | ------------------------------------ |
 | `--set_loess_span`          | Set default Loess span.              | Float between 0 and 1                |
 | `--set_shuffle_iterations`  | Set default shuffle iterations.      | Int (100-10000 recommended)          |
 | `--set_smooth_edges_bounds` | Set default smooth edges bounds.     | int                                  |
