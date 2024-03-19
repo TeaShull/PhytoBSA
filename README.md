@@ -120,14 +120,25 @@ Once the data directory is set up, the program will be able to access the requir
 
 # Commands
 ## ./phytobsa -a (Automatic mode)
+For automatic mode to run properly, files need to be formatted so that information about the experiments can be gleaned 
+from the file name and default settings need to be configured to match your preferred run parameters. Most importantly, 
+the reference genome needs to be set. 
+
 ***File Formating***  
 Put the fq.gz files you want analyzed into the data/input folder. You can put 
-multiple experiments in the folder and they will be analyzed. 
+multiple experiments in the folder and they will be analyzed.  
+
+
+The program will detect a number of features from the file name  
+-line name - the name of the line. This will control how files are named.  
+-Segregation type - can be recessive (R), Dominant(D), or Quantitative Trait Locus (QTL)
+-bulk label - does the file belong to the wild-type(wt) or mutant(mu) bulk? for QTLs, the wt is the "low" bulk and mu is the "high" bulk
+-Pairedness - detected based on the number of files per experiment
 
 The files must be formatted as follows:  
   
   For paired-end  
-  `<line_name>.<R or D>_<read number>.<wt or mu>.fq.gz`  
+  `<line_name>.<R or D or QTL>_<read number>.<wt or mu>.fq.gz`  
     example experiment:  
     "line.R_1.wt.fq.gz"  
     "line.R_2.wt.fq.gz"   
