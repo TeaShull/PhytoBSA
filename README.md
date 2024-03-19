@@ -68,12 +68,6 @@ Finally, a list of the likely candidates will be produced, filtered based on whe
 
 
 # Table of Contents
-- [PhytoBSA](#phytobsa)
-  - [Experimental Design of BSA](#experimental-design-of-bsa)
-  - [Key Features](#key-features)
-  - [Output](#output)
-    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
-- [Table of Contents](#table-of-contents)
 - [Installation](#installation)
   - [Environment installation](#environment-installation)
   - [Setting up the Data Directory](#setting-up-the-data-directory)
@@ -175,19 +169,19 @@ This can make the fine tuning of analysis easier.
 
 If running analysis separately, these variables can't be set using the config. 
 | Command              | ab    | Description                                       | Type |
-| ----------------------- | ----- | ------------------------------------------------- | ---- |
-| `--name   `             | `-n`  | name of the line for output files.                | str  |
-| `--vcf_table_path   `   | `-vt` | path to the VCF table or file in input or output. | str  |
-| `--segregation_type ` | `-st` | Specify the segregation type. (R), (D) or (QTL).  | str  |
+| -------------------- | ----- | ------------------------------------------------- | ---- |
+| `--name`             | `-n`  | name of the line for output files.                | str  |
+| `--vcf_table_path`   | `-vt` | path to the VCF table or file in input or output. | str  |
+| `--segregation_type` | `-st` | Specify the segregation type. (R), (D) or (QTL).  | str  |
 
   
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
 
 | Command                 | ab      | Description                                                                  | Type  |
-| ----------------------------- | ------- | ---------------------------------------------------------------------------- | ----- |
+| ----------------------- | ------- | ---------------------------------------------------------------------------- | ----- |
 | `--reference_name`      | `-r`    | Name of the reference genome. This name maps to a reference genome.          | str   |
 | `--loess_span`          | `-ls`   | Smoothing parameter.                                                         | float |
-| `--shuffle_iterations `  | `-si`   | Iterations of bootstrapping during null model generation.                    | int   |
+| `--shuffle_iterations`  | `-si`   | Iterations of bootstrapping during null model generation.                    | int   |
 | `--smooth_edges_bounds` | `-sb`   | Mirrored data at chrom edges to correct for loess edge bias.                 | int   |
 | `--filter_indels`       | `-fin`  | Filter out insertion-deletion mutations.                                     | str   |
 | `--filter_ems`          | `-fems` | Filter results to only include mutations likely to arise from EMS treatment. | str   |
@@ -203,7 +197,7 @@ As with all other commands, you can set the default settings using ./phytobsa se
 ***Required***  
 
 | Command      | ab    | Description                                                                                                           | Type |
-| --------------- | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
+| ------------ | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
 | `--name`     | `-n`  | Specify the name which will be used to name output files.                                                             | str  |
 | `--wt_input` | `-wt` | Specify the path(s) to the wild-type bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2" | str  |
 | `--mu_input` | `-mu` | Specify the path(s) to the mutant bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2"    | str  |
@@ -213,11 +207,11 @@ As with all other commands, you can set the default settings using ./phytobsa se
 
 | Command                       | ab     | Description                                                                                         | Type |
 | ----------------------------- | ------ | --------------------------------------------------------------------------------------------------- | ---- |
-| `--reference_name   `            | `-r`   | Name of the reference genome. This name maps to a reference genome, SnpEff library, and a snp mask. | str  |
-| `--call_variants_in_parallel  ` | `-p`   | Run GATK haplotype caller in parallel.                                                              | bool |
-| `--cleanup   `                   | `-c`   | Cleanup intermediate files?                                                                         | bool |
-| `--cleanup_filetypes   `         | `-cft` | Filetypes to clean out after VCF generation is complete. Example: ['.tmp', '*.metrics']             | list |
-| `--omit_chrs_patterns   `        | `-ocp` | Header patterns to omit from reference chromosomes. Removes unneeded reference sequences.           | list |
+| `--reference_name`            | `-r`   | Name of the reference genome. This name maps to a reference genome, SnpEff library, and a snp mask. | str  |
+| `--call_variants_in_parallel` | `-p`   | Run GATK haplotype caller in parallel.                                                              | bool |
+| `--cleanup`                   | `-c`   | Cleanup intermediate files?                                                                         | bool |
+| `--cleanup_filetypes`         | `-cft` | Filetypes to clean out after VCF generation is complete. Example: ['.tmp', '*.metrics']             | list |
+| `--omit_chrs_patterns`        | `-ocp` | Header patterns to omit from reference chromosomes. Removes unneeded reference sequences.           | list |
 
 
 
@@ -231,40 +225,35 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 These settings are automatically applied if not explicitly passed in any mode. 
 | Command                | Description                                                                          | Possible Values                                       |
 | ---------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `--set_reference_name ` | Set the name of the reference genome.                                                | string [see refdb info](#reference-database-manager)) |
-| `--set_data_dir   `       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
-| `--set_threads_limit `  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
+| `--set_reference_name` | Set the name of the reference genome.                                                | string [see refdb info](#reference-database-manager)) |
+| `--set_data_dir`       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
+| `--set_threads_limit`  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
 
 
 
 ## Set VCF Generation Defaults  
 These settings are automatically applied if not explicitly provided in automatic or VCF generation mode.
 
-- `--set_call_variants_in_parallel`: 
-  - Set default for running GATK Haplotype Caller in parallel.
-
-- `--set_cleanup`: 
-  - Set default for cleanup. If true, intermediate files will be deleted; false for troubleshooting and archiving files.
-
-- `--set_cleanup_filetypes`: 
-  - Set default for cleanup file types. An ordered list of globs for files to clear out after VCF generation process.
-
-- `--set_omit_chrs_patterns`: 
-  - Set defaults for filtering reference chromosome contigs. Useful for filtering non-genomic reference contigs to speed up VCF generation.
+| Command                           | Description                                                           | Possible Values |
+| --------------------------------- | --------------------------------------------------------------------- | --------------- |
+| `--set_call_variants_in_parallel` | Set default for running GATK Haplotype Caller in parallel.            | True, False     |
+| `--set_cleanup`                   | Set default for cleanup. If true, intermediate files will be deleted. | True, False     |
+| `--set_cleanup_filetypes`         | Set default for cleanup file types.                                   | List of globs   |
+| `--set_omit_chrs_patterns`        | Set defaults for filtering reference chromosome contigs.              | list of strings |
 
 ## Set BSA Defaults  
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.  
 
 | Command                     | Description                          | Possible Values                      |
 | --------------------------- | ------------------------------------ | ------------------------------------ |
-| `--set_loess_span   `          | Set default Loess span.              | Float between 0 and 1                |
-| `--set_shuffle_iterations   `  | Set default shuffle iterations.      | Int (100-10000 recommended)          |
-| `--set_smooth_edges_bounds   ` | Set default smooth edges bounds.     | int                                  |
-| `--set_filter_indels   `       | Set default filter indels.           | True False                           |
-| `--set_filter_ems   `          | Set default filter EMS.              | True False                           |
-| `--set_ratio_cutoff   `        | Set default ratio cutoff bound.      | Float -1 and 1 (0.1-0.3 recommended) |
-| `--set_mask_snps   `           | Set default mask SNPs boolean value. | True False                           |
-| `--set_critical_cutoff   `     | Set default critical cutoff value.   | Float (0.95-0.99 recommended)        |
+| `--set_loess_span`          | Set default Loess span.              | Float between 0 and 1                |
+| `--set_shuffle_iterations`  | Set default shuffle iterations.      | Int (100-10000 recommended)          |
+| `--set_smooth_edges_bounds` | Set default smooth edges bounds.     | int                                  |
+| `--set_filter_indels`       | Set default filter indels.           | True, False                           |
+| `--set_filter_ems`          | Set default filter EMS.              | True, False                           |
+| `--set_ratio_cutoff`        | Set default ratio cutoff bound.      | Float -1 and 1 (0.1-0.3 recommended) |
+| `--set_mask_snps`           | Set default mask SNPs boolean value. | True, False                           |
+| `--set_critical_cutoff`     | Set default critical cutoff value.   | Float (0.95-0.99 recommended)        |
 
 
 Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
@@ -275,10 +264,10 @@ The Log Database Utilities module provides functions to interact with a log data
 
 | Command                     | Description                                                                    | Possible Values |
 | --------------------------- | ------------------------------------------------------------------------------ | --------------- |
-| `--print_analysis_log_data  ` | prints info related to an analysis based on analysis ULID (ulid).              | analysis ULID   |
-| `--print_vcf_log_data  `      | prints info related to a VCF process based on ULID.                            | vcf ULID        |
-| `--print_line_name_data  `    | Prints info related to a line name, including both VCF data and Analysis data. | line name       |
-| `--print_core_id_data  `      | Prints info related to a core ID based on core ULID.                           | core ULID       |
+| `--print_analysis_log_data` | prints info related to an analysis based on analysis ULID (ulid).              | analysis ULID   |
+| `--print_vcf_log_data`      | prints info related to a VCF process based on ULID.                            | vcf ULID        |
+| `--print_line_name_data`    | Prints info related to a line name, including both VCF data and Analysis data. | line name       |
+| `--print_core_id_data`      | Prints info related to a core ID based on core ULID.                           | core ULID       |
 
 # Reference Database Manager
 
