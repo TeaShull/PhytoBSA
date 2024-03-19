@@ -75,11 +75,11 @@ Finally, a list of the likely candidates will be produced, filtered based on whe
   - [./phytobsa -a (Automatic mode)](#phytobsa--a-automatic-mode)
   - [./phytobsa vcf\_generator](#phytobsa-vcf_generator)
   - [./phytobsa analysis](#phytobsa-analysis)
-- [./phytobsa settings (Default Settings)](#phytobsa-settings-default-settings)
-  - [Set General Defaults](#set-general-defaults)
-  - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
-  - [Set BSA Defaults](#set-bsa-defaults)
-- [./phytobsa logdb (Log Database Utilities)](#phytobsa-logdb-log-database-utilities)
+  - [./phytobsa settings (Default Settings)](#phytobsa-settings-default-settings)
+    - [Set General Defaults](#set-general-defaults)
+    - [Set VCF Generation Defaults](#set-vcf-generation-defaults)
+    - [Set BSA Defaults](#set-bsa-defaults)
+  - [./phytobsa logdb (Log Database Utilities)](#phytobsa-logdb-log-database-utilities)
 - [Reference Database Manager](#reference-database-manager)
   - [Reference Form Configuration](#reference-form-configuration)
 - [Footnotes](#footnotes)
@@ -221,7 +221,7 @@ If running analysis separately, these variables can't be set using the config.
 | `--mask_snps`           | `-msk`  | Mask known SNPs in analysis.                                                 | bool  |
 | `--critical_cutoff`     | `-cc`   | Set the critical cutoff value for significant polymorphism.                  | float |
 
-# ./phytobsa settings (Default Settings)   
+## ./phytobsa settings (Default Settings)   
 
 PhytoBSA offers default settings that can be applied to streamline the analysis process. These default settings allow users to set preferred configurations for various parameters, ensuring consistency and reducing the need for manual configuration for each run. Below is a breakdown of the default settings available for configuration:
 
@@ -229,7 +229,7 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 
 *Note - you can also configure these settings directly in settings/config.ini, if you so wish*
 
-## Set General Defaults  
+### Set General Defaults  
 These settings are automatically applied if not explicitly passed in any mode.
 | Command                | Description                                                                          | Possible Values                                       |
 | :----------------------: | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
@@ -239,7 +239,7 @@ These settings are automatically applied if not explicitly passed in any mode.
 
 
 
-## Set VCF Generation Defaults  
+### Set VCF Generation Defaults  
 These settings are automatically applied if not explicitly provided in automatic or VCF generation mode.
 
 | Command                           | Description                                                           | Possible Values |
@@ -249,7 +249,7 @@ These settings are automatically applied if not explicitly provided in automatic
 | `--set_cleanup_filetypes`         | Set default for cleanup file types.                                   | List of globs   |
 | `--set_omit_chrs_patterns`        | Set defaults for filtering reference chromosome contigs.              | list of strings |
 
-## Set BSA Defaults  
+### Set BSA Defaults  
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.  
 
 | Command                     | Description                          | Possible Values                      |
@@ -266,7 +266,7 @@ These settings are automatically applied if not explicitly passed to automatic o
 
 Users can apply these default settings using the `phytobsa settings` command with the corresponding options. This feature is particularly useful for users who primarily work with specific reference genomes, species, or analysis methodologies, as it eliminates the need for repetitive configuration adjustments.
 
-# ./phytobsa logdb (Log Database Utilities)
+## ./phytobsa logdb (Log Database Utilities)
 
 The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
 
