@@ -130,10 +130,10 @@ multiple experiments in the folder and they will be analyzed.
 
 
 The program will detect a number of features from the file name  
--line name - the name of the line. This will control how files are named.  
--Segregation type - can be recessive (R), Dominant(D), or Quantitative Trait Locus (QTL)
--bulk label - does the file belong to the wild-type(wt) or mutant(mu) bulk? for QTLs, the wt is the "low" bulk and mu is the "high" bulk
--Pairedness - detected based on the number of files per experiment
+- line name: the name of the line. This will control how files are named 
+- Segregation type: can be recessive (R), Dominant(D), or Quantitative Trait Locus (QTL)
+- bulk label: does the file belong to the wild-type(wt) or mutant(mu) bulk? for QTLs, the wt is the "low" bulk and mu is the "high" bulk
+- Pairedness: detected based on the number of files per experiment
 
 The files must be formatted as follows:  
   
