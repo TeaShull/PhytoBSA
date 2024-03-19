@@ -233,7 +233,7 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 These settings are automatically applied if not explicitly passed in any mode.
 | Command                | Description                                                                          | Possible Values                                       |
 | :----------------------: | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `--set_reference_name` | Set the name of the reference genome.                                                | string (see [Reference Database Manager](#reference-database-manager)) |
+| `--set_reference_name` | Set the name of the reference genome.                                                | string, see [Reference Database Manager](#reference-database-manager) |
 | `--set_data_dir`       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
 | `--set_threads_limit`  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
 
