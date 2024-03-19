@@ -182,7 +182,7 @@ If running analysis separately, these variables can't be set using the config.
 | `--reference_name`      | `-r`    | Name of the reference genome. This name maps to a reference genome.          | str   |
 | `--loess_span`          | `-ls`   | Smoothing parameter.                                                         | float |
 | `--shuffle_iterations`  | `-si`   | Iterations of bootstrapping during null model generation.                    | int   |
-| `--smooth_edges_bounds` | `-sb`   | Mirrored data at chrom edges to correct for loess edge bias.                 | int   |
+| --smooth_edges_bounds | `-sb`   | Mirrored data at chrom edges to correct for loess edge bias.                 | int   |
 | `--filter_indels`       | `-fin`  | Filter out insertion-deletion mutations.                                     | str   |
 | `--filter_ems`          | `-fems` | Filter results to only include mutations likely to arise from EMS treatment. | str   |
 | `--ratio_cutoff`        | `-rco`  | Used to filter results based on a ratio cutoff number.                       | float |
@@ -263,7 +263,7 @@ Users can apply these default settings using the `phytobsa settings` command wit
 The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
 
 | Command                     | Description                                                                    | Possible Values |
-| --------------------------- | ------------------------------------------------------------------------------ | --------------- |
+| :---------------------------: | ------------------------------------------------------------------------------ | --------------- |
 | `--print_analysis_log_data` | prints info related to an analysis based on analysis ULID (ulid).              | analysis ULID   |
 | `--print_vcf_log_data`      | prints info related to a VCF process based on ULID.                            | vcf ULID        |
 | `--print_line_name_data`    | Prints info related to a line name, including both VCF data and Analysis data. | line name       |
