@@ -68,6 +68,12 @@ Finally, a list of the likely candidates will be produced, filtered based on whe
 
 
 # Table of Contents
+- [PhytoBSA](#phytobsa)
+  - [Experimental Design of BSA](#experimental-design-of-bsa)
+  - [Key Features](#key-features)
+  - [Output](#output)
+    - [Identification of Significant Polymorphisms](#identification-of-significant-polymorphisms)
+- [Table of Contents](#table-of-contents)
 - [Installation](#installation)
   - [Environment installation](#environment-installation)
   - [Setting up the Data Directory](#setting-up-the-data-directory)
@@ -168,26 +174,26 @@ This can make the fine tuning of analysis easier.
 ***Required***  
 
 If running analysis separately, these variables can't be set using the config. 
-| Command              | ab    | Description                                                                                      | Type |
-| -------------------- | ----- | ------------------------------------------------------------------------------------------------ | ---- |
-| `--name`             | `-n`  | name of the line for output files.                                        | str  |
-| `--vcf_table_path`   | `-vt` | path to the VCF table or file in input or output.                | str  |
-| `--segregation_type` | `-st` | Specify the segregation type. (R), (D) or (QTL). | str  |
+| Command              | ab    | Description                                       | Type |
+| ----------------------- | ----- | ------------------------------------------------- | ---- |
+| `--name`             | `-n`  | name of the line for output files.                | str  |
+| `--vcf_table_path`   | `-vt` | path to the VCF table or file in input or output. | str  |
+| `--segregation_type` | `-st` | Specify the segregation type. (R), (D) or (QTL).  | str  |
 
   
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
 
-| Command                 | ab      | Description                                                                               | Type  |
-| ----------------------- | ------- | ----------------------------------------------------------------------------------------- | ----- |
-| `--reference_name`      | `-r`    | Name of the reference genome. This name maps to a reference genome.                       | str   |
-| `--loess_span`          | `-ls`   | Smoothing parameter.                                                                      | float |
-| `--shuffle_iterations`  | `-si`   | Iterations of bootstrapping during null model generation.                         | int   |
-| `--smooth_edges_bounds` | `-sb`   | Mirrored data at chrom edges to correct for loess edge bias. | int   |
-| `--filter_indels`       | `-fin`  | Filter out insertion-deletion mutations.                                                  | str   |
-| `--filter_ems`          | `-fems` | Filter results to only include mutations likely to arise from EMS treatment.              | str   |
-| `--ratio_cutoff`        | `-rco`  | Used to filter results based on a ratio cutoff number.                                    | float |
-| `--mask_snps`           | `-msk`  | Mask known SNPs in analysis.                                                              | bool  |
-| `--critical_cutoff`     | `-cc`   | Set the critical cutoff value for significant polymorphism.                               | float |
+| Command                 | ab      | Description                                                                  | Type  |
+| ----------------------------- | ------- | ---------------------------------------------------------------------------- | ----- |
+| `--reference_name`      | `-r`    | Name of the reference genome. This name maps to a reference genome.          | str   |
+| `--loess_span`          | `-ls`   | Smoothing parameter.                                                         | float |
+| `--shuffle_iterations`  | `-si`   | Iterations of bootstrapping during null model generation.                    | int   |
+| `--smooth_edges_bounds` | `-sb`   | Mirrored data at chrom edges to correct for loess edge bias.                 | int   |
+| `--filter_indels`       | `-fin`  | Filter out insertion-deletion mutations.                                     | str   |
+| `--filter_ems`          | `-fems` | Filter results to only include mutations likely to arise from EMS treatment. | str   |
+| `--ratio_cutoff`        | `-rco`  | Used to filter results based on a ratio cutoff number.                       | float |
+| `--mask_snps`           | `-msk`  | Mask known SNPs in analysis.                                                 | bool  |
+| `--critical_cutoff`     | `-cc`   | Set the critical cutoff value for significant polymorphism.                  | float |
 
 
 
@@ -196,9 +202,9 @@ This command allows the generation of VCF files independently of running the ana
 As with all other commands, you can set the default settings using ./phytobsa settings
 ***Required***  
 
-| Command           | ab    | Description                                                                                                           | Type |
-| ----------------- | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
-| `--name`      | `-n`  | Specify the name which will be used to name output files.                                                             | str  |
+| Command      | ab    | Description                                                                                                           | Type |
+| --------------- | ----- | --------------------------------------------------------------------------------------------------------------------- | ---- |
+| `--name`     | `-n`  | Specify the name which will be used to name output files.                                                             | str  |
 | `--wt_input` | `-wt` | Specify the path(s) to the wild-type bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2" | str  |
 | `--mu_input` | `-mu` | Specify the path(s) to the mutant bulk fasta file(s). Can be file in input or direct path. Format: "FILE_1 FILE_2"    | str  |
 
@@ -206,7 +212,7 @@ As with all other commands, you can set the default settings using ./phytobsa se
 ***Options*** (see [Default Settings](#default-settings) to alter default values)
 
 | Command                       | ab     | Description                                                                                         | Type |
-| ----------------------------- | ------ | --------------------------------------------------------------------------------------------------- | ---- |
+| -------------------------------- | ------ | --------------------------------------------------------------------------------------------------- | ---- |
 | `--reference_name`            | `-r`   | Name of the reference genome. This name maps to a reference genome, SnpEff library, and a snp mask. | str  |
 | `--call_variants_in_parallel` | `-p`   | Run GATK haplotype caller in parallel.                                                              | bool |
 | `--cleanup`                   | `-c`   | Cleanup intermediate files?                                                                         | bool |
@@ -224,7 +230,7 @@ PhytoBSA offers default settings that can be applied to streamline the analysis 
 ## Set General Defaults  
 These settings are automatically applied if not explicitly passed in any mode. 
 | Command                | Description                                                                          | Possible Values                                       |
-| ---------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| ------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | `--set_reference_name` | Set the name of the reference genome.                                                | string [see refdb info](#reference-database-manager)) |
 | `--set_data_dir`       | Set the data directory. This must be set for the program to run.                     | Path to data directory                                |
 | `--set_threads_limit`  | Set the threads limit for BSA and for VCF generation. default is detected threads -2 | int                                                   |
@@ -250,7 +256,7 @@ These settings are automatically applied if not explicitly provided in automatic
 These settings are automatically applied if not explicitly passed to automatic or BSA mode.  
 
 | Command                     | Description                          | Possible Values                      |
-| --------------------------- | ------------------------------------ | ------------------------------------ |
+| ------------------------------ | ------------------------------------ | ------------------------------------ |
 | `--set_loess_span`          | Set default Loess span.              | Float between 0 and 1                |
 | `--set_shuffle_iterations`  | Set default shuffle iterations.      | Int (100-10000 recommended)          |
 | `--set_smooth_edges_bounds` | Set default smooth edges bounds.     | int                                  |
@@ -268,7 +274,7 @@ Users can apply these default settings using the `phytobsa settings` command wit
 The Log Database Utilities module provides functions to interact with a log database, allowing users to easily track and retrieve runtime parameters and associated information. This is crucial for ensuring reproducibility and comparability of results across different runs of analysis or processing tasks.
 
 | Command                     | Description                                                                    | Possible Values |
-| --------------------------- | ------------------------------------------------------------------------------ | --------------- |
+| ------------------------------ | ------------------------------------------------------------------------------ | --------------- |
 | `--print_analysis_log_data` | prints info related to an analysis based on analysis ULID (ulid).              | analysis ULID   |
 | `--print_vcf_log_data`      | prints info related to a VCF process based on ULID.                            | vcf ULID        |
 | `--print_line_name_data`    | Prints info related to a line name, including both VCF data and Analysis data. | line name       |
