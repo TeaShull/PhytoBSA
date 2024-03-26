@@ -30,7 +30,6 @@ class BSA:
         self.smoothing_function = sm.nonparametric.lowess
 
     def __call__(self):
-        #Run BSA pipeline
         for line in self.bsa_vars.lines:
             try:
                 bsa_log = self._initialize_log(line)
@@ -228,14 +227,10 @@ class DataFiltering:
         
         self.log.attempt('Trying to drop those loci with summed read depths below the 5 percentile...')
         try:
-            # Calculate the sum directly using numpy
             readdepth_sums = np.sum(vcf_df[['mu_ref', 'mu_alt', 'wt_ref', 'wt_alt']].values, axis=1)
             percentile_5 = np.percentile(readdepth_sums, 5)
-
-            # Create a mask for those rows where the sum is greater than or equal to the 5th percentile
             mask = readdepth_sums >= percentile_5
 
-            # Use the mask to filter the DataFrame
             self.log.note(f'Input dataframe length: {len(vcf_df)}')
             vcf_df = vcf_df[mask]
             self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
@@ -375,20 +370,15 @@ class DataFiltering:
         '''
         self.log.attempt("Filtering known snps from provided snpmask file..")
         try:        
-            # Convert column names to lower case
             snpmask_df.columns = snpmask_df.columns.str.lower()
             vcf_df.columns = vcf_df.columns.str.lower()
 
-            # Create a set from the 'chrom', 'pos', 'ref', 'alt' columns
             known_snps_set = set(zip(snpmask_df['chrom'], snpmask_df['pos'], 
                                     snpmask_df['ref'], snpmask_df['alt']))
 
-            # Filter the vcf_df to only include rows not in the known_snps_set
             self.log.note(f'Input dataframe length: {len(vcf_df)}')
-
             vcf_df = vcf_df[~vcf_df[['chrom', 'pos', 'ref', 'alt']]
                                 .apply(tuple, axis=1).isin(known_snps_set)]
- 
             self.log.note(f'Filtered dataframe length: {len(vcf_df)}')
 
             return vcf_df
@@ -529,8 +519,6 @@ class FeatureProduction:
             
             df_chrom = self._create_mirrored_data(df_chrom, smooth_edges_bounds)
             df_chrom = self._fit_values(df_chrom, smoothing_function, loess_span)
-
-            # Sort by 'chrom' and 'pos'
             df_chrom = df_chrom.sort_values(by=['chrom', 'pseudo_pos'])
             
             self.log.success(f"Values fit in chromosome: {chrom}") 
@@ -743,10 +731,7 @@ class FeatureProduction:
         sm_mu_ref = np.empty_like(psuedo_pos)
         sm_mu_alt = np.empty_like(psuedo_pos)
 
-        wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
-        mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
-
-        wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # Total coverage = ref + alt
+        wt_coverage = read_depth_array[:, 0] + read_depth_array[:, 1]  # coverage = ref + alt
         mu_coverage = read_depth_array[:, 2] + read_depth_array[:, 3]
 
         # Start with prior assumption that allele frequency p is beta distributed
@@ -756,23 +741,23 @@ class FeatureProduction:
         alpha_prior = 2
         beta_prior = 2
 
-        # Update the prior with the observed data
+        # Update wt prior
         sm_wt_ref = np.random.choice(read_depth_array[:, 0], size=len(psuedo_pos))
         sm_wt_alt = np.random.choice(read_depth_array[:, 1], size=len(psuedo_pos))
         alpha_posterior_wt = alpha_prior + sm_wt_ref
         beta_posterior_wt = beta_prior + sm_wt_alt
         p1_posterior_wt = np.random.beta(alpha_posterior_wt, beta_posterior_wt)
 
-        # Update the prior with the observed data for the mutant
+        # Update mu prior
         sm_mu_ref =  np.random.choice(read_depth_array[:, 2], size=len(psuedo_pos))
         sm_mu_alt = np.random.choice(read_depth_array[:, 3], size=len(psuedo_pos))
         alpha_posterior_mu = alpha_prior + sm_mu_ref
         beta_posterior_mu = beta_prior + sm_mu_alt
         p1_posterior_mu = np.random.beta(alpha_posterior_mu, beta_posterior_mu)
 
-        # Use the posterior distributions to simulate the wild type and mutant
-        p2_wt = 1 - p1_posterior_wt  # Derived allele frequencies in wild type
-        p2_mu = 1 - p1_posterior_mu  # Derived allele frequencies in mutant
+        # Simulate the wt and mu reference reads by sampling the posterior
+        p2_wt = 1 - p1_posterior_wt  # Derived wild type p2
+        p2_mu = 1 - p1_posterior_mu  # Derived mutant p2
         sm_wt_ref = np.random.binomial(wt_coverage, p2_wt)  # Reference reads in wild type
         sm_wt_alt = wt_coverage - sm_wt_ref  # Alternate reads in wild type
         sm_mu_ref = np.random.binomial(mu_coverage, p2_mu)  # Reference reads in mutant
@@ -789,7 +774,7 @@ class FeatureProduction:
         # calc ratio scaled g-stat
         smRS_G = smRatio * smGstat
         
-        # Calculate smoothed values for each chromosome separately
+        # smooth
         smRatio_y = []
         smGstat_y = []
         smRS_G_y = []
